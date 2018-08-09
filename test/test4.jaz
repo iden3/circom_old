@@ -1,0 +1,7 @@
+if (a) b; else c;
+if (a) {
+  1
+} else {
+  2
+}
+if (1) if(0) 1; else 2;

@@ -1,0 +1,9 @@
+function f() {
+	return 3;
+}
+
+function ff(a) {
+	return 4;
+}
+
+component c = s(a);

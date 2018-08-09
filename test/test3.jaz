@@ -1,0 +1,10 @@
+signal input b <== 3;
+signal o[44] <-- 2;
+a[1][2].b[3] <== 4
+function f(a,b) {
+	c=a+b;
+}
+
+component b(b1,b2) {
+	b1 <== b2[3].pin[4]
+}

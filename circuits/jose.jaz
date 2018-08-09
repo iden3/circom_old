@@ -1,0 +1,11 @@
+template AND() {
+    signal input s1;
+    signal input s2;
+    signal output s3;
+
+    s3 <== s1*s2;
+    s1*(s1-1) === 0;
+    s2*(s2-1) === 0;
+}
+
+component main = AND();
