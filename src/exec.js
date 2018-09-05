@@ -1,3 +1,22 @@
+/*
+    Copyright 2018 0kims association
+
+    This file is part of jaz (Zero Knowlage Circuit compiler).
+
+    jaz is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    jaz is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with jaz.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 const path = require("path");
 const fs = require("fs");
 
@@ -6,7 +25,7 @@ const __P__ = new bigInt("218882428718392752222464057452572750885483644004160343
 const __MASK__ = new bigInt(2).pow(253).minus(1);
 
 const lc = require("./lcalgebra");
-const parser = require("../jaz.js").parser;
+const parser = require("../parser/jaz.js").parser;
 
 /* TODO: Add lines information
 
