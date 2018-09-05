@@ -1,5 +1,5 @@
 {
-  "name": "jaz",
+  "name": "circom",
   "version": "0.0.2",
   "description": "Language to generate logica circuits",
   "main": "index.js",
@@ -11,7 +11,7 @@
     "buildParser": "jison parser/jaz.jison -o parser/jaz.js"
   },
   "bin": {
-    "jaz": "cli.js"
+    "circom": "cli.js"
   },
   "keywords": [
     "zkSnarks",
