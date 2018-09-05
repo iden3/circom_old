@@ -1,5 +1,5 @@
-include "bitify.jaz"
-include "binsum.jaz"
+include "../../circuits/sha256/bitify.circom"
+include "../../circuits/sha256/binsum.circom"
 
 template A() {
     signal private input a;

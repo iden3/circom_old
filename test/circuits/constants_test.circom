@@ -1,4 +1,4 @@
-include "constants.jaz"
+include "../../circuits/sha256/constants.circom"
 
 template A() {
     signal input in;
