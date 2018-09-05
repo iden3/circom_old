@@ -10,6 +10,7 @@
 \/\/.*                                      { /* console.log("SINGLE LINE COMMENT: "+yytext); */ }
 var                     { return 'var'; }
 signal                  { return 'signal'; }
+private                 { return 'private'; }
 input                   { return 'input'; }
 output                  { return 'output'; }
 linearCombination       { return 'linearCombination'; }
@@ -821,6 +822,11 @@ declaration
         {
             $$ = {type: "DECLARE", declareType: "SIGNALIN", name: $3};
             setLines($$, @1, @3);
+        }
+    | 'signal' 'private' 'input' simpleLeftHandExpression %prec DECL
+        {
+            $$ = {type: "DECLARE", declareType: "SIGNALIN", private: true, name: $4};
+            setLines($$, @1, @4);
         }
     | 'signal' 'output' simpleLeftHandExpression %prec DECL
         {

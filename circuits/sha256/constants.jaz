@@ -12,7 +12,7 @@ template H(x) {
              0x5be0cd19];
 
     for (var i=0; i<32; i++) {
-        out[i] = (c[x] >> i) & 1;
+        out[i] <== (c[x] >> i) & 1;
     }
 }
 
@@ -30,6 +30,6 @@ template K(x) {
     ];
 
     for (var i=0; i<32; i++) {
-        out[i] = (c[x] >> i) & 1;
+        out[i] <== (c[x] >> i) & 1;
     }
 }

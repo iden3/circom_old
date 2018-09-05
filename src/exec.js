@@ -419,6 +419,7 @@ function execDeclareSignal(ctx, ast) {
         ctx.signals[fullName] = {
             fullName: fullName,
             direction: ast.declareType == "SIGNALIN" ? "IN" : (ast.declareType == "SIGNALOUT" ? "OUT" : ""),
+            private: ast.private,
             component: ctx.currentComponent,
             equivalence: "",
             alias: [fullName]
@@ -827,8 +828,6 @@ function execSignalAssignConstrain(ctx, ast) {
 function execInclude(ctx, ast) {
     const incFileName = path.resolve(ctx.filePath, ast.file);
     const incFilePath = path.dirname(incFileName);
-
-    console.log("Include: "+incFileName);
 
     ctx.includedFiles = ctx.includedFiles || [];
     if (ctx.includedFiles[incFileName]) return;

@@ -368,7 +368,7 @@ function genVarMulAssignement(ctx, ast) {
 }
 
 function genPlusPlusRight(ctx, ast) {
-    return `(${genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).minus(1).mod(__P__)`;
+    return `(${genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
 }
 
 function genPlusPlusLeft(ctx, ast) {
@@ -380,7 +380,7 @@ function genAdd(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).add(${b}).mod(__P__)`;
+    return `bigInt(${a}).add(bigInt(${b})).mod(__P__)`;
 }
 
 function genMul(ctx, ast) {
@@ -388,7 +388,7 @@ function genMul(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).times(${b}).mod(__P__)`;
+    return `bigInt(${a}).mul(bigInt(${b})).mod(__P__)`;
 }
 
 function genSub(ctx, ast) {
@@ -396,7 +396,7 @@ function genSub(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).add(__P__).minus(${b}).mod(__P__)`;
+    return `bigInt(${a}).add(__P__).sub(bigInt(${b})).mod(__P__)`;
 }
 
 function genExp(ctx, ast) {
@@ -404,7 +404,7 @@ function genExp(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).modPow(${b}, __P__)`;
+    return `bigInt(${a}).modPow(bigInt(${b}), __P__)`;
 }
 
 function genBAnd(ctx, ast) {
@@ -412,7 +412,7 @@ function genBAnd(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).and(${b}).and(__MASK__)`;
+    return `bigInt(${a}).and(bigInt(${b})).and(__MASK__)`;
 }
 
 function genShl(ctx, ast) {
@@ -420,7 +420,7 @@ function genShl(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${b}).greater(256) ? 0 : bigInt(${a}).shiftLeft(bigInt(${b}).value).and(__MASK__)`;
+    return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shl(bigInt(${b})).and(__MASK__)`;
 }
 
 function genShr(ctx, ast) {
@@ -428,7 +428,7 @@ function genShr(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${b}).greater(256) ? 0 : bigInt(${a}).shiftRight(bigInt(${b}).value).and(__MASK__)`;
+    return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shr(bigInt(${b})).and(__MASK__)`;
 }
 
 function genLt(ctx, ast) {
@@ -436,7 +436,7 @@ function genLt(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).lt(${b}) ? 1 : 0`;
+    return `bigInt(${a}).lt(bigInt(${b})) ? 1 : 0`;
 }
 
 function genEq(ctx, ast) {
@@ -444,13 +444,13 @@ function genEq(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).eq(${b}) ? 1 : 0`;
+    return `bigInt(${a}).eq(bigInt(${b})) ? 1 : 0`;
 }
 
 function genUMinus(ctx, ast) {
     const a = gen(ctx, ast.values[0]);
     if (ctx.error) return;
-    return `__P__.minus(bigInt(${a})).mod(__P__)`;
+    return `__P__.sub(bigInt(${a})).mod(__P__)`;
 }
 
 function genTerCon(ctx, ast) {
@@ -460,7 +460,7 @@ function genTerCon(ctx, ast) {
     if (ctx.error) return;
     const c = gen(ctx, ast.values[2]);
     if (ctx.error) return;
-    return `bigInt(${a}).neq(0) ? (${b}) : (${c})`;
+    return `bigInt(${a}).neq(bigInt(0)) ? (${b}) : (${c})`;
 }
 
 function genInclude(ctx, ast) {

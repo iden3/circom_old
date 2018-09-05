@@ -418,7 +418,15 @@ function canonize(ctx, a) {
         for (let k in a.values) {
             let s = k;
             while (ctx.signals[s].equivalence) s= ctx.signals[s].equivalence;
-            if (s != k) {
+            if (typeof(ctx.signals[s].value) != "undefined") {
+                const v = a.values[k].times(ctx.signals[s].value).mod(__P__);
+                if (!a.values["one"]) {
+                    a.values["one"]=v;
+                } else {
+                    a.values["one"]= a.values["one"].add(v).mod(__P__);
+                }
+                delete a.values[k];
+            } else if (s != k) {
                 if (!a.values[s]) {
                     a.values[s]=bigInt(a.values[k]);
                 } else {

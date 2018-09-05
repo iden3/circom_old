@@ -2,7 +2,7 @@ include "bitify.jaz"
 include "binsum.jaz"
 
 template A() {
-    signal input a;
+    signal private input a;
     signal input b;
     signal output out;
 
