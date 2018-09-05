@@ -37,6 +37,24 @@ As you can see in the example above, `out` is assigned a value and a constrain i
 
 In the example above, we force the two inputs to be binary by adding the constrain `a*(a-1)===0` and `b*(b-1) === 0`
 
+### Compile the circui
+
+To compile the circuit, you first install the compiler:
+
+```
+npm install -g circom
+````
+
+Then just run
+
+```
+circom -s mycircuit.circom -o mycircuit.json
+```
+
+The resulting output ( `mycircuit.json` ) can be used with the [zksnarks javascript library](https://github.com/iden3/zksnark)
+
+In that library you will be able to do the trusted setup, create the proofs and verify them.
+
 ### Number to binary
 
 In many situations, we have to convert an input to it's binary representation.  We would write a circuit this way:
