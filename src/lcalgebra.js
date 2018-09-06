@@ -437,7 +437,7 @@ function canonize(ctx, a) {
         for (let k in a.values) {
             let s = k;
             while (ctx.signals[s].equivalence) s= ctx.signals[s].equivalence;
-            if (typeof(ctx.signals[s].value) != "undefined") {
+            if ((typeof(ctx.signals[s].value) != "undefined")&&(k != "one")) {
                 const v = a.values[k].times(ctx.signals[s].value).mod(__P__);
                 if (!a.values["one"]) {
                     a.values["one"]=v;
