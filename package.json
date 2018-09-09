@@ -1,6 +1,6 @@
 {
   "name": "circom",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Language to generate logica circuits",
   "main": "index.js",
   "directories": {
@@ -37,6 +37,6 @@
     "eslint": "^5.0.1",
     "eslint-plugin-mocha": "^5.0.0",
     "jison": "^0.4.18",
-    "zksnark": "0.0.3"
+    "zksnark": "0.0.4"
   }
 }

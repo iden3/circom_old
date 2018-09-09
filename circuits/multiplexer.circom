@@ -1,8 +1,8 @@
-// --> Assignation without constrain
-// <-- Assignation without constrain
-// === Constrain
-// <== Assignation with constrain
-// ==> Assignation with constrain
+// --> Assignation without constraint
+// <-- Assignation without constraint
+// === Constraint
+// <== Assignation with constraint
+// ==> Assignation with constraint
 // All variables are members of the field F[p]
 // https://github.com/zcash-hackworks/sapling-crypto
 // https://github.com/ebfull/bellman

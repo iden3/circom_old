@@ -53,7 +53,7 @@ function compile(srcFile) {
                 }
             },
             currentComponent: "",
-            constrains: [],
+            constraints: [],
             components: {},
             templates: {},
             functions: {},
@@ -64,7 +64,7 @@ function compile(srcFile) {
 
         exec(ctx, ast);
 
-        reduceConstrains(ctx);
+        reduceConstraints(ctx);
         generateWitnessNames(ctx);
 
         if (ctx.error) {
@@ -176,15 +176,15 @@ function generateWitnessNames(ctx) {
     ctx.totals = totals;
 }
 
-function reduceConstrains(ctx) {
-    const newConstrains = [];
-    for (let i=0; i<ctx.constrains.length; i++) {
-        const c = lc.canonize(ctx, ctx.constrains[i]);
+function reduceConstraints(ctx) {
+    const newConstraints = [];
+    for (let i=0; i<ctx.constraints.length; i++) {
+        const c = lc.canonize(ctx, ctx.constraints[i]);
         if (!lc.isZero(c)) {
-            newConstrains.push(c);
+            newConstraints.push(c);
         }
     }
-    ctx.constrains = newConstrains;
+    ctx.constraints = newConstraints;
 }
 
 
@@ -222,7 +222,7 @@ function buildCircuitDef(ctx, mainCode) {
         });
     }
 
-    res.constrains = buildConstrains(ctx);
+    res.constraints = buildConstraints(ctx);
 
     res.templates = ctx.templates;
 
@@ -246,9 +246,9 @@ function buildCircuitDef(ctx, mainCode) {
 }
 
 /*
-    Build constrains
+    Build constraints
 
-A constrain like this
+A constraint like this
 
       [s1 + 2*s2 + 3*s3] * [ s2 + 5*s4] - [s0        ] = 0
       [     5*s2 + 6*s3] * [ s2 +     ] - [s0 + 2* s2] = 0
@@ -267,7 +267,7 @@ is converted to
 
 */
 
-function buildConstrains(ctx) {
+function buildConstraints(ctx) {
     const res = [];
 
     function fillLC(dst, src) {
@@ -278,14 +278,14 @@ function buildConstrains(ctx) {
         }
     }
 
-    for (let i=0; i<ctx.constrains.length; i++) {
+    for (let i=0; i<ctx.constraints.length; i++) {
         const A = {};
         const B = {};
         const C = {};
 
-        fillLC(A, ctx.constrains[i].a);
-        fillLC(B, ctx.constrains[i].b);
-        fillLC(C, lc.negate(ctx.constrains[i].c));
+        fillLC(A, ctx.constraints[i].a);
+        fillLC(B, ctx.constraints[i].b);
+        fillLC(C, lc.negate(ctx.constraints[i].c));
 
         res.push([A,B,C]);
     }

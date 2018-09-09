@@ -7,7 +7,7 @@ This component creates a binary sum componet of ops operands and n bits each ope
 
 e is Number of carries: Depends on the number of operands in the input.
 
-Main Constrain:
+Main Constraint:
    in[0][0]     * 2^0  +  in[0][1]     * 2^1  + ..... + in[0][n-1]    * 2^(n-1)  +
  + in[1][0]     * 2^0  +  in[1][1]     * 2^1  + ..... + in[1][n-1]    * 2^(n-1)  +
  + ..

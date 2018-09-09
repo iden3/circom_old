@@ -2,7 +2,7 @@
 include "constants.jaz";
 include "t1.jaz";
 include "t2.jaz";
-include "sum.jaz";
+include "binsum.jaz";
 include "sigmaplus.jaz";
 
 template sha256compression() {

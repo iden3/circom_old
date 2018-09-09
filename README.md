@@ -25,17 +25,17 @@ template NAND() {
 component main = NAND();
 ```
 
-The language is mainly a javascript/c syntax but with extra 5 operators in order to define the constrains:
+The language is mainly a javascript/c syntax but with extra 5 operators in order to define the constraints:
 
-`<==` , `==>`  This operator is used to connect signals. This operator also implies a constrain.
+`<==` , `==>`  This operator is used to connect signals. This operator also implies a constraint.
 
-As you can see in the example above, `out` is assigned a value and a constrain is also generated.  The assigned value must be of the form a*b+c where a,b and c are linear convinations of the signals.
+As you can see in the example above, `out` is assigned a value and a constraint is also generated.  The assigned value must be of the form a*b+c where a,b and c are linear convinations of the signals.
 
-`<--` , `-->` This operators assign values to a signals but does not generate any constrain. This allow to assign any value to a signal including extrange operations like shifhts, modules, divisiones, etc.  Generally this operator goes together wit a `===` operator in order to force the constrain.
+`<--` , `-->` This operators assign values to a signals but does not generate any constraint. This allow to assign any value to a signal including extrange operations like shifhts, modules, divisiones, etc.  Generally this operator goes together wit a `===` operator in order to force the constraint.
 
-`===` This operator defines a constrain. The constrain must be simplificable to the form a*b+c=0 where a,b and c are linear convinations.
+`===` This operator defines a constraint. The constraint must be simplificable to the form a*b+c=0 where a,b and c are linear convinations.
 
-In the example above, we force the two inputs to be binary by adding the constrain `a*(a-1)===0` and `b*(b-1) === 0`
+In the example above, we force the two inputs to be binary by adding the constraint `a*(a-1)===0` and `b*(b-1) === 0`
 
 ### Compile the circui
 
@@ -81,10 +81,10 @@ The first thing we observe in this example is that templates can have parameters
 
 Then we define the inputs and the outputs. We see that we can work with arrays. The program allows multidimension arrays for signals and variables.
 
-Then we need to assign the values to the different signals. In this case, we assign the value without the constrain by using the shift and & operators:
+Then we need to assign the values to the different signals. In this case, we assign the value without the constraint by using the shift and & operators:
 `out[i] <-- (in >> i) & 1;`
 
-But we need to define also the constrains.  In this case there is a big constrain of the form:
+But we need to define also the constraints.  In this case there is a big constraint of the form:
 
 ```
 in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  ....
@@ -92,7 +92,7 @@ in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  ....
 
 We do this by using a variable `lc1` and adding each signal multiplied by his coefficient.
 
-This variable does not hold a value in compilation time, but it holds a linear combination.  and it is used in the last constrain:
+This variable does not hold a value in compilation time, but it holds a linear combination.  and it is used in the last constraint:
 
 ```
 lc1 === in;
@@ -100,7 +100,7 @@ lc1 === in;
 
 Finally we also have to force each output to be binary.
 
-We do this by adding this constrain for each output:
+We do this by adding this constraint for each output:
 
 ```
 out[i] * (out[i] -1 ) === 0;
@@ -111,7 +111,7 @@ Lets now create a 32bits adder.
 
 The strategy will be to first convert the number to binary, do the addition in the binary space and then finally convert it back to a number.
 
-We could do it directly by adding a simple constrain where out === in1 + in2, but if we do this the operation will not be module 2**32 but `r` where r is the range of the elliptic curve. In the case of regular zkSnarks typically is some prime number close to 2**253
+We could do it directly by adding a simple constraint where out === in1 + in2, but if we do this the operation will not be module 2**32 but `r` where r is the range of the elliptic curve. In the case of regular zkSnarks typically is some prime number close to 2**253
 
 With this example we also demostrate the normal patter of binarize a number, work in binary (reguular electronic circuit), and then convert the result back to a number.
 
@@ -159,7 +159,7 @@ This component creates a binary sum componet of ops operands and n bits each ope
 
 e is Number of carries: Depends on the number of operands in the input.
 
-Main Constrain:
+Main Constraint:
    in[0][0]     * 2^0  +  in[0][1]     * 2^1  + ..... + in[0][n-1]    * 2^(n-1)  +
  + in[1][0]     * 2^0  +  in[1][1]     * 2^1  + ..... + in[1][n-1]    * 2^(n-1)  +
  + ..

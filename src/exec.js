@@ -830,7 +830,7 @@ function execConstrain(ctx, ast) {
     if (res.type == "ERROR") return error(ctx, ast, res.errStr);
 
     if (!lc.isZero(res)) {
-        ctx.constrains.push(lc.toQEQ(res));
+        ctx.constraints.push(lc.toQEQ(res));
     }
 
     return res;
