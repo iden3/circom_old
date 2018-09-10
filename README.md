@@ -103,7 +103,7 @@ The last step is to force each output to be binary. This is done by adding the f
 out[i] * (out[i] -1 ) === 0;
 ```
 
-### A Binary adder
+### A binary adder
 
 Let's now create a 32bits adder.
 
@@ -149,7 +149,7 @@ binsum.circom
 ```
 /*
 
-Binary Sum
+Binary sum
 ==========
 
 This component creates a binary sum componet of ops operands and n bits each operand.
