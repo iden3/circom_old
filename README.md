@@ -1,6 +1,6 @@
 # Circon
 
-Circon is a language designed to write arithmetic circuits and can be used in zero knowledge proofs.
+Circon is a language designed to write arithmetic circuits that can be used in zero knowledge proofs.
 
 In particular, it is designed to work in [zksnarks JavaScript library](https://github.com/iden3/zksnark).
 
