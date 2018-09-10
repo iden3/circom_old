@@ -1,15 +1,15 @@
-# circon
+# Circon
 
-Circon is a language designed to write aritmetic circuits to be used in zero knowlage proof.
+Circon is a language designed to write arithmetic circuits and can be used in zero knowledge proofs.
 
-Concretly it is designed to work in convination with [zksnarks javascript library](https://github.com/iden3/zksnark)
+In particular, it is designed to work in [zksnarks JavaScript library](https://github.com/iden3/zksnark).
 
 
 ## Usage
 
 ### First circuit
 
-Create a circuit. This is a simple example for a NAND door:
+Creation of a circuit. This is an example of a NAND door:
 
 ```
 template NAND() {
@@ -25,39 +25,39 @@ template NAND() {
 component main = NAND();
 ```
 
-The language is mainly a javascript/c syntax but with extra 5 operators in order to define the constraints:
+The language uses mainly JavaScript/C syntax together with 5 extra operators to define the constraints:
 
-`<==` , `==>`  This operator is used to connect signals. This operator also implies a constraint.
+`<==` , `==>`  : These two operators are used to connect signals and at the same time imply a constraint.
 
-As you can see in the example above, `out` is assigned a value and a constraint is also generated.  The assigned value must be of the form a*b+c where a,b and c are linear convinations of the signals.
+As it is shown in the above example, a value is assigned to `out` and a constraint is also generated.  The assigned value must be of the form a*b+c where a,b and c are linear combinations of the signals.
 
-`<--` , `-->` This operators assign values to a signals but does not generate any constraint. This allow to assign any value to a signal including extrange operations like shifhts, modules, divisiones, etc.  Generally this operator goes together wit a `===` operator in order to force the constraint.
+`<--` , `-->` : These operators assign values to signals but do not generate any constraints. This allows to assign to a signal any value involving strange operations like shifts, divisions, modulo operations, etc.  In general, these operators are used together with a `===` operator in order to force the constraint.
 
-`===` This operator defines a constraint. The constraint must be simplificable to the form a*b+c=0 where a,b and c are linear convinations.
+`===` : This operator defines a constraint. The constraint must be simplificable to a constraint of the form a*b+c=0, where a,b and c are linear combinations of the signals.
 
-In the example above, we force the two inputs to be binary by adding the constraint `a*(a-1)===0` and `b*(b-1) === 0`
+In the above example, both inputs are forced to be binary by adding the constraints `a*(a-1)===0` and `b*(b-1) === 0`.
 
-### Compile the circui
+### Compile the circuit
 
-To compile the circuit, you first install the compiler:
+First of all, the compiler must be installed typing:
 
 ```
 npm install -g circom
 ````
 
-Then just run
+The circuit is compiled with the following command:
 
 ```
 circom -s mycircuit.circom -o mycircuit.json
 ```
 
-The resulting output ( `mycircuit.json` ) can be used with the [zksnarks javascript library](https://github.com/iden3/zksnark)
+The resulting output ( `mycircuit.json` ) can be used in the [zksnarks JavaScript library](https://github.com/iden3/zksnark).
 
-In that library you will be able to do the trusted setup, create the proofs and verify them.
+In this library one can do the trusted setup, create the proofs and verify them.
 
 ### Number to binary
 
-In many situations, we have to convert an input to it's binary representation.  We would write a circuit this way:
+In many situations, one has to convert an input to its binary representation. Therefore, the circuits can be written this way:
 
 ```
 template Num2Bits(n) {
@@ -77,45 +77,42 @@ template Num2Bits(n) {
 component main = Num2Bits(8)
 ```
 
-The first thing we observe in this example is that templates can have parameters. This allows to create libraries with templates that generate circuits in a parametric ways. In this case, we are using a circuit with an output of 8 signals, but you can instantiate easily any circuit with any number of outputs.
+First of all, note that templates can have parameters. This allows to create libraries with templates that generate circuits in parametric ways. In this case, the circuit has an output of 8 signals, but one can easily instantiate any circuit with any number of outputs.
 
-Then we define the inputs and the outputs. We see that we can work with arrays. The program allows multidimension arrays for signals and variables.
+The inputs and outputs are defined as arrays. The programm allows multidimensional arrays for signals and variables. 
 
-Then we need to assign the values to the different signals. In this case, we assign the value without the constraint by using the shift and & operators:
+Then, the values are assigned to each of the signals. In this case, the values are assigned without the constraint using the shift and & operators:
 `out[i] <-- (in >> i) & 1;`
 
-But we need to define also the constraints.  In this case there is a big constraint of the form:
+Afterwards, the constraints need to be defined. In this case, there is a big constraint of the form:
 
 ```
-in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  ....
+in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  + ... + out[n-1]*2**(n-1)
 ```
 
-We do this by using a variable `lc1` and adding each signal multiplied by his coefficient.
-
-This variable does not hold a value in compilation time, but it holds a linear combination.  and it is used in the last constraint:
+We do this by using a variable `lc1` and adding each signal multiplied by its coefficient. 
+This variable does not hold a value in compilation time, but it holds a linear combination and it is used in the last constraint:
 
 ```
 lc1 === in;
 ```
 
-Finally we also have to force each output to be binary.
-
-We do this by adding this constraint for each output:
+The last step is to force each output to be binary. This is done by adding the following constraint to each output:
 
 ```
 out[i] * (out[i] -1 ) === 0;
 ```
 
-### A Binary adder.
-Lets now create a 32bits adder.
+### A Binary adder
 
-The strategy will be to first convert the number to binary, do the addition in the binary space and then finally convert it back to a number.
+Let's now create a 32bits adder.
 
-We could do it directly by adding a simple constraint where out === in1 + in2, but if we do this the operation will not be module 2**32 but `r` where r is the range of the elliptic curve. In the case of regular zkSnarks typically is some prime number close to 2**253
+This operation could be done directly by adding a simple constraint `out === in1 + in2`, 
+but doing this the operation would not be module `2**32` but `r`, where `r`is the range of the elliptic curve. In the case of regular (regular??) zkSNARKs this number is typically some prime close to 2**253. 
 
-With this example we also demostrate the normal patter of binarize a number, work in binary (reguular electronic circuit), and then convert the result back to a number.
+So, the strategy we will follow will be to first convert a number to binary, then do the addition using the binary representation (regular electronic circuit) (<- què vols dir amb això de regular electronic circuit??) and finally change it back to a number. (?? You mean base10?)
 
-To do this, we will create 3 files named: `bitify.circom` `binsum.circom` and `sum_test.circom`
+To do this, we create 3 files: `bitify.circom`, `binsum.circom` and `sum_test.circom`.
 
 bitify.circom:
 ```
@@ -157,7 +154,7 @@ Binary Sum
 
 This component creates a binary sum componet of ops operands and n bits each operand.
 
-e is Number of carries: Depends on the number of operands in the input.
+e is number of carries and it depends on the number of operands in the input.
 
 Main Constraint:
    in[0][0]     * 2^0  +  in[0][1]     * 2^1  + ..... + in[0][n-1]    * 2^(n-1)  +
@@ -179,9 +176,7 @@ To waranty binary outputs:
  */
 
 
-/*
-    This function calculates the number of extra bits in the output to do the full sum.
- */
+/* This function calculates the number of extra bits in the output to do the full sum. */
 
 function nbits(a) {
     var n = 1;
@@ -220,7 +215,7 @@ template BinSum(n, ops) {
         lout += out[k] * 2**k;
     }
 
-    // Ensure the sum;
+    // Ensure the sum
 
     lin === lout;
 }
@@ -256,14 +251,12 @@ template Adder() {
 component main = Adder();
 ```
 
-In this example we can see how we can design a top dow circuit with many subcircuits and how we connect them together.
-
-We also see the option to create auxilary functions to do specific computations.
+In this example we have shown how to design a top-down circuit with many subcircuits and how to connect them together. One can also see that auxiliary functions to do specific computations can be created.
 
 
 ## License
 
-circon is part of the iden3 project copyright 2018 0kims association and published with GPL-3 license, please check the COPYING file for more details.
+Circon is part of the iden3 project copyright 2018 0KIMS association and published with GPL-3 license. Please check the COPYING file for more details.
 
 
 
