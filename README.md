@@ -37,7 +37,7 @@ As it is shown in the above example, a value is assigned to `out` and a constrai
 
 In the above example, both inputs are forced to be binary by adding the constraints `a*(a-1)===0` and `b*(b-1) === 0`.
 
-### Compile the circuit
+### Compilation the circuit
 
 First of all, the compiler must be installed typing:
 
