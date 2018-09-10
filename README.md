@@ -33,7 +33,7 @@ As it is shown in the above example, a value is assigned to `out` and a constrai
 
 `<--` , `-->` : These operators assign values to signals but do not generate any constraints. This allows to assign to a signal any value involving strange operations like shifts, divisions, modulo operations, etc.  In general, these operators are used together with a `===` operator in order to force the constraint.
 
-`===` : This operator defines a constraint. The constraint must be simplificable to a constraint of the form a*b+c=0, where a,b and c are linear combinations of the signals.
+`===` : This operator defines a constraint. The constraint must be simplificable to a constraint of the form `a*b+c=0`, where `a`, `b` and `c` are linear combinations of the signals.
 
 In the above example, both inputs are forced to be binary by adding the constraints `a*(a-1)===0` and `b*(b-1) === 0`.
 
