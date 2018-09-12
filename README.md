@@ -79,7 +79,7 @@ component main = Num2Bits(8)
 
 First of all, note that templates can have parameters. This allows to create libraries with templates that generate circuits in parametric ways. In this case, the circuit has an output of 8 signals, but one can easily instantiate any circuit with any number of outputs.
 
-The inputs and outputs are defined as arrays. The programm allows multidimensional arrays for signals and variables. 
+The inputs and outputs are defined as arrays. The programm allows multidimensional arrays for signals and variables.
 
 Then, the values are assigned to each of the signals. In this case, the values are assigned without the constraint using the shift and & operators:
 `out[i] <-- (in >> i) & 1;`
@@ -90,7 +90,7 @@ Afterwards, the constraints need to be defined. In this case, there is a big con
 in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  + ... + out[n-1]*2**(n-1)
 ```
 
-We do this by using a variable `lc1` and adding each signal multiplied by its coefficient. 
+We do this by using a variable `lc1` and adding each signal multiplied by its coefficient.
 This variable does not hold a value in compilation time, but it holds a linear combination and it is used in the last constraint:
 
 ```
@@ -107,10 +107,10 @@ out[i] * (out[i] -1 ) === 0;
 
 Let's now create a 32bits adder.
 
-This operation could be done directly by adding a simple constraint `out === in1 + in2`, 
-but doing this the operation would not be module `2**32` but `r`, where `r`is the range of the elliptic curve. In the case of regular (regular??) zkSNARKs this number is typically some prime close to 2**253. 
+This operation could be done directly by adding a simple constraint `out === in1 + in2`,
+but doing this the operation would not be module `2**32` but `r`, where `r`is the range of the elliptic curve. In the case of the zCash current implementation of zkSNARKs this number is typically some prime close to 2**253.
 
-So, the strategy we will follow will be to first convert a number to binary, then do the addition using the binary representation (regular electronic circuit) (<- què vols dir amb això de regular electronic circuit??) and finally change it back to a number. (?? You mean base10?)
+So, the strategy we will follow will be to first convert a number to binary, then do the addition using the binary representation like in regular electronic circuits, and finally change it back to a number.
 
 To do this, we create 3 files: `bitify.circom`, `binsum.circom` and `sum_test.circom`.
 
