@@ -1,8 +1,8 @@
-include "gates.jaz";
-include "rotate.jaz";
+include "xor3.circom";
+include "rotate.circom";
 
 template Sigma(ra, rb, rc) {
-    signal input in;
+    signal input in[32];
     signal output out;
 
     component xor3 = Xor3(32);

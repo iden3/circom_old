@@ -1,11 +1,11 @@
-include "sha256_2.jaz";
+include "../../circuits/sha256/sha256_2.circom";
 
 template Main() {
     signal private input a;
     signal private input b;
     signal output out;
 
-    component sha256_2 = SHA256_2();
+    component sha256_2 = Sha256_2();
 
     sha256_2.a <== a;
     sha256_2.b <== a;

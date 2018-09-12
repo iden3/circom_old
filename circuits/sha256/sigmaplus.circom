@@ -1,5 +1,5 @@
-include "sum.jaz"
-include "sigma.jaz"
+include "binsum.circom"
+include "sigma.circom"
 
 template SigmaPlus() {
     signal input in2[32];

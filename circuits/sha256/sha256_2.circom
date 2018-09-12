@@ -1,14 +1,14 @@
 
-include "sha256compression.jaz";
-include "bitify.jaz"
+include "sha256compression.circom";
+include "bitify.circom"
 
-component sha256_2() {
+template Sha256_2() {
     signal input a;
     signal input b;
     signal output out;
 
-    component num2bits[2] = Num2Bits(216);
     component bits2num = Bits2Num(216);
+    component num2bits[2] = Num2Bits(216);
 
     num2bits[0].inp <== a;
     num2bits[1].inp <== b;
