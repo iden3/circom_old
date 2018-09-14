@@ -1,8 +1,0 @@
-(a + bb) + c;
-include "filename.ext"
-include "secondfile"
-include "therdfile";
-include "4th file"
-{
-	include "fifthfile"
-}

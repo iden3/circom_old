@@ -8,9 +8,9 @@ template SigmaPlus() {
     signal input in16[32];
     signal output out[32];
 
-    component sum = Sum(32, 4);
-    component sigma1 = Sigma(17,19,10);
-    component sigma0 = Sigma(7, 18, 3);
+    component sum = BinSum(32, 4);
+    component sigma1 = SmallSigma(17,19,10);
+    component sigma0 = SmallSigma(7, 18, 3);
 
     for (var k=0; k<32; k++) {
         sigma1.in[k] <== in2[k];

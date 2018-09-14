@@ -3,14 +3,14 @@
 
     This file is part of jaz (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it 
+    jaz is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+    jaz is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -57,6 +57,8 @@ function gen(ctx, ast) {
             return genUMinus(ctx, ast);
         } else if (ast.op == "*") {
             return genMul(ctx, ast);
+        } else if (ast.op == "%") {
+            return genMod(ctx, ast);
         } else if (ast.op == "PLUSPLUSRIGHT") {
             return genPlusPlusRight(ctx, ast);
         } else if (ast.op == "PLUSPLUSLEFT") {
@@ -71,6 +73,12 @@ function gen(ctx, ast) {
             return genShr(ctx, ast);
         } else if (ast.op == "<") {
             return genLt(ctx, ast);
+        } else if (ast.op == ">") {
+            return genGt(ctx, ast);
+        } else if (ast.op == "<=") {
+            return genLte(ctx, ast);
+        } else if (ast.op == ">=") {
+            return genGte(ctx, ast);
         } else if (ast.op == "==") {
             return genEq(ctx, ast);
         } else if (ast.op == "?") {
@@ -98,6 +106,8 @@ function gen(ctx, ast) {
         return genFor(ctx, ast);
     } else if (ast.type == "WHILE") {
         return genWhile(ctx, ast);
+    } else if (ast.type == "IF") {
+        return genIf(ctx, ast);
     } else if (ast.type == "RETURN") {
         return genReturn(ctx, ast);
     } else if (ast.type == "TEMPLATEDEF") {
@@ -218,7 +228,7 @@ function genFor(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
-    return `for (${init};${condition};${step})\n${body}`;
+    return `for (${init};${condition};${step}) { \n${body}\n }\n`;
 }
 
 function genWhile(ctx, ast) {
@@ -226,8 +236,19 @@ function genWhile(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
-    return `while (${condition})\n${body}`;
+    return `while (${condition}) {\n${body}\n}\n`;
 }
+
+function genIf(ctx, ast) {
+    const condition = gen(ctx, ast.condition);
+    if (ctx.error) return;
+    const thenBody = gen(ctx, ast.then);
+    if (ctx.error) return;
+    const elseBody = gen(ctx, ast.else);
+    if (ctx.error) return;
+    return `if (${condition}) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+}
+
 
 function genReturn(ctx, ast) {
     const value = gen(ctx, ast.value);
@@ -449,12 +470,44 @@ function genShr(ctx, ast) {
     return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shr(bigInt(${b})).and(__MASK__)`;
 }
 
+function genMod(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `bigInt(${a}).mod(bigInt(${b}))`;
+}
+
 function genLt(ctx, ast) {
     const a = gen(ctx, ast.values[0]);
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${a}).lt(bigInt(${b})) ? 1 : 0`;
+}
+
+function genGt(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `bigInt(${a}).gt(bigInt(${b})) ? 1 : 0`;
+}
+
+function genLte(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `bigInt(${a}).lesserOrEquals(bigInt(${b})) ? 1 : 0`;
+}
+
+function genGte(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `bigInt(${a}).greaterOrEquals(bigInt(${b})) ? 1 : 0`;
 }
 
 function genEq(ctx, ast) {

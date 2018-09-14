@@ -11,23 +11,23 @@ template T1() {
     signal input w[32];
     signal output out[32];
 
-    component sum = Sum(32, 5);
+    component sum = BinSum(32, 5);
     component ch = Ch(32);
 
-    component bigsigma1 = Sigma(6, 11, 25);
+    component bigsigma1 = BigSigma(6, 11, 25);
 
-    for (var k=0; k<32; k++) {
-        bigsigma1.in[k] <== e[k];
-        ch.a[k] <== e[k];
-        ch.b[k] <== f[k];
-        ch.c[k] <== g[k]
+    for (var ki=0; ki<32; ki++) {
+        bigsigma1.in[ki] <== e[ki];
+        ch.a[ki] <== e[ki];
+        ch.b[ki] <== f[ki];
+        ch.c[ki] <== g[ki]
 
-        sum.in[0][k] <== h[k];
-        sum.in[1][k] <== bigsigma1.out[k];
-        sum.in[2][k] <== ch.out[k];
-        sum.in[3][k] <== k[k];
-        sum.in[4][k] <== w[k];
+        sum.in[0][ki] <== h[ki];
+        sum.in[1][ki] <== bigsigma1.out[ki];
+        sum.in[2][ki] <== ch.out[ki];
+        sum.in[3][ki] <== k[ki];
+        sum.in[4][ki] <== w[ki];
 
-        out[k] <== sum.out[k];
+        out[ki] <== sum.out[ki];
     }
 }

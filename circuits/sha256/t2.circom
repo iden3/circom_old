@@ -8,9 +8,9 @@ template T2() {
     signal input c[32];
     signal output out[32];
 
-    component sum = Sum(32, 2);
+    component sum = BinSum(32, 2);
 
-    component bigsigma0 = Sigma(2, 13, 22);
+    component bigsigma0 = BigSigma(2, 13, 22);
     component maj = Maj(32);
 
     for (var k=0; k<32; k++) {

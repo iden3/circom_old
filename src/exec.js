@@ -3,14 +3,14 @@
 
     This file is part of jaz (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it 
+    jaz is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+    jaz is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -72,6 +72,8 @@ function exec(ctx, ast) {
             return execUMinus(ctx, ast);
         } else if (ast.op == "*") {
             return execMul(ctx, ast);
+        } else if (ast.op == "%") {
+            return execMod(ctx, ast);
         } else if (ast.op == "PLUSPLUSRIGHT") {
             return execPlusPlusRight(ctx, ast);
         } else if (ast.op == "PLUSPLUSLEFT") {
@@ -86,6 +88,12 @@ function exec(ctx, ast) {
             return execShr(ctx, ast);
         } else if (ast.op == "<") {
             return execLt(ctx, ast);
+        } else if (ast.op == ">") {
+            return execGt(ctx, ast);
+        } else if (ast.op == "<=") {
+            return execLte(ctx, ast);
+        } else if (ast.op == ">=") {
+            return execGte(ctx, ast);
         } else if (ast.op == "==") {
             return execEq(ctx, ast);
         } else if (ast.op == "?") {
@@ -113,6 +121,8 @@ function exec(ctx, ast) {
         return execFor(ctx, ast);
     } else if (ast.type == "WHILE") {
         return execWhile(ctx, ast);
+    } else if (ast.type == "IF") {
+        return execIf(ctx, ast);
     } else if (ast.type == "RETURN") {
         return execReturn(ctx, ast);
     } else if (ast.type == "TEMPLATEDEF") {
@@ -311,6 +321,8 @@ function execInstantiateComponet(ctx, vr, fn) {
 
     const vv = getScope(ctx, componentName, vr.selectors);
 
+    if (!vv) return error(ctx, vr, "Component not defined"+ componentName);
+
     instantiateComponent(vv);
 
     function instantiateComponent(varVal) {
@@ -486,7 +498,12 @@ function execDeclareVariable(ctx, ast) {
 }
 
 function execVariable(ctx, ast) {
-    const v = getScope(ctx, ast.name, ast.selectors);
+    let v;
+    try {
+        v = getScope(ctx, ast.name, ast.selectors);
+    } catch(err) {
+        console.log(JSON.stringify(ast, null,1));
+    }
     if (ctx.error) return;
 
     if (!v) return error(ctx, ast, "Variable not defined");
@@ -547,6 +564,19 @@ function execWhile(ctx, ast) {
     }
 }
 
+function execIf(ctx, ast) {
+    let v = exec(ctx, ast.condition);
+    if (ctx.error) return;
+
+    if ((v.value.neq(0))&&(!ctx.returnValue)) {
+        exec(ctx, ast.then);
+        if (ctx.error) return;
+    } else {
+        exec(ctx, ast.else);
+        if (ctx.error) return;
+    }
+}
+
 
 function execVarAssignement(ctx, ast) {
     let v;
@@ -559,7 +589,7 @@ function execVarAssignement(ctx, ast) {
     const num = getScope(ctx, v.name, v.selectors);
     if (ctx.error) return;
 
-    if (typeof(num) != "object") return  error(ctx, ast, "Variable not defined");
+    if ((typeof(num) != "object")||(num == null)) return  error(ctx, ast, "Variable not defined");
 
     if (num.type == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
 
@@ -584,6 +614,49 @@ function execLt(ctx, ast) {
         value: a.value.lt(b.value) ? bigInt(1) : bigInt(0)
     };
 }
+
+function execGt(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.gt(b.value) ? bigInt(1) : bigInt(0)
+    };
+}
+
+function execLte(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.lesserOrEquals(b.value) ? bigInt(1) : bigInt(0)
+    };
+}
+
+function execGte(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.greaterOrEquals(b.value) ? bigInt(1) : bigInt(0)
+    };
+}
+
 
 function execEq(ctx, ast) {
     const a = exec(ctx, ast.values[0]);
@@ -644,6 +717,21 @@ function execShr(ctx, ast) {
     };
 }
 
+function execMod(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.mod(b.value)
+    };
+}
+
+
 function execExp(ctx, ast) {
     const a = exec(ctx, ast.values[0]);
     if (ctx.error) return;
@@ -703,6 +791,7 @@ function execMul(ctx, ast) {
 
     return res;
 }
+
 
 function execVarAddAssignement(ctx, ast) {
     const res = execAdd(ctx,{ values: [ast.values[0], ast.values[1]] } );

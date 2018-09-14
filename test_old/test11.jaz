@@ -1,9 +1,0 @@
-a+b*c
-(a+b)*c
-var c + a[1].b[2] + c
-f(1,2)
-component f(4) d;
-
-a++ + b++;
-
---a;

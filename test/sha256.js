@@ -7,6 +7,27 @@ const compiler = require("../index.js");
 
 const assert = chai.assert;
 
+const sha256 = require("./helpers/sha256");
+const bigInt = require("big-integer");
+
+function hexBits(cir, witness, sig, nBits) {
+    let v = bigInt(0);
+    for (let i=nBits-1; i>=0; i--) {
+        v = v.shiftLeft(1);
+        const name = sig+"["+i+"]";
+        const idx = cir.getSignalIdx(name);
+        const vbit = bigInt(witness[idx].toString());
+        if (vbit.equals(bigInt(1))) {
+            v = v.add(bigInt(1));
+        } else if (vbit.equals(bigInt(0))) {
+            v;
+        } else {
+            console.log("Not Binary: "+name);
+        }
+    }
+    return v.toString(16);
+}
+
 describe("SHA256 test", () => {
     it("Should create a constant circuit", async () => {
 
@@ -38,17 +59,21 @@ describe("SHA256 test", () => {
 
         const witness = circuit.calculateWitness({ "a": "1", "b": "2" });
 
-        const b = new Buffer.alloc(432);
-        b[115] = 1;
-        b[431] = 2;
+        const b = new Buffer.alloc(54);
+        b[26] = 1;
+        b[53] = 2;
 
         const hash = crypto.createHash("sha256")
             .update(b)
             .digest("hex");
-        const r = "0x" + hash.slice(40);
+        const r = "0x" + hash.slice(10);
+
+        const hash2 = sha256.hash(b.toString("hex"), {msgFormat: "hex-bytes"});
+
+        assert.equal(hash, hash2);
 
         assert(witness[1].equals(zkSnark.bigInt(r)));
-    });
+    }).timeout(1000000);
 
 
 });
