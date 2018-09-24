@@ -30,13 +30,14 @@
   },
   "dependencies": {
     "big-integer": "^1.6.32",
-    "optimist": "^0.6.1"
+    "optimist": "^0.6.1",
+    "yargs": "^12.0.2"
   },
   "devDependencies": {
     "chai": "^4.1.2",
     "eslint": "^5.0.1",
     "eslint-plugin-mocha": "^5.0.0",
     "jison": "^0.4.18",
-    "zksnark": "0.0.6"
+    "zksnark": "0.0.10"
   }
 }

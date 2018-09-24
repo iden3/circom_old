@@ -26,11 +26,11 @@ const path = require("path");
 
 const compiler = require("./src/compiler");
 
+const version = require("./package").version;
+
 const argv = require("yargs")
-    .version(function() {
-        return require("./package").version;
-    })
-    .usage("jaz -s [input source circuit file] -o [output definition circuit file]")
+    .version(version)
+    .usage("circom -s [input source circuit file] -o [output definition circuit file]")
     .alias("s", "source")
     .alias("o", "output")
     .require(["s","o"])
@@ -40,7 +40,7 @@ const argv = require("yargs")
     This program comes with ABSOLUTELY NO WARRANTY;
     This is free software, and you are welcome to redistribute it
     under certain conditions; see the COPYING file in the official
-    repo directory at  https://github.com/iden3/jaz `)
+    repo directory at  https://github.com/iden3/circom `)
     .argv;
 
 const fullFileName = path.resolve(process.cwd(), argv.source);
