@@ -57,6 +57,9 @@ describe("SHA256 test", () => {
         const cirDef = await compiler(path.join(__dirname, "circuits", "sha256_2_test.circom"));
         const circuit = new zkSnark.Circuit(cirDef);
 
+        console.log("Vars: "+circuit.nVars);
+        console.log("Constraints: "+circuit.nConstraints);
+
         const witness = circuit.calculateWitness({ "a": "1", "b": "2" });
 
         const b = new Buffer.alloc(54);

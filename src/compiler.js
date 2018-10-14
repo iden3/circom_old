@@ -3,14 +3,14 @@
 
     This file is part of jaz (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it 
+    jaz is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+    jaz is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -31,69 +31,67 @@ module.exports = compile;
 
 const parser = require("../parser/jaz.js").parser;
 
-function compile(srcFile) {
+const timeout = ms => new Promise(res => setTimeout(res, ms))
 
-    return new Promise ((resolve, reject) => {
-        const fullFileName = srcFile;
-        const fullFilePath = path.dirname(fullFileName);
+async function compile(srcFile) {
+    const fullFileName = srcFile;
+    const fullFilePath = path.dirname(fullFileName);
 
-        const src = fs.readFileSync(fullFileName, "utf8");
-        const ast = parser.parse(src);
+    const src = fs.readFileSync(fullFileName, "utf8");
+    const ast = parser.parse(src);
 
-        assert(ast.type == "BLOCK");
+    assert(ast.type == "BLOCK");
 
-        const ctx = {
-            scopes: [{}],
-            signals: {
-                one: {
-                    fullName: "one",
-                    value: bigInt(1),
-                    equivalence: "",
-                    direction: ""
-                }
-            },
-            currentComponent: "",
-            constraints: [],
-            components: {},
-            templates: {},
-            functions: {},
-            functionParams: {},
-            filePath: fullFilePath,
-            fileName: fullFileName
-        };
+    const ctx = {
+        scopes: [{}],
+        signals: {
+            one: {
+                fullName: "one",
+                value: bigInt(1),
+                equivalence: "",
+                direction: ""
+            }
+        },
+        currentComponent: "",
+        constraints: [],
+        components: {},
+        templates: {},
+        functions: {},
+        functionParams: {},
+        filePath: fullFilePath,
+        fileName: fullFileName
+    };
 
-        exec(ctx, ast);
+    exec(ctx, ast);
 
-        reduceConstraints(ctx);
-        generateWitnessNames(ctx);
+    classifySignals(ctx);
+    reduceConstants(ctx);
 
-        if (ctx.error) {
-            reject(ctx.error);
-        }
+    // Repeat while reductions are performed
+    let oldNConstrains = -1;
+    while (ctx.constraints.length != oldNConstrains) {
+        oldNConstrains = ctx.constraints.length;
+        reduceConstrains(ctx);
+    }
 
-        ctx.scopes = [{}];
+    generateWitnessNames(ctx);
 
-        const mainCode = gen(ctx,ast);
-        if (ctx.error) reject(ctx.error);
+    if (ctx.error) {
+        throw(ctx.error);
+    }
 
-        const def = buildCircuitDef(ctx, mainCode);
+    ctx.scopes = [{}];
 
-        resolve(def);
-    });
+    const mainCode = gen(ctx,ast);
+    if (ctx.error) throw(ctx.error);
+
+    const def = buildCircuitDef(ctx, mainCode);
+
+    return def;
 }
 
 
-function generateWitnessNames(ctx) {
-
-    const totals = {
-        "output": 0,
-        "pubInput": 0,
-        "one": 0,
-        "prvInput": 0,
-        "internal": 0,
-        "constant": 0,
-    };
-    const ids = {};
+function classifySignals(ctx) {
 
     function priorize(t1, t2) {
         if ((t1 == "error") || (t2=="error")) return "error";
@@ -141,9 +139,35 @@ function generateWitnessNames(ctx) {
         if (tAll == "error") {
             throw new Error("Incompatible types in signal: " + s);
         }
-        if (lSignal.category) totals[lSignal.category]--;
         lSignal.category = tAll;
-        totals[lSignal.category] ++;
+    }
+}
+
+
+function generateWitnessNames(ctx) {
+
+    const totals = {
+        "output": 0,
+        "pubInput": 0,
+        "one": 0,
+        "prvInput": 0,
+        "internal": 0,
+        "constant": 0,
+    };
+    const ids = {};
+
+    const counted = {};
+
+    // First classify the signals
+    for (let s in ctx.signals) {
+        const signal = ctx.signals[s];
+        let lSignal = signal;
+        while (lSignal.equivalence) lSignal = ctx.signals[lSignal.equivalence];
+
+        if (!counted[lSignal.fullName]) {
+            counted[lSignal.fullName] = true;
+            totals[lSignal.category] ++;
+        }
     }
 
     ids["one"] = 0;
@@ -176,7 +200,7 @@ function generateWitnessNames(ctx) {
     ctx.totals = totals;
 }
 
-function reduceConstraints(ctx) {
+function reduceConstants(ctx) {
     const newConstraints = [];
     for (let i=0; i<ctx.constraints.length; i++) {
         const c = lc.canonize(ctx, ctx.constraints[i]);
@@ -185,6 +209,86 @@ function reduceConstraints(ctx) {
         }
     }
     ctx.constraints = newConstraints;
+}
+
+function reduceConstrains(ctx) {
+    const newConstraints = [];
+    for (let i=0; i<ctx.constraints.length; i++) {
+        const c = ctx.constraints[i];
+
+        // Swap a and b if b has more variables.
+        if (Object.keys(c.b).length > Object.keys(c.a).length) {
+            const aux = c.a;
+            c.a=c.b;
+            c.b=aux;
+        }
+
+        // Mov to C if possible.
+        if (isConstant(c.a)) {
+            const ct = {type: "NUMBER", value: c.a.values["one"]};
+            c.c = lc.add(lc.mul(c.b, ct), c.c);
+            c.a = { type: "LINEARCOMBINATION", values: {} };
+            c.b = { type: "LINEARCOMBINATION", values: {} };
+        }
+        if (isConstant(c.b)) {
+            const ct = {type: "NUMBER", value: c.b.values["one"]};
+            c.c = lc.add(lc.mul(c.a, ct), c.c);
+            c.a = { type: "LINEARCOMBINATION", values: {} };
+            c.b = { type: "LINEARCOMBINATION", values: {} };
+        }
+
+        if (lc.isZero(c.a) || lc.isZero(c.b)) {
+            const isolatedSignal = getFirstInternalSignal(ctx, c.c);
+            if (isolatedSignal) {
+                const isolatedSignalEquivalence = {
+                    type: "LINEARCOMBINATION",
+                    values: {}
+                };
+                const invCoef = c.c.values[isolatedSignal].modInv(__P__);
+                for (const s in c.c.values) {
+                    if (s != isolatedSignal) {
+                        const v = __P__.minus(c.c.values[s]).times(invCoef).mod(__P__);
+                        if (!v.isZero()) {
+                            isolatedSignalEquivalence.values[s] = v;
+                        }
+                    }
+                }
+
+                for (let j=0; j<ctx.constraints.length; j++ ) {
+                    const c2 = ctx.constraints[j];
+                    if (i!=j) {
+                        lc.substitute(c2, isolatedSignal, isolatedSignalEquivalence);
+                    }
+                }
+                c.a={ type: "LINEARCOMBINATION", values: {} };
+                c.b={ type: "LINEARCOMBINATION", values: {} };
+                c.c={ type: "LINEARCOMBINATION", values: {} };
+                isolatedSignal.category = "constant";
+            }
+        }
+
+        if (!lc.isZero(c)) {
+            newConstraints.push(c);
+        }
+    }
+    ctx.constraints = newConstraints;
+
+    function getFirstInternalSignal(ctx, l) {
+        for (let k in l.values) {
+            const signal = ctx.signals[k];
+            if (signal.category == "internal") return k;
+        }
+        return null;
+    }
+
+    function isConstant(l) {
+        for (let k in l.values) {
+            if ((k != "one") && (!l.values[k].isZero())) return false;
+        }
+        if (!l.values["one"] || l.values["one"].isZero()) return false;
+        return true;
+    }
+
 }
 
 
@@ -271,6 +375,7 @@ function buildConstraints(ctx) {
     const res = [];
 
     function fillLC(dst, src) {
+        if (src.type != "LINEARCOMBINATION") throw new Error("Constraint is not a LINEARCOMBINATION");
         for (let s in src.values) {
             const v = src.values[s].toString();
             const id = ctx.signalName2Idx[s];

@@ -3,14 +3,14 @@
 
     This file is part of jaz (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it 
+    jaz is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+    jaz is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -70,6 +70,7 @@ exports.toQEQ = toQEQ;
 exports.isZero = isZero;
 exports.toString = toString;
 exports.canonize = canonize;
+exports.substitute = substitute;
 
 function signal2lc(a) {
     let lc;
@@ -463,5 +464,29 @@ function canonize(ctx, a) {
         a.c = canonize(ctx, a.c);
     }
     return a;
+}
+
+function substitute(where, signal, equivalence) {
+    if (equivalence.type != "LINEARCOMBINATION") throw new Error("Equivalence must be a Linear Combination");
+    if (where.type == "LINEARCOMBINATION") {
+        if (!where.values[signal] || where.values[signal].isZero()) return where;
+        const coef = where.values[signal];
+        for (let k in equivalence.values) {
+            if (k != signal) {
+                const v = coef.times(equivalence.values[k]).mod(__P__);
+                if (!where.values[k]) {
+                    where.values[k]=v;
+                } else {
+                    where.values[k]= where.values[k].add(v).mod(__P__);
+                }
+                if (where.values[k].isZero()) delete where.values[k];
+            }
+        }
+        delete where.values[signal];
+    } else if (where.type == "QEQ") {
+        substitute(where.a, signal, equivalence);
+        substitute(where.b, signal, equivalence);
+        substitute(where.c, signal, equivalence);
+    }
 }
 

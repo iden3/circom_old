@@ -5,14 +5,14 @@
 
     This file is part of jaz (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it 
+    jaz is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public 
+    jaz is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -48,6 +48,7 @@ const fullFileName = path.resolve(process.cwd(), argv.source);
 compiler(fullFileName).then( (cir) => {
     fs.writeFileSync(argv.output, JSON.stringify(cir, null, 1), "utf8");
 }, (err) => {
+    console.log(err);
     console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
     console.error(JSON.stringify(err.ast, null, 1));
     process.exit(1);
