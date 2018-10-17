@@ -33,6 +33,7 @@ const argv = require("yargs")
     .usage("circom -s [input source circuit file] -o [output definition circuit file]")
     .alias("s", "source")
     .alias("o", "output")
+    .alias("c", "cfile")
     .require(["s","o"])
     .help("h")
     .alias("h", "help")
@@ -45,7 +46,7 @@ const argv = require("yargs")
 
 const fullFileName = path.resolve(process.cwd(), argv.source);
 
-compiler(fullFileName).then( (cir) => {
+compiler(fullFileName, argv.cfile).then( (cir) => {
     fs.writeFileSync(argv.output, JSON.stringify(cir, null, 1), "utf8");
 }, (err) => {
     console.log(err);

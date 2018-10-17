@@ -19,7 +19,7 @@
 
 const bigInt = require("big-integer");
 
-module.exports = gen;
+module.exports = genCode;
 
 function ident(text) {
     let lines = text.split("\n");
@@ -170,8 +170,9 @@ function genBlock(ctx, ast) {
     return "{\n"+ident(body)+"}\n";
 }
 
+
 function genTemplateDef(ctx, ast) {
-    let S = "function(ctx) ";
+    let S = `function ${ast.name}(ctx)\n`;
 
     const newScope = {};
     for (let i=0; i< ast.params.length; i++) {
@@ -180,6 +181,7 @@ function genTemplateDef(ctx, ast) {
 
     ctx.scopes.push(newScope);
     S += genBlock(ctx, ast.block);
+    S += "\n";
     ctx.scopes.pop();
 
 //    const scope = ctx.scopes[ctx.scopes.length-1];
@@ -190,11 +192,11 @@ function genTemplateDef(ctx, ast) {
     };
 
     ctx.templates[ast.name] = S;
-    return "";
+    return S;
 }
 
 function genFunctionDef(ctx, ast) {
-    let S = "function(ctx) ";
+    let S = `function ${ast.name}(ctx) `;
 
     const newScope = {};
     const params = [];
@@ -216,7 +218,7 @@ function genFunctionDef(ctx, ast) {
 
     ctx.functions[ast.name] = S;
     ctx.functionParams[ast.name] = params;
-    return "";
+    return S;
 }
 
 function genFor(ctx, ast) {
@@ -228,7 +230,7 @@ function genFor(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
-    return `for (${init};${condition};${step}) { \n${body}\n }\n`;
+    return `for (${init};${condition};${step})\n${body}\n`;
 }
 
 function genWhile(ctx, ast) {
@@ -236,7 +238,7 @@ function genWhile(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
-    return `while (${condition}) {\n${body}\n}\n`;
+    return `while (${condition}) ${body}\n`;
 }
 
 function genIf(ctx, ast) {
@@ -246,7 +248,7 @@ function genIf(ctx, ast) {
     if (ctx.error) return;
     const elseBody = gen(ctx, ast.else);
     if (ctx.error) return;
-    return `if (${condition}) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+    return `if (${condition}) ${thenBody} else ${elseBody}\n`;
 }
 
 
@@ -535,7 +537,21 @@ function genTerCon(ctx, ast) {
 }
 
 function genInclude(ctx, ast) {
-    return ast.block ? gen(ctx, ast.block) : "";
+    let body = genCode(ctx, ast.block);
+    return `// File: ${ast.file}\n` +body+"\n";
+}
+
+function genCode(ctx, ast) {
+    let body = "";
+    for (let i=0; i<ast.statements.length; i++) {
+        const l = gen(ctx, ast.statements[i]);
+        if (ctx.error) return;
+        if (l) {
+            body += l;
+            if (body[body.length-1] != "\n") body += ";\n";
+        }
+    }
+    return body;
 }
 
 function genArray(ctx, ast) {

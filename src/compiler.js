@@ -23,9 +23,12 @@ const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const __MASK__ = new bigInt(2).pow(253).minus(1);
 const assert = require("assert");
-const gen = require("./gencode");
+const genCode = require("./gencode");
 const exec = require("./exec");
 const lc = require("./lcalgebra");
+
+const util = require("util");
+const fs_writeFile = util.promisify(fs.writeFile)
 
 module.exports = compile;
 
@@ -33,7 +36,7 @@ const parser = require("../parser/jaz.js").parser;
 
 const timeout = ms => new Promise(res => setTimeout(res, ms))
 
-async function compile(srcFile) {
+async function compile(srcFile, cFile) {
     const fullFileName = srcFile;
     const fullFilePath = path.dirname(fullFileName);
 
@@ -82,8 +85,12 @@ async function compile(srcFile) {
 
     ctx.scopes = [{}];
 
-    const mainCode = gen(ctx,ast);
+    const mainCode = genCode(ctx,ast);
     if (ctx.error) throw(ctx.error);
+
+    if (cFile) {
+        await fs_writeFile(cFile, mainCode);
+    }
 
     const def = buildCircuitDef(ctx, mainCode);
 
@@ -396,6 +403,11 @@ function buildConstraints(ctx) {
     }
 
     return res;
+}
+
+
+function generateCCode(ctx) {
+
 }
 
 
