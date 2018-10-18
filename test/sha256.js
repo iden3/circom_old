@@ -69,13 +69,13 @@ describe("SHA256 test", () => {
         const hash = crypto.createHash("sha256")
             .update(b)
             .digest("hex");
-        const r = "0x" + hash.slice(10);
+        const r = hash.slice(10);
 
         const hash2 = sha256.hash(b.toString("hex"), {msgFormat: "hex-bytes"});
 
         assert.equal(hash, hash2);
 
-        assert(witness[1].equals(zkSnark.bigInt(r)));
+        assert(witness[1].equals(zkSnark.bigInt(r, 16)));
     }).timeout(1000000);
 
 
