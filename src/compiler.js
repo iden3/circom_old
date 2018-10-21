@@ -1,20 +1,20 @@
 /*
     Copyright 2018 0KIMS association.
 
-    This file is part of jaz (Zero Knowledge Circuit Compiler).
+    This file is part of circom (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it
+    circom is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT
+    circom is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
     or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with jaz. If not, see <https://www.gnu.org/licenses/>.
+    along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
 const fs = require("fs");
@@ -254,11 +254,11 @@ function reduceConstrains(ctx) {
                     }
                 }
 
-                for (let j=0; j<ctx.constraints.length; j++ ) {
-                    const c2 = ctx.constraints[j];
-                    if (i!=j) {
-                        lc.substitute(c2, isolatedSignal, isolatedSignalEquivalence);
-                    }
+                for (let j=0; j<newConstraints.length; j++) {
+                    newConstraints[j] = lc.substitute(newConstraints[j], isolatedSignal, isolatedSignalEquivalence);
+                }
+                for (let j=i+1; j<ctx.constraints.length; j++ ) {
+                    ctx.constraints[j] = lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
                 }
                 c.a={ type: "LINEARCOMBINATION", values: {} };
                 c.b={ type: "LINEARCOMBINATION", values: {} };

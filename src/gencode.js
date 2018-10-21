@@ -1,20 +1,20 @@
 /*
     Copyright 2018 0KIMS association.
 
-    This file is part of jaz (Zero Knowledge Circuit Compiler).
+    This file is part of circom (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it
+    circom is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT
+    circom is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
     or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with jaz. If not, see <https://www.gnu.org/licenses/>.
+    along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
 const bigInt = require("big-integer");
@@ -65,6 +65,8 @@ function gen(ctx, ast) {
             return genPlusPlusLeft(ctx, ast);
         } else if (ast.op == "**") {
             return genExp(ctx, ast);
+        } else if (ast.op == "/") {
+            return genDiv(ctx, ast);
         } else if (ast.op == "&") {
             return genBAnd(ctx, ast);
         } else if (ast.op == "<<") {
@@ -436,6 +438,15 @@ function genSub(ctx, ast) {
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${a}).add(__P__).sub(bigInt(${b})).mod(__P__)`;
+}
+
+function genDiv(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+
+    return `bigInt(${a}).mul( bigInt(${b}).inverse(__P__) ).mod(__P__)`;
 }
 
 function genExp(ctx, ast) {

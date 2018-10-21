@@ -1,20 +1,20 @@
 /*
     Copyright 2018 0KIMS association.
 
-    This file is part of jaz (Zero Knowledge Circuit Compiler).
+    This file is part of circom (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it
+    circom is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT
+    circom is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
     or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with jaz. If not, see <https://www.gnu.org/licenses/>.
+    along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
 const path = require("path");
@@ -78,6 +78,8 @@ function exec(ctx, ast) {
             return execPlusPlusRight(ctx, ast);
         } else if (ast.op == "PLUSPLUSLEFT") {
             return execPlusPlusLeft(ctx, ast);
+        } else if (ast.op == "/") {
+            return execDiv(ctx, ast);
         } else if (ast.op == "**") {
             return execExp(ctx, ast);
         } else if (ast.op == "&") {
@@ -176,7 +178,7 @@ function setScope(ctx, name, selectors, value) {
 
     function setScopeArray(a, sels) {
         if (sels.length == 1) {
-            a[sels[0]] = value;
+            a[sels[0].value] = value;
         } else {
             setScopeArray(a[sels[0]], sels.slice(1));
         }
@@ -386,8 +388,7 @@ function execFunctionCall(ctx, ast) {
         const v = exec(ctx, ast.params[i]);
         if (ctx.error) return;
 
-        if (v.type != "NUMBER") return error(ctx, ast.params[i], "expected a number");
-        paramValues.push( v.value);
+        paramValues.push(v);
     }
 
     if (ast.params.length != paramValues.length) error(ctx, ast, "Invalid Number of parameters");
@@ -401,10 +402,7 @@ function execFunctionCall(ctx, ast) {
 
     const scope = {};
     for (let i=0; i< fnc.params.length; i++) {
-        scope[fnc.params[i]] = {
-            type: "NUMBER",
-            value: paramValues[i]
-        };
+        scope[fnc.params[i]] = paramValues[i];
     }
 
     ctx.fileName = fnc.fileName;
@@ -507,6 +505,14 @@ function execVariable(ctx, ast) {
     if (ctx.error) return;
 
     if (!v) return error(ctx, ast, "Variable not defined");
+
+    // If the signal has an assigned value (constant) just return the constant
+    if ((v.type == "SIGNAL") && (ctx.signals[v.fullName].value)) {
+        return {
+            type: "NUMBER",
+            value: ctx.signals[v.fullName].value
+        };
+    }
     let res;
     res=v;
     return res;
@@ -743,6 +749,21 @@ function execExp(ctx, ast) {
     return {
         type: "NUMBER",
         value: a.value.modPow(b.value, __P__)
+    };
+}
+
+function execDiv(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    if (b.value.isZero()) return error(ctx, ast, "Division by zero");
+    return {
+        type: "NUMBER",
+        value: a.value.times(b.value.modInv(__P__)).mod(__P__)
     };
 }
 

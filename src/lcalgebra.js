@@ -1,20 +1,20 @@
 /*
     Copyright 2018 0KIMS association.
 
-    This file is part of jaz (Zero Knowledge Circuit Compiler).
+    This file is part of circom (Zero Knowledge Circuit Compiler).
 
-    jaz is a free software: you can redistribute it and/or modify it
+    circom is a free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    jaz is distributed in the hope that it will be useful, but WITHOUT
+    circom is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
     or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
     License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with jaz. If not, see <https://www.gnu.org/licenses/>.
+    along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 /*
 
@@ -434,59 +434,73 @@ function toString(a, ctx) {
 
 function canonize(ctx, a) {
     if (a.type == "LINEARCOMBINATION") {
+        const res = clone(a);
         for (let k in a.values) {
             let s = k;
             while (ctx.signals[s].equivalence) s= ctx.signals[s].equivalence;
             if ((typeof(ctx.signals[s].value) != "undefined")&&(k != "one")) {
-                const v = a.values[k].times(ctx.signals[s].value).mod(__P__);
-                if (!a.values["one"]) {
-                    a.values["one"]=v;
+                const v = res.values[k].times(ctx.signals[s].value).mod(__P__);
+                if (!res.values["one"]) {
+                    res.values["one"]=v;
                 } else {
-                    a.values["one"]= a.values["one"].add(v).mod(__P__);
+                    res.values["one"]= res.values["one"].add(v).mod(__P__);
                 }
-                delete a.values[k];
+                delete res.values[k];
             } else if (s != k) {
-                if (!a.values[s]) {
-                    a.values[s]=bigInt(a.values[k]);
+                if (!res.values[s]) {
+                    res.values[s]=bigInt(res.values[k]);
                 } else {
-                    a.values[s]= a.values[s].add(a.values[k]).mod(__P__);
+                    res.values[s]= res.values[s].add(res.values[k]).mod(__P__);
                 }
-                delete a.values[k];
+                delete res.values[k];
             }
         }
-        for (let k in a.values) {
-            if (a.values[k].isZero()) delete a.values[k];
+        for (let k in res.values) {
+            if (res.values[k].isZero()) delete res.values[k];
         }
-        return a;
+        return res;
     } else if (a.type == "QEQ") {
-        a.a = canonize(ctx, a.a);
-        a.b = canonize(ctx, a.b);
-        a.c = canonize(ctx, a.c);
+        const res = {
+            type: "QEQ",
+            a: canonize(ctx, a.a),
+            b: canonize(ctx, a.b),
+            c: canonize(ctx, a.c)
+        };
+        return res;
+    } else {
+        return a;
     }
-    return a;
 }
 
 function substitute(where, signal, equivalence) {
     if (equivalence.type != "LINEARCOMBINATION") throw new Error("Equivalence must be a Linear Combination");
     if (where.type == "LINEARCOMBINATION") {
         if (!where.values[signal] || where.values[signal].isZero()) return where;
-        const coef = where.values[signal];
+        const res=clone(where);
+        const coef = res.values[signal];
         for (let k in equivalence.values) {
             if (k != signal) {
                 const v = coef.times(equivalence.values[k]).mod(__P__);
-                if (!where.values[k]) {
-                    where.values[k]=v;
+                if (!res.values[k]) {
+                    res.values[k]=v;
                 } else {
-                    where.values[k]= where.values[k].add(v).mod(__P__);
+                    res.values[k]= res.values[k].add(v).mod(__P__);
                 }
-                if (where.values[k].isZero()) delete where.values[k];
+                if (res.values[k].isZero()) delete res.values[k];
             }
         }
-        delete where.values[signal];
+        delete res.values[signal];
+        return res;
     } else if (where.type == "QEQ") {
-        substitute(where.a, signal, equivalence);
-        substitute(where.b, signal, equivalence);
-        substitute(where.c, signal, equivalence);
+        const res = {
+            type: "QEQ",
+            a: substitute(where.a, signal, equivalence),
+            b: substitute(where.b, signal, equivalence),
+            c: substitute(where.c, signal, equivalence)
+        };
+        return res;
+    } else {
+        return where;
     }
 }
 
