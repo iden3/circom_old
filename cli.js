@@ -30,10 +30,8 @@ const version = require("./package").version;
 
 const argv = require("yargs")
     .version(version)
-    .usage("circom -s [input source circuit file] -o [output definition circuit file]")
-    .alias("s", "source")
+    .usage("circom [input source circuit file] -o [output definition circuit file]")
     .alias("o", "output")
-    .require(["s","o"])
     .help("h")
     .alias("h", "help")
     .epilogue(`Copyright (C) 2018  0kims association
@@ -43,10 +41,11 @@ const argv = require("yargs")
     repo directory at  https://github.com/iden3/circom `)
     .argv;
 
-const fullFileName = path.resolve(process.cwd(), argv.source);
+const fullFileName = path.resolve(process.cwd(), argv._[0]);
+const outName = argv.output ?  argv.output : "circuit.json";
 
 compiler(fullFileName).then( (cir) => {
-    fs.writeFileSync(argv.output, JSON.stringify(cir, null, 1), "utf8");
+    fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
 }, (err) => {
     console.log(err);
     console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
