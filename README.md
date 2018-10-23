@@ -1,4 +1,4 @@
-# Circon
+# Circom
 
 Circon is a language designed to write arithmetic circuits that can be used in zero knowledge proofs.
 
