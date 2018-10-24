@@ -31,7 +31,7 @@ module.exports = compile;
 
 const parser = require("../parser/jaz.js").parser;
 
-const timeout = ms => new Promise(res => setTimeout(res, ms))
+const timeout = ms => new Promise(res => setTimeout(res, ms));
 
 async function compile(srcFile) {
     const fullFileName = srcFile;

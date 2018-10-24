@@ -578,8 +578,10 @@ function execIf(ctx, ast) {
         exec(ctx, ast.then);
         if (ctx.error) return;
     } else {
-        exec(ctx, ast.else);
-        if (ctx.error) return;
+        if (ast.else) {
+            exec(ctx, ast.else);
+            if (ctx.error) return;
+        }
     }
 }
 

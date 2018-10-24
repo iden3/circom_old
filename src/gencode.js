@@ -246,9 +246,13 @@ function genIf(ctx, ast) {
     if (ctx.error) return;
     const thenBody = gen(ctx, ast.then);
     if (ctx.error) return;
-    const elseBody = gen(ctx, ast.else);
-    if (ctx.error) return;
-    return `if (${condition}) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+    if (ast.else) {
+        const elseBody = gen(ctx, ast.else);
+        if (ctx.error) return;
+        return `if (${condition}) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+    } else {
+        return `if (${condition}) {\n${thenBody}\n}\n`;
+    }
 }
 
 
