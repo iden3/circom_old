@@ -34,6 +34,7 @@ const argv = require("yargs")
     .alias("o", "output")
     .help("h")
     .alias("h", "help")
+    .alias("v", "verbose")
     .epilogue(`Copyright (C) 2018  0kims association
     This program comes with ABSOLUTELY NO WARRANTY;
     This is free software, and you are welcome to redistribute it
@@ -41,24 +42,34 @@ const argv = require("yargs")
     repo directory at  https://github.com/iden3/circom `)
     .argv;
 
+
+let inputFile;
 if (argv._.length == 0) {
-    console.log("File to compile not specified");
-    process.exit(1);
-} else if (argv._.length > 1) {
+    inputFile = "circuit.circom";
+} else if (argv._.length == 1) {
+    inputFile = argv._[0];
+} else  {
     console.log("Only one circuit at a time is permited");
     process.exit(1);
 }
 
-const fullFileName = path.resolve(process.cwd(), argv._[0]);
+const fullFileName = path.resolve(process.cwd(), inputFile);
 const outName = argv.output ?  argv.output : "circuit.json";
 
 compiler(fullFileName).then( (cir) => {
     fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
     process.exit(0);
 }, (err) => {
-    console.log(err);
-    console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
-    console.error(JSON.stringify(err.ast, null, 1));
+//    console.log(err);
+    if (err.pos) {
+        console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
+    } else {
+        console.log(err.message);
+        if (argv.verbose) console.log(err.stack);
+    }
+    if (err.ast) {
+        console.error(JSON.stringify(err.ast, null, 1));
+    }
     process.exit(1);
 });
 

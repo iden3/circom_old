@@ -62,7 +62,12 @@ async function compile(srcFile) {
         fileName: fullFileName
     };
 
+
     exec(ctx, ast);
+
+    if (!ctx.components["main"]) {
+        throw new Error("A main component must be defined");
+    }
 
     classifySignals(ctx);
     reduceConstants(ctx);
