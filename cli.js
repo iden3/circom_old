@@ -41,11 +41,20 @@ const argv = require("yargs")
     repo directory at  https://github.com/iden3/circom `)
     .argv;
 
+if (argv._.length == 0) {
+    console.log("File to compile not specified");
+    process.exit(1);
+} else if (argv._.length > 1) {
+    console.log("Only one circuit at a time is permited");
+    process.exit(1);
+}
+
 const fullFileName = path.resolve(process.cwd(), argv._[0]);
 const outName = argv.output ?  argv.output : "circuit.json";
 
 compiler(fullFileName).then( (cir) => {
     fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
+    process.exit(0);
 }, (err) => {
     console.log(err);
     console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
