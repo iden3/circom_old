@@ -38,6 +38,6 @@
     "eslint": "^5.0.1",
     "eslint-plugin-mocha": "^5.0.0",
     "jison": "^0.4.18",
-    "snarkjs": "0.1.4"
+    "snarkjs": "0.1.5"
   }
 }
