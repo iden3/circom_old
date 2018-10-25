@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --max_old_space_size=4000
 
 /*
     Copyright 2018 0KIMS association.
