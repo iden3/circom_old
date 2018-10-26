@@ -17,7 +17,7 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-include "binsum.circom"
+include "../binsum.circom"
 include "sigma.circom"
 
 template SigmaPlus() {

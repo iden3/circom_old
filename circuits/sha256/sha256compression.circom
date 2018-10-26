@@ -20,7 +20,7 @@
 include "constants.circom";
 include "t1.circom";
 include "t2.circom";
-include "binsum.circom";
+include "../binsum.circom";
 include "sigmaplus.circom";
 
 template Sha256compression() {

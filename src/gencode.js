@@ -83,6 +83,8 @@ function gen(ctx, ast) {
             return genGte(ctx, ast);
         } else if (ast.op == "==") {
             return genEq(ctx, ast);
+        } else if (ast.op == "!=") {
+            return genNeq(ctx, ast);
         } else if (ast.op == "?") {
             return genTerCon(ctx, ast);
         } else {
@@ -314,7 +316,9 @@ function genVariable(ctx, ast) {
         if (ctx.error) return;
     }
 
-
+    if (!v) {
+        return error(ctx, ast, "Invalid left operand");
+    }
     if (v.type == "VARIABLE") {
         return `ctx.getVar("${ast.name}",[${sels.join(",")}])`;
     } else if (v.type == "SIGNAL") {
@@ -530,7 +534,15 @@ function genEq(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).eq(bigInt(${b})) ? 1 : 0`;
+    return `(bigInt(${a}).eq(bigInt(${b})) ? 1 : 0)`;
+}
+
+function genNeq(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `(bigInt(${a}).eq(bigInt(${b})) ? 0 : 1)`;
 }
 
 function genUMinus(ctx, ast) {

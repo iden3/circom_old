@@ -98,6 +98,8 @@ function exec(ctx, ast) {
             return execGte(ctx, ast);
         } else if (ast.op == "==") {
             return execEq(ctx, ast);
+        } else if (ast.op == "!=") {
+            return execNeq(ctx, ast);
         } else if (ast.op == "?") {
             return execTerCon(ctx, ast);
         } else {
@@ -677,6 +679,20 @@ function execEq(ctx, ast) {
     return {
         type: "NUMBER",
         value: a.value.eq(b.value) ? bigInt(1) : bigInt(0)
+    };
+}
+
+function execNeq(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.eq(b.value) ? bigInt(0) : bigInt(1)
     };
 }
 

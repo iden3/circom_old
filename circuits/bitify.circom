@@ -17,51 +17,56 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-template XOR() {
-    signal input a;
-    signal input b;
-    signal output out;
+include "comparators.circom";
 
-    out <== a + b - 2*a*b;
-}
 
-template AND() {
-    signal input a;
-    signal input b;
-    signal output out;
-
-    out <== a*b;
-}
-
-template OR() {
-    signal input a;
-    signal input b;
-    signal output out;
-
-    out <== a + b - a*b;
-}
-
-template NOT() {
+template Num2Bits(n) {
     signal input in;
-    signal output out;
+    signal output out[n];
+    var lc1=0;
 
-    out <== 1 + in - 2*in;
+    for (var i = 0; i<n; i++) {
+        out[i] <-- (in >> i) & 1;
+        out[i] * (out[i] -1 ) === 0;
+        lc1 += out[i] * 2**i;
+    }
+
+    lc1 === in;
+
 }
 
-template NAND() {
-    signal input a;
-    signal input b;
+template Bits2Num(n) {
+    signal input in[n];
     signal output out;
+    var lc1=0;
 
-    out <== 1 - a*b;
+    for (var i = 0; i<n; i++) {
+        lc1 += in[i] * 2**i;
+    }
+
+    lc1 ==> out;
 }
 
-template NOR() {
-    signal input a;
-    signal input b;
-    signal output out;
+template Num2BitsNeg(n) {
+    signal input in;
+    signal output out[n];
+    var lc1=0;
 
-    out <== a*b + 1 - a - b;
+    component isZero;
+
+    isZero = IsZero();
+
+    var neg = n == 0 ? 0 : 2**n - in;
+
+    for (var i = 0; i<n; i++) {
+        out[i] <-- (neg >> i) & 1;
+        out[i] * (out[i] -1 ) === 0;
+        lc1 += out[i] * 2**i;
+    }
+
+    in ==> isZero.in;
+
+
+
+    lc1 + isZero.out * 2**n === 2**n - in;
 }
-
-

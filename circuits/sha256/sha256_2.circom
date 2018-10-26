@@ -18,7 +18,7 @@
 */
 
 include "sha256compression.circom";
-include "bitify.circom"
+include "../bitify.circom"
 
 template Sha256_2() {
     signal input a;
