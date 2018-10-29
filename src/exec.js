@@ -547,15 +547,17 @@ function execFor(ctx, ast) {
     let v = exec(ctx, ast.condition);
     if (ctx.error) return;
 
-    while ((v.value.neq(0))&&(!ctx.returnValue)) {
-        exec(ctx, ast.body);
-        if (ctx.error) return;
+    if (typeof v.value != "undefined") {
+        while ((v.value.neq(0))&&(!ctx.returnValue)) {
+            exec(ctx, ast.body);
+            if (ctx.error) return;
 
-        exec(ctx, ast.step);
-        if (ctx.error) return;
+            exec(ctx, ast.step);
+            if (ctx.error) return;
 
-        v = exec(ctx, ast.condition);
-        if (ctx.error) return;
+            v = exec(ctx, ast.condition);
+            if (ctx.error) return;
+        }
     }
 }
 
@@ -563,12 +565,14 @@ function execWhile(ctx, ast) {
     let v = exec(ctx, ast.condition);
     if (ctx.error) return;
 
-    while ((v.value.neq(0))&&(!ctx.returnValue)) {
-        exec(ctx, ast.body);
-        if (ctx.error) return;
+    if (typeof v.value != "undefined") {
+        while ((v.value.neq(0))&&(!ctx.returnValue)) {
+            exec(ctx, ast.body);
+            if (ctx.error) return;
 
-        v = exec(ctx, ast.condition);
-        if (ctx.error) return;
+            v = exec(ctx, ast.condition);
+            if (ctx.error) return;
+        }
     }
 }
 
@@ -576,13 +580,15 @@ function execIf(ctx, ast) {
     let v = exec(ctx, ast.condition);
     if (ctx.error) return;
 
-    if ((v.value.neq(0))&&(!ctx.returnValue)) {
-        exec(ctx, ast.then);
-        if (ctx.error) return;
-    } else {
-        if (ast.else) {
-            exec(ctx, ast.else);
+    if (typeof v.value != "undefined") {
+        if ((v.value.neq(0))&&(!ctx.returnValue)) {
+            exec(ctx, ast.then);
             if (ctx.error) return;
+        } else {
+            if (ast.else) {
+                exec(ctx, ast.else);
+                if (ctx.error) return;
+            }
         }
     }
 }
