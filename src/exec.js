@@ -318,8 +318,7 @@ function execInstantiateComponet(ctx, vr, fn) {
         const v = exec(ctx, fn.params[i]);
         if (ctx.error) return;
 
-        if (v.type != "NUMBER") return error(ctx, fn.params[i], "expected a number");
-        paramValues.push( v.value);
+        paramValues.push(v);
     }
     if (template.params.length != paramValues.length) error(ctx, fn, "Invalid Number of parameters");
 
@@ -330,6 +329,15 @@ function execInstantiateComponet(ctx, vr, fn) {
     instantiateComponent(vv);
 
     function instantiateComponent(varVal) {
+
+        function extractValue(v) {
+            if (Array.isArray(v)) {
+                return v.map(extractValue);
+            } else {
+                return v.value.toString();
+            }
+        }
+
         if (Array.isArray(varVal)) {
             for (let i =0; i<varVal.length; i++) {
                 instantiateComponent(varVal[i]);
@@ -355,11 +363,8 @@ function execInstantiateComponet(ctx, vr, fn) {
 
         const scope = {};
         for (let i=0; i< template.params.length; i++) {
-            scope[template.params[i]] = {
-                type: "NUMBER",
-                value: paramValues[i]
-            };
-            ctx.components[ctx.currentComponent].params[template.params[i]] = paramValues[i];
+            scope[template.params[i]] = paramValues[i];
+            ctx.components[ctx.currentComponent].params[template.params[i]] = extractValue(paramValues[i]);
         }
 
         ctx.components[ctx.currentComponent].template = templateName;
