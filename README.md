@@ -48,7 +48,7 @@ npm install -g circom
 The circuit is compiled with the following command:
 
 ```
-circom -s mycircuit.circom -o mycircuit.json
+circom mycircuit.circom -o mycircuit.json
 ```
 
 The resulting output ( `mycircuit.json` ) can be used in the [zksnarks JavaScript library](https://github.com/iden3/zksnark).
