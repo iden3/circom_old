@@ -1,6 +1,6 @@
 # Circom
 
-Circon is a language designed to write arithmetic circuits that can be used in zero knowledge proofs.
+Circom is a language designed to write arithmetic circuits that can be used in zero knowledge proofs.
 
 In particular, it is designed to work in [zksnarks JavaScript library](https://github.com/iden3/zksnark).
 
@@ -25,7 +25,7 @@ template NAND() {
 component main = NAND();
 ```
 
-The language uses mainly JavaScript/C syntax together with 5 extra operators to define the constraints:
+The language uses mainly JavaScript/C syntax together with 5 extra operators to define the following constraints:
 
 `<==` , `==>`  : These two operators are used to connect signals and at the same time imply a constraint.
 
@@ -39,7 +39,7 @@ In the above example, both inputs are forced to be binary by adding the constrai
 
 ### Compilation the circuit
 
-First of all, the compiler must be installed typing:
+First of all, the compiler must be installed by typing:
 
 ```
 npm install -g circom
@@ -48,7 +48,7 @@ npm install -g circom
 The circuit is compiled with the following command:
 
 ```
-circom -s mycircuit.circom -o mycircuit.json
+circom mycircuit.circom -o mycircuit.json
 ```
 
 The resulting output ( `mycircuit.json` ) can be used in the [zksnarks JavaScript library](https://github.com/iden3/zksnark).
@@ -91,7 +91,7 @@ in === out[0]*2**0  + out[1]*2**1 + out[2]*2**2  + ... + out[n-1]*2**(n-1)
 ```
 
 We do this by using a variable `lc1` and adding each signal multiplied by its coefficient.
-This variable does not hold a value in compilation time, but it holds a linear combination and it is used in the last constraint:
+This variable does not hold a value at compilation time, but it holds a linear combination and it is used in the last constraint:
 
 ```
 lc1 === in;
@@ -256,7 +256,7 @@ In this example we have shown how to design a top-down circuit with many subcirc
 
 ## License
 
-Circon is part of the iden3 project copyright 2018 0KIMS association and published with GPL-3 license. Please check the COPYING file for more details.
+Circom is part of the iden3 project copyright 2018 0KIMS association and published with GPL-3 license. Please check the COPYING file for more details.
 
 
 
