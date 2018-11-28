@@ -78,6 +78,7 @@ include                 { return 'include'; }
 \-                      { return '-'; }
 \*                      { return '*'; }
 \/                      { return '/'; }
+\\                      { return '\\'; }
 \%                      { return '%'; }
 \^                      { return '^'; }
 \&                      { return '&'; }
@@ -118,7 +119,7 @@ include                 { return 'include'; }
 %left '<<' '>>'
 
 %left '+' '-'
-%left '*' '/' '%'
+%left '*' '/' '\\' '%'
 %left '**'
 %right '++' '--' UMINUS UPLUS '!' '~'
 %left '.'
@@ -627,7 +628,7 @@ e7
         {
             if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
                 let v = $3.value.greater(256) ? 256 : $3.value.value;
-                $$ = {t1ype: "NUMBER", value: $1.value.shiftRight(v).and(__MASK__) };
+                $$ = {type: "NUMBER", value: $1.value.shiftRight(v).and(__MASK__) };
             } else {
                 $$ = { type: "OP", op: ">>", values: [$1, $3] };
             }
@@ -681,6 +682,15 @@ e5
                 $$ = { type: "NUMBER", value: ($1.value.times($3.value.modInv(__P__))).mod(__P__) };
             } else {
                 $$ = { type: "OP", op: "/", values: [$1, $3] };
+            }
+            setLines($$, @1, @3);
+        }
+    | e5 '\\' e4
+        {
+            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
+                $$ = { type: "NUMBER", value: ($1.value.divide($3.value)) };
+            } else {
+                $$ = { type: "OP", op: "\\", values: [$1, $3] };
             }
             setLines($$, @1, @3);
         }

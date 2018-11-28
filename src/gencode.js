@@ -67,8 +67,14 @@ function gen(ctx, ast) {
             return genExp(ctx, ast);
         } else if (ast.op == "/") {
             return genDiv(ctx, ast);
+        } else if (ast.op == "\\") {
+            return genIDiv(ctx, ast);
         } else if (ast.op == "&") {
             return genBAnd(ctx, ast);
+        } else if (ast.op == "&&") {
+            return genAnd(ctx, ast);
+        } else if (ast.op == "||") {
+            return genOr(ctx, ast);
         } else if (ast.op == "<<") {
             return genShl(ctx, ast);
         } else if (ast.op == ">>") {
@@ -457,6 +463,15 @@ function genDiv(ctx, ast) {
     return `bigInt(${a}).mul( bigInt(${b}).inverse(__P__) ).mod(__P__)`;
 }
 
+function genIDiv(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+
+    return `bigInt(${a}).div( bigInt(${b}))`;
+}
+
 function genExp(ctx, ast) {
     const a = gen(ctx, ast.values[0]);
     if (ctx.error) return;
@@ -471,6 +486,22 @@ function genBAnd(ctx, ast) {
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${a}).and(bigInt(${b})).and(__MASK__)`;
+}
+
+function genAnd(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `((bigInt(${a}).neq(bigInt(0)) && bigInt(${b}).neq(bigInt(0))) ? bigInt(1) : bigInt(0))`;
+}
+
+function genOr(ctx, ast) {
+    const a = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const b = gen(ctx, ast.values[1]);
+    if (ctx.error) return;
+    return `((bigInt(${a}).neq(bigInt(0)) || bigInt(${b}).neq(bigInt(0))) ? bigInt(1) : bigInt(0))`;
 }
 
 function genShl(ctx, ast) {

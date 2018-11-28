@@ -1,14 +1,36 @@
 const chai = require("chai");
 const path = require("path");
 const snarkjs = require("snarkjs");
-const crypto = require("crypto");
+
+const bigInt = snarkjs.bigInt;
 
 const compiler = require("../index.js");
 
 const assert = chai.assert;
 
 describe("Sum test", () => {
-    it("Should compile a code with an undefined if", async() => {
+    it("Should compile a code with an undefined if", async () => {
         await compiler(path.join(__dirname, "circuits", "undefinedif.circom"));
+    });
+    it("Should compile a code with vars inside a for", async () => {
+        const cirDef = await compiler(path.join(__dirname, "circuits", "forvariables.circom"));
+
+        const circuit = new snarkjs.Circuit(cirDef);
+
+        const witness = circuit.calculateWitness({ "in": 111});
+        assert(witness[0].equals(bigInt(1)));
+        assert(witness[1].equals(bigInt(114)));
+        assert(witness[2].equals(bigInt(111)));
+
+    });
+    it("Should compile a code with an undefined if", async () => {
+        const cirDef = await compiler(path.join(__dirname, "circuits", "mixvarsignal.circom"));
+
+        const circuit = new snarkjs.Circuit(cirDef);
+
+        const witness = circuit.calculateWitness({ "i": 111});
+        assert(witness[0].equals(bigInt(1)));
+        assert(witness[1].equals(bigInt(111)));
+        assert(witness[2].equals(bigInt(111)));
     });
 });

@@ -80,10 +80,16 @@ function exec(ctx, ast) {
             return execPlusPlusLeft(ctx, ast);
         } else if (ast.op == "/") {
             return execDiv(ctx, ast);
+        } else if (ast.op == "\\") {
+            return execIDiv(ctx, ast);
         } else if (ast.op == "**") {
             return execExp(ctx, ast);
         } else if (ast.op == "&") {
             return execBAnd(ctx, ast);
+        } else if (ast.op == "&&") {
+            return execAnd(ctx, ast);
+        } else if (ast.op == "||") {
+            return execOr(ctx, ast);
         } else if (ast.op == "<<") {
             return execShl(ctx, ast);
         } else if (ast.op == ">>") {
@@ -546,6 +552,8 @@ function execPin(ctx, ast) {
 }
 
 function execFor(ctx, ast) {
+
+    ctx.scopes.push({});
     exec(ctx, ast.init);
     if (ctx.error) return;
 
@@ -564,6 +572,7 @@ function execFor(ctx, ast) {
             if (ctx.error) return;
         }
     }
+    ctx.scopes.pop();
 }
 
 function execWhile(ctx, ast) {
@@ -722,6 +731,34 @@ function execBAnd(ctx, ast) {
     };
 }
 
+function execAnd(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: (a.value.neq(0) && a.value.neq(0)) ? bigInt(1) : bigInt(0)
+    };
+}
+
+function execOr(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: (a.value.neq(0) || a.value.neq(0)) ? bigInt(1) : bigInt(0)
+    };
+}
+
 function execShl(ctx, ast) {
     const a = exec(ctx, ast.values[0]);
     if (ctx.error) return;
@@ -793,6 +830,21 @@ function execDiv(ctx, ast) {
     return {
         type: "NUMBER",
         value: a.value.times(b.value.modInv(__P__)).mod(__P__)
+    };
+}
+
+function execIDiv(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    if (b.value.isZero()) return error(ctx, ast, "Division by zero");
+    return {
+        type: "NUMBER",
+        value: a.value.divide(b.value)
     };
 }
 
