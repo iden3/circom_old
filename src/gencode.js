@@ -143,7 +143,8 @@ function error(ctx, ast, errStr) {
             last_column: ast.last_column
         },
         errStr: errStr,
-        ast: ast
+        ast: ast,
+        message: errStr
     };
 }
 

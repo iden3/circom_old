@@ -158,7 +158,8 @@ function error(ctx, ast, errStr) {
         },
         errStr: errStr,
         errFile: ctx.fileName,
-        ast: ast
+        ast: ast,
+        message: errStr
     };
 }
 
@@ -622,6 +623,7 @@ function execVarAssignement(ctx, ast) {
     if ((typeof(num) != "object")||(num == null)) return  error(ctx, ast, "Variable not defined");
 
     if (num.type == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
+//    if (num.type == "SIGNAL") return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
 
     const res = exec(ctx, ast.values[1]);
     if (ctx.error) return;

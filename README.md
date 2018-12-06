@@ -7,6 +7,10 @@ In particular, it is designed to work in [zksnarks JavaScript library](https://g
 
 ## Usage
 
+### Tutorial
+
+A good starting point [is this tutorial](https://iden3.io/blog/circom-and-snarkjs-tutorial2.html)
+
 ### First circuit
 
 Creation of a circuit. This is an example of a NAND door:
@@ -252,6 +256,11 @@ component main = Adder();
 ```
 
 In this example we have shown how to design a top-down circuit with many subcircuits and how to connect them together. One can also see that auxiliary functions to do specific computations can be created.
+
+
+### More examples.
+
+You can find more examples in this library of basic circits [circomlib](https://github.com/iden3/circomlib)
 
 
 ## License

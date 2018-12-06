@@ -1,0 +1,44 @@
+{
+ "mainCode": "{\n}\n",
+ "signalName2Idx": {
+  "one": 0,
+  "main.out": 1
+ },
+ "components": [
+  {
+   "name": "main",
+   "params": {},
+   "template": "A",
+   "inputSignals": 0
+  }
+ ],
+ "componentName2Idx": {
+  "main": 0
+ },
+ "signals": [
+  {
+   "names": [
+    "one"
+   ],
+   "triggerComponents": []
+  },
+  {
+   "names": [
+    "main.out"
+   ],
+   "triggerComponents": []
+  }
+ ],
+ "constraints": [],
+ "templates": {
+  "A": "function(ctx) {\n    ctx.setSignal(\"out\", [], \"3\");\n    ctx.assert(ctx.getSignal(\"out\", []), \"3\");\n}\n"
+ },
+ "functions": {},
+ "nPrvInputs": 0,
+ "nPubInputs": 0,
+ "nInputs": 0,
+ "nOutputs": 0,
+ "nVars": 1,
+ "nConstants": 1,
+ "nSignals": 2
+}

@@ -8,6 +8,17 @@ const compiler = require("../index.js");
 
 const assert = chai.assert;
 
+async function assertThrowsAsync(fn, regExp) {
+    let f = () => {};
+    try {
+        await fn();
+    } catch(e) {
+        f = () => { throw e; };
+    } finally {
+        assert.throws(f, regExp);
+    }
+}
+
 describe("Sum test", () => {
     it("Should compile a code with an undefined if", async () => {
         await compiler(path.join(__dirname, "circuits", "undefinedif.circom"));
@@ -33,4 +44,9 @@ describe("Sum test", () => {
         assert(witness[1].equals(bigInt(111)));
         assert(witness[2].equals(bigInt(111)));
     });
+//    it("Should assign signal ERROR", async () => {
+//        await assertThrowsAsync(async () => {
+//            await compiler(path.join(__dirname, "circuits", "assignsignal.circom"));
+//        }, /Cannot assign to a signal .*/);
+//    });
 });
