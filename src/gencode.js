@@ -63,6 +63,10 @@ function gen(ctx, ast) {
             return genPlusPlusRight(ctx, ast);
         } else if (ast.op == "PLUSPLUSLEFT") {
             return genPlusPlusLeft(ctx, ast);
+        } else if (ast.op == "MINUSMINUSRIGHT") {
+            return genMinusMinusRight(ctx, ast);
+        } else if (ast.op == "MINUSMINUSLEFT") {
+            return genMinusMinusLeft(ctx, ast);
         } else if (ast.op == "**") {
             return genExp(ctx, ast);
         } else if (ast.op == "/") {
@@ -231,6 +235,7 @@ function genFunctionDef(ctx, ast) {
 }
 
 function genFor(ctx, ast) {
+    ctx.scopes.push({});
     const init = gen(ctx, ast.init);
     if (ctx.error) return;
     const condition = gen(ctx, ast.condition);
@@ -239,6 +244,7 @@ function genFor(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
+    ctx.scopes.pop();
     return `for (${init};${condition};${step}) { \n${body}\n }\n`;
 }
 
@@ -429,6 +435,14 @@ function genPlusPlusRight(ctx, ast) {
 
 function genPlusPlusLeft(ctx, ast) {
     return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
+}
+
+function genMinusMinusRight(ctx, ast) {
+    return `(${genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
+}
+
+function genMinusMinusLeft(ctx, ast) {
+    return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
 }
 
 function genAdd(ctx, ast) {

@@ -78,6 +78,10 @@ function exec(ctx, ast) {
             return execPlusPlusRight(ctx, ast);
         } else if (ast.op == "PLUSPLUSLEFT") {
             return execPlusPlusLeft(ctx, ast);
+        } else if (ast.op == "MINUSMINUSRIGHT") {
+            return execMinusMinusRight(ctx, ast);
+        } else if (ast.op == "MINUSMINUSLEFT") {
+            return execMinusMinusLeft(ctx, ast);
         } else if (ast.op == "/") {
             return execDiv(ctx, ast);
         } else if (ast.op == "\\") {
@@ -368,6 +372,8 @@ function execInstantiateComponet(ctx, vr, fn) {
 
         ctx.scopes = oldScopes.slice(0, scopeLevel+1);
 
+        if (template.params.length != paramValues.length) return error(ctx, fn, "Invalid number of parameters: " + templateName);
+
         const scope = {};
         for (let i=0; i< template.params.length; i++) {
             scope[template.params[i]] = paramValues[i];
@@ -623,6 +629,7 @@ function execVarAssignement(ctx, ast) {
     if ((typeof(num) != "object")||(num == null)) return  error(ctx, ast, "Variable not defined");
 
     if (num.type == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
+    if (ctx.error) return;
 //    if (num.type == "SIGNAL") return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
 
     const res = exec(ctx, ast.values[1]);
@@ -921,6 +928,23 @@ function execPlusPlusRight(ctx, ast) {
 function execPlusPlusLeft(ctx, ast) {
     if (ctx.error) return;
     const resAfter = execAdd(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
+    if (ctx.error) return;
+    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    return resAfter;
+}
+
+function execMinusMinusRight(ctx, ast) {
+    const resBefore = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const resAfter = execSub(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
+    if (ctx.error) return;
+    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    return resBefore;
+}
+
+function execMinusMinusLeft(ctx, ast) {
+    if (ctx.error) return;
+    const resAfter = execSub(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
     if (ctx.error) return;
     execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
     return resAfter;
