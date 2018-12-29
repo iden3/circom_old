@@ -9,7 +9,7 @@ In particular, it is designed to work in [zksnarks JavaScript library](https://g
 
 ### Tutorial
 
-A good starting point [is this tutorial](https://iden3.io/blog/circom-and-snarkjs-tutorial2.html)
+A good starting point [is this tutorial](https://github.com/iden3/circom/blob/master/TUTORIAL.md)
 
 ### First circuit
 
