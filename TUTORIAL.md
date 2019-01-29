@@ -65,8 +65,6 @@ We are now ready to compile the circuit. Run the following command:
 
 ```sh
 circom circuit.circom -o circuit.json
-
-// Which is equivalent to "circom circuit.circom -o circuit.json" 
 ```
 
 to compile the circuit to a file named `circuit.json`
