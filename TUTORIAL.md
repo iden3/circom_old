@@ -86,13 +86,13 @@ snarkjs --help
 To show general statistics of this circuit, you can run:
 
 ```sh
-snarkjs printconstraints -c circuit.json
+snarkjs info -c circuit.json
 ```
 
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs info -c circuit.json
+snarkjs printconstraints -c circuit.json
 ```
 
 
