@@ -65,8 +65,6 @@ We are now ready to compile the circuit. Run the following command:
 
 ```sh
 circom circuit.circom -o circuit.json
-
-// Which is equivalent to "circom circuit.circom -o circuit.json" 
 ```
 
 to compile the circuit to a file named `circuit.json`
@@ -86,13 +84,13 @@ snarkjs --help
 To show general statistics of this circuit, you can run:
 
 ```sh
-snarkjs printconstraints -c circuit.json
+snarkjs info -c circuit.json
 ```
 
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs info -c circuit.json
+snarkjs printconstraints -c circuit.json
 ```
 
 
