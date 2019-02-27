@@ -1,6 +1,6 @@
 # circom and snarkjs tutorial
 
-This tutorial will guide you in creating your first Zero Knowledge zkSnark circuit. It will navegate across the various techniques to write circuits and it will show you how to create proofs and verify them off-chain and on-chain on Ethereum.
+This tutorial will guide you in creating your first Zero Knowledge zkSnark circuit. It will navigate across the various techniques to write circuits and it will show you how to create proofs and verify them off-chain and on-chain on Ethereum.
 
 ## 1. Installing the tools
 
@@ -9,7 +9,7 @@ This tutorial will guide you in creating your first Zero Knowledge zkSnark circu
 
 If you don't have it installed yet, you need to install `Node.js` in your laptop. 
 
-Last stable version of `Node.js` (Or 8.12.0) works just fine. But if you install the latest current version `Node.js` (10.12.0) you will see significant performance increase. This is because last versions of node includes Big Integer Libraries nativelly.  The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
+Last stable version of `Node.js` (Or 8.12.0) works just fine. But if you install the latest current version `Node.js` (10.12.0) you will see significant performance increase. This is because last versions of node includes Big Integer Libraries natively.  The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
 
 
 ### 1.2 Install **circom** and **snarkjs**
@@ -55,7 +55,7 @@ This circuit has 2 private input signals named `a` and `b` and one output named 
 
 The only thing that the circuit does is forcing the signal `c` to be the value of `a*b`
 
-After declaring the `Multiplier` template, we instantiate it with a component named`main`.
+After declaring the `Multiplier` template, we instantiate it with a component named `main`.
 
 Note: When compiling a circuit a component named `main` must always exist.
 
@@ -109,13 +109,13 @@ The output of the setup will in the form of 2 files: `proving_key.json` and `ver
 
 ### 3.3. Calculating a witness
 
-Before creating any proof, we need to calculate all the signals of the circuit that match (all) the constrains of the circuit.
+Before creating any proof, we need to calculate all the signals of the circuit that match (all) the constraints of the circuit.
 
 `snarkjs` calculates these for you.  You need to provide a file with the inputs and it will execute the circuit and calculate all the intermediate signals and the output. This set of signals is the *witness*.
 
 The zero knowledge proofs prove that you know a set of signals (witness) that match all the constraints but without revealing any of the signals except the public inputs plus the outputs.
 
-For example, Imagine that you want to prove that you are able to factor 33 that means that you know two numbers `a` and `b` that when you multiply them, it results in 33. 
+For example, imagine that you want to prove that you are able to factor 33. That means that you know two numbers `a` and `b` that when you multiply them, it results in 33. 
 
 > Of course you can always use one and the same number as `a` and `b`.  We  will deal with this problem later.
 
@@ -144,7 +144,7 @@ Now that we have the witness generated, we can create the proof.
 snarkjs proof
 ```
 
-This command will use the `prooving_key.json` and the `witness.json` files by default to generate `proof.json` and `public.json`
+This command will use the `proving_key.json` and the `witness.json` files by default to generate `proof.json` and `public.json`
 
 The `proof.json` file will contain the actual proof.  And the `public.json` file will contain just the values of the public inputs and the outputs.
 
@@ -159,7 +159,7 @@ snarkjs verify
 
 This command will use `verification_key.json`, `proof.json` and `public.json` to verify that is valid.
 
-Here we are veifying that we know a witness that the public inputs and the outputs matches the ones in the `public.json` file.
+Here we are verifying that we know a witness that the public inputs and the outputs matches the ones in the `public.json` file.
 
 
 If the proof is ok, you will see an `OK` in the screen or `INVALID` otherwise.
@@ -177,7 +177,7 @@ You can take the code in `verifier.sol` and cut and paste in remix.
 
 This code contains two contracts: Pairings and Verifier.  You just need to deploy the `Verifier` contract.
 
-> You may want to use a test net like Rinkeby, Kovan or Ropsten.  You can also use the Javascript VM, but in some browsers, the verification takes long and it may hang the page.
+> You may want to use a test net like Rinkeby, Kovan or Ropsten.  You can also use the Javascript VM, but in some browsers, the verification takes a long time and it may hang the page.
 
 
 ### Verifying the proof on-chain
@@ -186,7 +186,7 @@ The verifier contract deployed in the last step has a `view` function called `ve
 
 This function will return true if the proof and the inputs are valid.
 
-To facilitiate the call, you can use snarkjs to generate the parameters of the call by typing:
+To facilitate the call, you can use snarkjs to generate the parameters of the call by typing:
 
 ```sh
 snarkjs generatecall
@@ -194,7 +194,7 @@ snarkjs generatecall
 
 Just cut and paste the output to the parameters field of the `verifyProof` method in Remix.
 
-If every thing works ok, this method should return true.
+If everything works ok, this method should return true.
 
 If you just change any bit in the parameters, you can check that the result will be false.
 
@@ -203,9 +203,9 @@ If you just change any bit in the parameters, you can check that the result will
 
 We can fix the circuit to not accept one as any of the values by adding some extra constraints.
 
-Here the trick is that we use the property that 0 has no inverse.  so `(a-1)` should not have an inverse.
+Here the trick is that we use the property that 0 has no inverse, so `(a-1)` should not have an inverse.
 
-that means that `(a-1)*inv = 1` will be inpossible to match if `a` is one.
+That means that `(a-1)*inv = 1` will be impossible to match if `a` is one.
 
 We just calculate inv by `1/(a-1)`
 
@@ -231,9 +231,9 @@ template Multiplier() {
 component main = Multiplier();
 ```
 
-A nice thing of circom language is that you can split a <== into two independent acions: <-- and === 
+A nice thing of circom language is that you can split a <== into two independent actions: <-- and === 
 
-The <-- and --> operators Just assign a value to a signal without creating any constraints.
+The <-- and --> operators just assign a value to a signal without creating any constraints.
 
 The === operator just adds a constraint without assigning any value to any signal.
 
@@ -254,7 +254,7 @@ Or a exponentiation in the Baby Jub curve [here](https://github.com/iden3/circom
 
 There is nothing worst for a dev than working with a buggy compiler.  This is a very early stage of the compiler, so there are many bugs and lots of works needs to be done.  Please have it present if you are doing anything serious with it.
 
-And please contact us for any isue you have.   In general, a github issue with a small piece of code with the bug is very worthy!.
+And please contact us for any issues you have.  In general, a github issue with a small piece of code with the bug is very worthy!
 
 Enjoy zero knowledge proving!
 
