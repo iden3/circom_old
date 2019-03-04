@@ -1,20 +1,18 @@
 # circom and snarkjs tutorial
 
-This tutorial will guide you in creating your first Zero Knowledge zkSnark circuit. It will navegate across the various techniques to write circuits and it will show you how to create proofs and verify them off-chain and on-chain on Ethereum.
+This tutorial will guide you in creating your first Zero Knowledge zkSnark circuit. It will take you through the various techniques to write circuits, and will show you how to create proofs and verify them off-chain and on-chain on Ethereum.
 
 ## 1. Installing the tools
 
-
 ### 1.1 Pre-requisites
 
-If you don't have it installed yet, you need to install `Node.js` in your laptop. 
+If you don't have it installed yet, you need to install `Node.js`. 
 
-Last stable version of `Node.js` (Or 8.12.0) works just fine. But if you install the latest current version `Node.js` (10.12.0) you will see significant performance increase. This is because last versions of node includes Big Integer Libraries nativelly.  The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
-
+The last stable version of `Node.js` (or 8.12.0) works just fine, but if you install the latest current version `Node.js` (10.12.0) you will see a significant increase in performance. This is because last versions of node includes Big Integer Libraries nativelly. The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
 
 ### 1.2 Install **circom** and **snarkjs**
 
-Just run:
+Run:
 
 ```sh
 npm install -g circom
@@ -57,7 +55,7 @@ The only thing that the circuit does is forcing the signal `c` to be the value o
 
 After declaring the `Multiplier` template, we instantiate it with a component named`main`.
 
-Note: When compiling a circuit a component named `main` must always exist.
+Note: When compiling a circuit, a component named `main` must always exist.
 
 ### 2.2 Compile the circuit
 
@@ -111,14 +109,13 @@ The output of the setup will in the form of 2 files: `proving_key.json` and `ver
 
 Before creating any proof, we need to calculate all the signals of the circuit that match (all) the constrains of the circuit.
 
-`snarkjs` calculates these for you.  You need to provide a file with the inputs and it will execute the circuit and calculate all the intermediate signals and the output. This set of signals is the *witness*.
+`snarkjs` calculates those for you.  You need to provide a file with the inputs and it will execute the circuit and calculate all the intermediate signals and the output. This set of signals is the *witness*.
 
-The zero knowledge proofs prove that you know a set of signals (witness) that match all the constraints but without revealing any of the signals except the public inputs plus the outputs.
+The zero knowledge proofs prove that you know a set of signals (witness) that match all the constraints, without revealing any of the signals except the public inputs plus the outputs.
 
-For example, Imagine that you want to prove that you are able to factor 33 that means that you know two numbers `a` and `b` that when you multiply them, it results in 33. 
+For example, imagine you want to prove you are able to factor 33. It means that you know two numbers `a` and `b` and when you multiply them, it results in 33. 
 
 > Of course you can always use one and the same number as `a` and `b`.  We  will deal with this problem later.
-
 
 So you want to prove that you know 3 and 11.
 
@@ -128,7 +125,7 @@ Let's create a file named `input.json`
 {"a": 3, "b": 11}
 ```
 
-And now let's calculate the witness:
+Now let's calculate the witness:
 
 ```sh
 snarkjs calculatewitness
@@ -144,7 +141,7 @@ Now that we have the witness generated, we can create the proof.
 snarkjs proof
 ```
 
-This command will use the `prooving_key.json` and the `witness.json` files by default to generate `proof.json` and `public.json`
+This command will use the `proving_key.json` and the `witness.json` files by default to generate `proof.json` and `public.json`
 
 The `proof.json` file will contain the actual proof.  And the `public.json` file will contain just the values of the public inputs and the outputs.
 
@@ -162,8 +159,7 @@ This command will use `verification_key.json`, `proof.json` and `public.json` to
 Here we are veifying that we know a witness that the public inputs and the outputs matches the ones in the `public.json` file.
 
 
-If the proof is ok, you will see an `OK` in the screen or `INVALID` otherwise.
-
+If the proof is ok, you will see `OK` or `INVALID` if not ok.
 
 ### Generate the solidity verifier
 
@@ -171,11 +167,11 @@ If the proof is ok, you will see an `OK` in the screen or `INVALID` otherwise.
 snarkjs generateverifier
 ```
 
-This command will take the `verification_key.json` and generate a solidity code in `verifier.sol` file.
+This command will take the `verification_key.json` and generate solidity code in `verifier.sol` file.
 
-You can take the code in `verifier.sol` and cut and paste in remix.
+You can take the code in `verifier.sol` and cut and paste it in remix.
 
-This code contains two contracts: Pairings and Verifier.  You just need to deploy the `Verifier` contract.
+This code contains two contracts: Pairings and Verifier.  You only need to deploy the `Verifier` contract.
 
 > You may want to use a test net like Rinkeby, Kovan or Ropsten.  You can also use the Javascript VM, but in some browsers, the verification takes long and it may hang the page.
 
@@ -196,16 +192,16 @@ Just cut and paste the output to the parameters field of the `verifyProof` metho
 
 If every thing works ok, this method should return true.
 
-If you just change any bit in the parameters, you can check that the result will be false.
+If you change any bit in the parameters, the result will be veryfiable false.
 
 
 ## Bonus track
 
 We can fix the circuit to not accept one as any of the values by adding some extra constraints.
 
-Here the trick is that we use the property that 0 has no inverse.  so `(a-1)` should not have an inverse.
+Here the trick is that we use the property that 0 has no inverse.  So `(a-1)` should not have an inverse.
 
-that means that `(a-1)*inv = 1` will be inpossible to match if `a` is one.
+That means that `(a-1)*inv = 1` will be inpossible to match if `a` is 1.
 
 We just calculate inv by `1/(a-1)`
 
@@ -233,14 +229,13 @@ component main = Multiplier();
 
 A nice thing of circom language is that you can split a <== into two independent acions: <-- and === 
 
-The <-- and --> operators Just assign a value to a signal without creating any constraints.
+The <-- and --> operators assign a value to a signal without creating any constraints.
 
-The === operator just adds a constraint without assigning any value to any signal.
+The === operator adds a constraint without assigning any value to any signal.
 
-The circuit has also another problem and it's that the operation works in Zr, so we need to guarantee too that the multiplication does not overflow. This can be done by binarizing the inputs and checking the ranges, but we will reserve it for future tutorials.
+The circuit has also another problem: the operation works in Zr, so we need to guarantee the multiplication does not overflow. This can be done by binarizing the inputs and checking the ranges, but we will reserve it for future tutorials.
 
-
-## Where to go from here.
+## Where to go from here:
 
 You may want to read the [README](https://github.com/iden3/circom)  to learn more features about circom.
 
@@ -252,14 +247,8 @@ Or a exponentiation in the Baby Jub curve [here](https://github.com/iden3/circom
 
 # Final note
 
-There is nothing worst for a dev than working with a buggy compiler.  This is a very early stage of the compiler, so there are many bugs and lots of works needs to be done.  Please have it present if you are doing anything serious with it.
+There is nothing worse for a dev than working with a buggy compiler.  This is a very early stage of the compiler, so there are many bugs and lots of work needs to be done. Please have it present if you are doing anything serious with it.
 
-And please contact us for any isue you have.   In general, a github issue with a small piece of code with the bug is very worthy!.
+And please contact us for any isue you have. In general, a github issue with a small piece of code with the bug is very useful to us.
 
 Enjoy zero knowledge proving!
-
-
-
-
-
-
