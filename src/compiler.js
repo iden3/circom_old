@@ -27,8 +27,6 @@ const gen = require("./gencode");
 const exec = require("./exec");
 const lc = require("./lcalgebra");
 
-module.exports = compile;
-
 const parser = require("../parser/jaz.js").parser;
 
 const timeout = ms => new Promise(res => setTimeout(res, ms));
@@ -82,13 +80,13 @@ async function compile(srcFile) {
     generateWitnessNames(ctx);
 
     if (ctx.error) {
-        throw(ctx.error);
+        throw (ctx.error);
     }
 
     ctx.scopes = [{}];
 
-    const mainCode = gen(ctx,ast);
-    if (ctx.error) throw(ctx.error);
+    const mainCode = gen(ctx, ast);
+    if (ctx.error) throw (ctx.error);
 
     const def = buildCircuitDef(ctx, mainCode);
 
@@ -99,15 +97,15 @@ async function compile(srcFile) {
 function classifySignals(ctx) {
 
     function priorize(t1, t2) {
-        if ((t1 == "error") || (t2=="error")) return "error";
+        if ((t1 == "error") || (t2 == "error")) return "error";
         if (t1 == "internal") {
             return t2;
-        } else if (t2=="internal") {
+        } else if (t2 == "internal") {
             return t1;
         }
         if ((t1 == "one") || (t2 == "one")) return "one";
         if ((t1 == "constant") || (t2 == "constant")) return "constant";
-        if (t1!=t2) return "error";
+        if (t1 != t2) return "error";
         return t1;
     }
 
@@ -123,7 +121,7 @@ function classifySignals(ctx) {
                 t = "one";
             } else if (lSignal.value) {
                 t = "constant";
-            } else if (lSignal.component=="main") {
+            } else if (lSignal.component == "main") {
                 if (lSignal.direction == "IN") {
                     if (lSignal.private) {
                         t = "prvInput";
@@ -134,11 +132,11 @@ function classifySignals(ctx) {
                     t = "output";
                 }
             }
-            tAll = priorize(t,tAll);
+            tAll = priorize(t, tAll);
             if (lSignal.equivalence) {
                 lSignal = ctx.signals[lSignal.equivalence];
             } else {
-                end=true;
+                end = true;
             }
         }
         if (tAll == "error") {
@@ -171,7 +169,7 @@ function generateWitnessNames(ctx) {
 
         if (!counted[lSignal.fullName]) {
             counted[lSignal.fullName] = true;
-            totals[lSignal.category] ++;
+            totals[lSignal.category]++;
         }
     }
 
@@ -184,7 +182,7 @@ function generateWitnessNames(ctx) {
     const nSignals = ids["constant"] + totals["constant"];
 
     ctx.signalNames = new Array(nSignals);
-    for (let i=0; i< nSignals; i++) ctx.signalNames[i] = [];
+    for (let i = 0; i < nSignals; i++) ctx.signalNames[i] = [];
     ctx.signalName2Idx = {};
 
     for (let s in ctx.signals) {
@@ -193,8 +191,8 @@ function generateWitnessNames(ctx) {
         while (lSignal.equivalence) {
             lSignal = ctx.signals[lSignal.equivalence];
         }
-        if ( typeof(lSignal.id) === "undefined" ) {
-            lSignal.id = ids[lSignal.category] ++;
+        if (typeof (lSignal.id) === "undefined") {
+            lSignal.id = ids[lSignal.category]++;
         }
 
         signal.id = lSignal.id;
@@ -207,7 +205,7 @@ function generateWitnessNames(ctx) {
 
 function reduceConstants(ctx) {
     const newConstraints = [];
-    for (let i=0; i<ctx.constraints.length; i++) {
+    for (let i = 0; i < ctx.constraints.length; i++) {
         const c = lc.canonize(ctx, ctx.constraints[i]);
         if (!lc.isZero(c)) {
             newConstraints.push(c);
@@ -218,25 +216,25 @@ function reduceConstants(ctx) {
 
 function reduceConstrains(ctx) {
     const newConstraints = [];
-    for (let i=0; i<ctx.constraints.length; i++) {
+    for (let i = 0; i < ctx.constraints.length; i++) {
         const c = ctx.constraints[i];
 
         // Swap a and b if b has more variables.
         if (Object.keys(c.b).length > Object.keys(c.a).length) {
             const aux = c.a;
-            c.a=c.b;
-            c.b=aux;
+            c.a = c.b;
+            c.b = aux;
         }
 
         // Mov to C if possible.
         if (isConstant(c.a)) {
-            const ct = {type: "NUMBER", value: c.a.values["one"]};
+            const ct = { type: "NUMBER", value: c.a.values["one"] };
             c.c = lc.add(lc.mul(c.b, ct), c.c);
             c.a = { type: "LINEARCOMBINATION", values: {} };
             c.b = { type: "LINEARCOMBINATION", values: {} };
         }
         if (isConstant(c.b)) {
-            const ct = {type: "NUMBER", value: c.b.values["one"]};
+            const ct = { type: "NUMBER", value: c.b.values["one"] };
             c.c = lc.add(lc.mul(c.a, ct), c.c);
             c.a = { type: "LINEARCOMBINATION", values: {} };
             c.b = { type: "LINEARCOMBINATION", values: {} };
@@ -259,15 +257,15 @@ function reduceConstrains(ctx) {
                     }
                 }
 
-                for (let j=0; j<newConstraints.length; j++) {
+                for (let j = 0; j < newConstraints.length; j++) {
                     newConstraints[j] = lc.substitute(newConstraints[j], isolatedSignal, isolatedSignalEquivalence);
                 }
-                for (let j=i+1; j<ctx.constraints.length; j++ ) {
+                for (let j = i + 1; j < ctx.constraints.length; j++) {
                     ctx.constraints[j] = lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
                 }
-                c.a={ type: "LINEARCOMBINATION", values: {} };
-                c.b={ type: "LINEARCOMBINATION", values: {} };
-                c.c={ type: "LINEARCOMBINATION", values: {} };
+                c.a = { type: "LINEARCOMBINATION", values: {} };
+                c.b = { type: "LINEARCOMBINATION", values: {} };
+                c.c = { type: "LINEARCOMBINATION", values: {} };
                 isolatedSignal.category = "constant";
             }
         }
@@ -317,12 +315,12 @@ function buildCircuitDef(ctx, mainCode) {
     }
 
     res.signals = new Array(ctx.signalNames.length);
-    for (let i=0; i<ctx.signalNames.length; i++) {
+    for (let i = 0; i < ctx.signalNames.length; i++) {
         res.signals[i] = {
             names: ctx.signalNames[i],
             triggerComponents: []
         };
-        ctx.signalNames[i].map( (fullName) => {
+        ctx.signalNames[i].map((fullName) => {
             const idComponet = res.componentName2Idx[ctx.signals[fullName].component];
             if (ctx.signals[fullName].direction == "IN") {
                 res.signals[i].triggerComponents.push(idComponet);
@@ -388,7 +386,7 @@ function buildConstraints(ctx) {
         }
     }
 
-    for (let i=0; i<ctx.constraints.length; i++) {
+    for (let i = 0; i < ctx.constraints.length; i++) {
         const A = {};
         const B = {};
         const C = {};
@@ -397,11 +395,14 @@ function buildConstraints(ctx) {
         fillLC(B, ctx.constraints[i].b);
         fillLC(C, lc.negate(ctx.constraints[i].c));
 
-        res.push([A,B,C]);
+        res.push([A, B, C]);
     }
 
     return res;
 }
+
+module.exports = { compile }
+
 
 
 

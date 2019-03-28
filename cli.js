@@ -24,7 +24,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const compiler = require("./src/compiler");
+const compiler = require("./src/compiler").compile;
 
 const version = require("./package").version;
 
