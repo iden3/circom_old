@@ -30,8 +30,9 @@ const version = require("./package").version;
 
 const argv = require("yargs")
     .version(version)
-    .usage("circom [input source circuit file] -o [output definition circuit file]")
+    .usage("circom [input source circuit file] -o [output definition circuit file] -d [directory to save the compiled file]")
     .alias("o", "output")
+    .alias("d", "directory")
     .help("h")
     .alias("h", "help")
     .alias("v", "verbose")
@@ -47,20 +48,22 @@ let inputFile;
 if (argv._.length == 0) {
     inputFile = "circuit.circom";
 } else if (argv._.length == 1) {
+
     inputFile = argv._[0];
-} else  {
+} else {
     console.log("Only one circuit at a time is permited");
     process.exit(1);
 }
 
 const fullFileName = path.resolve(process.cwd(), inputFile);
-const outName = argv.output ?  argv.output : "circuit.json";
+const outName = argv.output ? argv.output : "circuit.json";
+const directoryToSave = argv.directory ? argv.directory : './';
 
-compiler(fullFileName).then( (cir) => {
-    fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
+compiler(fullFileName).then((cir) => {
+    fs.writeFileSync(`${directoryToSave}/${outName}`, JSON.stringify(cir, null, 1), "utf8");
     process.exit(0);
 }, (err) => {
-//    console.log(err);
+    //    console.log(err);
     console.log(err.stack);
     if (err.pos) {
         console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
