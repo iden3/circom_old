@@ -1,1 +1,4 @@
-module.exports = require("./src/compiler.js");
+const compile = require("./src/compiler.js").compile;
+module.exports = {
+	compile
+}
