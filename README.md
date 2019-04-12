@@ -11,6 +11,8 @@ In particular, it is designed to work in [zksnarks JavaScript library](https://g
 
 A good starting point [is this tutorial](https://github.com/iden3/circom/blob/master/TUTORIAL.md)
 
+Also this [video](https://www.youtube.com/watch?v=-9TJa1hVsKA) is a good starting point.
+
 ### First circuit
 
 Creation of a circuit. This is an example of a NAND door:
