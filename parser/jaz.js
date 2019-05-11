@@ -361,7 +361,7 @@ break;
 case 59:
 
             if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.or($$[$0].value).and(__MASK__) };
+                this.$ = { type: "NUMBER", value: $$[$0-2].value.xor($$[$0].value).and(__MASK__) };
             } else {
                 this.$ = { type: "OP", op: "^", values: [$$[$0-2], $$[$0]] };
             }
