@@ -514,7 +514,7 @@ e12
     : e12 '^' e11
         {
             if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.or($3.value).and(__MASK__) };
+                $$ = { type: "NUMBER", value: $1.value.xor($3.value).and(__MASK__) };
             } else {
                 $$ = { type: "OP", op: "^", values: [$1, $3] };
             }
