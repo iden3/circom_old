@@ -245,7 +245,7 @@ function genFor(ctx, ast) {
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
     ctx.scopes.pop();
-    return `for (${init};${condition};${step}) { \n${body}\n }\n`;
+    return `for (${init};bigInt(${condition}).neq(bigInt(0));${step}) { \n${body}\n }\n`;
 }
 
 function genWhile(ctx, ast) {
@@ -253,7 +253,7 @@ function genWhile(ctx, ast) {
     if (ctx.error) return;
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
-    return `while (${condition}) {\n${body}\n}\n`;
+    return `while (bigInt(${condition}).neq(bigInt(0))) {\n${body}\n}\n`;
 }
 
 function genIf(ctx, ast) {
@@ -264,9 +264,9 @@ function genIf(ctx, ast) {
     if (ast.else) {
         const elseBody = gen(ctx, ast.else);
         if (ctx.error) return;
-        return `if (${condition}) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+        return `if (bigInt(${condition}).neq(bigInt(0))) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
     } else {
-        return `if (${condition}) {\n${thenBody}\n}\n`;
+        return `if (bigInt(${condition}).neq(bigInt(0))) {\n${thenBody}\n}\n`;
     }
 }
 
