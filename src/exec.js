@@ -397,6 +397,12 @@ function execInstantiateComponet(ctx, vr, fn) {
 
 function execFunctionCall(ctx, ast) {
 
+    if (ast.name == "log") {
+        const v = exec(ctx, ast.params[0]);
+        console.log(v.value.toString());
+        return;
+    }
+
     const scopeLevel = getScopeLevel(ctx, ast.name);
     if (scopeLevel == -1) return error(ctx, ast, "Function not defined: " + ast.name);
     const fnc = getScope(ctx, ast.name);
@@ -750,7 +756,7 @@ function execAnd(ctx, ast) {
     if (!a.value || !b.value) return { type: "NUMBER" };
     return {
         type: "NUMBER",
-        value: (a.value.neq(0) && a.value.neq(0)) ? bigInt(1) : bigInt(0)
+        value: (a.value.neq(0) && b.value.neq(0)) ? bigInt(1) : bigInt(0)
     };
 }
 
@@ -764,7 +770,7 @@ function execOr(ctx, ast) {
     if (!a.value || !b.value) return { type: "NUMBER" };
     return {
         type: "NUMBER",
-        value: (a.value.neq(0) || a.value.neq(0)) ? bigInt(1) : bigInt(0)
+        value: (a.value.neq(0) || b.value.neq(0)) ? bigInt(1) : bigInt(0)
     };
 }
 
