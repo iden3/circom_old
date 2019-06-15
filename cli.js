@@ -35,6 +35,7 @@ const argv = require("yargs")
     .help("h")
     .alias("h", "help")
     .alias("v", "verbose")
+    .alias("f", "fast")
     .epilogue(`Copyright (C) 2018  0kims association
     This program comes with ABSOLUTELY NO WARRANTY;
     This is free software, and you are welcome to redistribute it
@@ -56,7 +57,7 @@ if (argv._.length == 0) {
 const fullFileName = path.resolve(process.cwd(), inputFile);
 const outName = argv.output ?  argv.output : "circuit.json";
 
-compiler(fullFileName).then( (cir) => {
+compiler(fullFileName, {reduceConstraints: !argv.fast}).then( (cir) => {
     fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
     process.exit(0);
 }, (err) => {

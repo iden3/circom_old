@@ -41,7 +41,7 @@ describe("Sum test", () => {
 
         const witness = circuit.calculateWitness({ "i": 111});
         assert(witness[0].equals(bigInt(1)));
-        assert(witness[1].equals(bigInt(111)));
+        assert(witness[1].equals(bigInt(111*111)));
         assert(witness[2].equals(bigInt(111)));
     });
 //    it("Should assign signal ERROR", async () => {

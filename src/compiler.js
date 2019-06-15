@@ -33,7 +33,13 @@ const parser = require("../parser/jaz.js").parser;
 
 const timeout = ms => new Promise(res => setTimeout(res, ms));
 
-async function compile(srcFile) {
+async function compile(srcFile, options) {
+    if (!options) {
+        options = {};
+    }
+    if (typeof options.reduceConstraints === "undefined") {
+        options.reduceConstraints = true;
+    }
     const fullFileName = srcFile;
     const fullFilePath = path.dirname(fullFileName);
 
@@ -70,13 +76,16 @@ async function compile(srcFile) {
     }
 
     classifySignals(ctx);
-    reduceConstants(ctx);
 
-    // Repeat while reductions are performed
-    let oldNConstrains = -1;
-    while (ctx.constraints.length != oldNConstrains) {
-        oldNConstrains = ctx.constraints.length;
-        reduceConstrains(ctx);
+    if (options.reduceConstraints) {
+        reduceConstants(ctx);
+
+        // Repeat while reductions are performed
+        let oldNConstrains = -1;
+        while (ctx.constraints.length != oldNConstrains) {
+            oldNConstrains = ctx.constraints.length;
+            reduceConstrains(ctx);
+        }
     }
 
     generateWitnessNames(ctx);

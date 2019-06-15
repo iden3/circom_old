@@ -8,7 +8,7 @@ template X() {
     }
 
     i === r;
-    out <== r;
+    out <== i*i;
 }
 
 component main = X();
