@@ -77,8 +77,8 @@ async function compile(srcFile, options) {
 
     classifySignals(ctx);
 
+    reduceConstants(ctx);
     if (options.reduceConstraints) {
-        reduceConstants(ctx);
 
         // Repeat while reductions are performed
         let oldNConstrains = -1;
