@@ -156,7 +156,7 @@ snarkjs verify
 
 This command will use `verification_key.json`, `proof.json` and `public.json` to verify that is valid.
 
-Here we are veifying that we know a witness that the public inputs and the outputs matches the ones in the `public.json` file.
+Here we are verifying that we know a witness that the public inputs and the outputs matches the ones in the `public.json` file.
 
 
 If the proof is ok, you will see `OK` or `INVALID` if not ok.
@@ -182,7 +182,7 @@ The verifier contract deployed in the last step has a `view` function called `ve
 
 This function will return true if the proof and the inputs are valid.
 
-To facilitiate the call, you can use snarkjs to generate the parameters of the call by typing:
+To facilitate the call, you can use snarkjs to generate the parameters of the call by typing:
 
 ```sh
 snarkjs generatecall
@@ -192,7 +192,7 @@ Just cut and paste the output to the parameters field of the `verifyProof` metho
 
 If every thing works ok, this method should return true.
 
-If you change any bit in the parameters, the result will be veryfiable false.
+If you change any bit in the parameters, the result will be verifiably false.
 
 
 ## Bonus track
@@ -227,19 +227,19 @@ template Multiplier() {
 component main = Multiplier();
 ```
 
-A nice thing of circom language is that you can split a <== into two independent acions: <-- and === 
+A nice thing of the circom language is that you can split a <== into two independent actions: <-- and === 
 
 The <-- and --> operators assign a value to a signal without creating any constraints.
 
 The === operator adds a constraint without assigning any value to any signal.
 
-The circuit has also another problem: the operation works in Zr, so we need to guarantee the multiplication does not overflow. This can be done by binarizing the inputs and checking the ranges, but we will reserve it for future tutorials.
+The circuit also has another problem: the operation works in Zr, so we need to guarantee the multiplication does not overflow. This can be done by converting the inputs to binary and checking the ranges, but we will reserve it for future tutorials.
 
 ## Where to go from here:
 
 You may want to read the [README](https://github.com/iden3/circom)  to learn more features about circom.
 
-You can also check a a library with many basic circuits lib binaritzations, comparators, eddsa, hashes, merkle trees etc [here](https://github.com/iden3/circomlib) (Work in progress).
+You can also check a library with many basic circuits lib binarizations, comparators, eddsa, hashes, merkle trees etc [here](https://github.com/iden3/circomlib) (Work in progress).
 
 
 Or a exponentiation in the Baby Jub curve [here](https://github.com/iden3/circomlib) (Work in progress).
