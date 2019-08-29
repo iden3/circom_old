@@ -49,4 +49,14 @@ describe("Sum test", () => {
 //            await compiler(path.join(__dirname, "circuits", "assignsignal.circom"));
 //        }, /Cannot assign to a signal .*/);
 //    });
+    it("Should compile a code with compute", async () => {
+        const cirDef = await compiler(path.join(__dirname, "circuits", "compute.circom"));
+
+        const circuit = new snarkjs.Circuit(cirDef);
+
+        const witness = circuit.calculateWitness({ "x": 6});
+        assert(witness[0].equals(bigInt(1)));
+        assert(witness[1].equals(bigInt(37)));
+        assert(witness[2].equals(bigInt(6)));
+    });
 });

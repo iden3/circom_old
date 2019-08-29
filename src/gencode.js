@@ -116,6 +116,8 @@ function gen(ctx, ast) {
         return genFunctionCall(ctx, ast);
     } else if (ast.type == "BLOCK") {
         return genBlock(ctx, ast);
+    } else if (ast.type == "COMPUTE") {
+        return genCompute(ctx, ast);
     } else if (ast.type == "FOR") {
         return genFor(ctx, ast);
     } else if (ast.type == "WHILE") {
@@ -254,6 +256,12 @@ function genWhile(ctx, ast) {
     const body = gen(ctx, ast.body);
     if (ctx.error) return;
     return `while (bigInt(${condition}).neq(bigInt(0))) {\n${body}\n}\n`;
+}
+
+function genCompute(ctx, ast) {
+    const body = gen(ctx, ast.body);
+    if (ctx.error) return;
+    return `{\n${body}\n}\n`;
 }
 
 function genIf(ctx, ast) {

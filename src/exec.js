@@ -131,6 +131,8 @@ function exec(ctx, ast) {
         return execFunctionCall(ctx, ast);
     } else if (ast.type == "BLOCK") {
         return execBlock(ctx, ast);
+    } else if (ast.type == "COMPUTE") {
+        return ;
     } else if (ast.type == "FOR") {
         return execFor(ctx, ast);
     } else if (ast.type == "WHILE") {

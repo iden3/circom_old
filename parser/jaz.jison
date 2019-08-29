@@ -40,6 +40,7 @@ if                      { return 'if'; }
 else                    { return 'else'; }
 for                     { return 'for'; }
 while                   { return 'while'; }
+compute                 { return 'compute'; }
 do                      { return 'do'; }
 return                  { return 'return'; }
 include                 { return 'include'; }
@@ -198,6 +199,10 @@ statment
         {
             $$ = $1;
         }
+    | computeStatment
+        {
+            $$ = $1;
+        }
     | returnStatment
         {
             $$ = $1;
@@ -299,6 +304,14 @@ doWhileStatment
         {
             $$ = { type: "DOWHILE", condition: $5, body: $2 };
             setLines($$, @1, @6);
+        }
+    ;
+
+computeStatment
+    : 'compute' statment
+        {
+            $$ = { type: "COMPUTE",  body: $2 };
+            setLines($$, @1, @2);
         }
     ;
 
