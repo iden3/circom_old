@@ -422,7 +422,7 @@ function genConstrain(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `ctx.assert(${a}, ${b})`;
+    return `ctx.assert(${a}, ${b}, '${ctx.fileName}:${ast.first_line}:${ast.first_column + 1}')`;
 }
 
 function genSignalAssignConstrain(ctx, ast) {
