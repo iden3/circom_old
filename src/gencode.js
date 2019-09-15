@@ -422,11 +422,13 @@ function genConstrain(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `ctx.assert(${a}, ${b})`;
+    const strErr = ast.fileName +": "+ast.first_line;
+    return `ctx.assert(${a}, ${b}, \"${strErr}\")`;
 }
 
 function genSignalAssignConstrain(ctx, ast) {
-    return genVarAssignement(ctx, ast) + ";\n" + genConstrain(ctx, ast);
+//    return genVarAssignement(ctx, ast) + ";\n" + genConstrain(ctx, ast);
+    return genVarAssignement(ctx, ast);
 }
 
 function genVarAddAssignement(ctx, ast) {

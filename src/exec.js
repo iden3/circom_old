@@ -1046,6 +1046,8 @@ function execSignalAssign(ctx, ast) {
 }
 
 function execConstrain(ctx, ast) {
+    ast.fileName = ctx.fileName;
+    ast.filePath = ctx.filePath;
     const a = exec(ctx, ast.values[0]);
     if (ctx.error) return;
     const b = exec(ctx, ast.values[1]);
