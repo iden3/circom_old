@@ -277,7 +277,12 @@ function reduceConstrains(ctx) {
                 c.a={ type: "LINEARCOMBINATION", values: {} };
                 c.b={ type: "LINEARCOMBINATION", values: {} };
                 c.c={ type: "LINEARCOMBINATION", values: {} };
-                isolatedSignal.category = "constant";
+
+                let lSignal = ctx.signals[isolatedSignal];
+                while (lSignal.equivalence) {
+                    lSignal = ctx.signals[lSignal.equivalence];
+                }
+                lSignal.category = "constant";
             }
         }
 
