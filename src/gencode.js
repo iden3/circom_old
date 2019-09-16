@@ -422,7 +422,7 @@ function genConstrain(ctx, ast) {
     if (ctx.error) return;
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    const strErr = ast.fileName +": "+ast.first_line;
+    const strErr = ast.fileName + ":" + ast.first_line + ":" + ast.first_column;
     return `ctx.assert(${a}, ${b}, \"${strErr}\")`;
 }
 
