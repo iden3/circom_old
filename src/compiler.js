@@ -226,71 +226,134 @@ function reduceConstants(ctx) {
 }
 
 function reduceConstrains(ctx) {
-    const newConstraints = [];
-    for (let i=0; i<ctx.constraints.length; i++) {
-        const c = ctx.constraints[i];
+    indexVariables();
+    let possibleConstraints = Object.keys(ctx.constraints);
+    while (possibleConstraints.length>0) {
+        let nextPossibleConstraints = {};
+        for (let i in possibleConstraints) {
+            if (!ctx.constraints[i]) continue;
+            const c = ctx.constraints[i];
 
-        // Swap a and b if b has more variables.
-        if (Object.keys(c.b).length > Object.keys(c.a).length) {
-            const aux = c.a;
-            c.a=c.b;
-            c.b=aux;
-        }
+            // Swap a and b if b has more variables.
+            if (Object.keys(c.b).length > Object.keys(c.a).length) {
+                const aux = c.a;
+                c.a=c.b;
+                c.b=aux;
+            }
 
-        // Mov to C if possible.
-        if (isConstant(c.a)) {
-            const ct = {type: "NUMBER", value: c.a.values["one"]};
-            c.c = lc.add(lc.mul(c.b, ct), c.c);
-            c.a = { type: "LINEARCOMBINATION", values: {} };
-            c.b = { type: "LINEARCOMBINATION", values: {} };
-        }
-        if (isConstant(c.b)) {
-            const ct = {type: "NUMBER", value: c.b.values["one"]};
-            c.c = lc.add(lc.mul(c.a, ct), c.c);
-            c.a = { type: "LINEARCOMBINATION", values: {} };
-            c.b = { type: "LINEARCOMBINATION", values: {} };
-        }
+            // Mov to C if possible.
+            if (isConstant(c.a)) {
+                const ct = {type: "NUMBER", value: c.a.values["one"]};
+                c.c = lc.add(lc.mul(c.b, ct), c.c);
+                c.a = { type: "LINEARCOMBINATION", values: {} };
+                c.b = { type: "LINEARCOMBINATION", values: {} };
+            }
+            if (isConstant(c.b)) {
+                const ct = {type: "NUMBER", value: c.b.values["one"]};
+                c.c = lc.add(lc.mul(c.a, ct), c.c);
+                c.a = { type: "LINEARCOMBINATION", values: {} };
+                c.b = { type: "LINEARCOMBINATION", values: {} };
+            }
 
-        if (lc.isZero(c.a) || lc.isZero(c.b)) {
-            const isolatedSignal = getFirstInternalSignal(ctx, c.c);
-            if (isolatedSignal) {
-                const isolatedSignalEquivalence = {
-                    type: "LINEARCOMBINATION",
-                    values: {}
-                };
-                const invCoef = c.c.values[isolatedSignal].modInv(__P__);
-                for (const s in c.c.values) {
-                    if (s != isolatedSignal) {
-                        const v = __P__.minus(c.c.values[s]).times(invCoef).mod(__P__);
-                        if (!v.isZero()) {
-                            isolatedSignalEquivalence.values[s] = v;
+            if (lc.isZero(c.a) || lc.isZero(c.b)) {
+                const isolatedSignal = getFirstInternalSignal(ctx, c.c);
+                if (isolatedSignal) {
+
+                    let lSignal = ctx.signals[isolatedSignal];
+                    while (lSignal.equivalence) {
+                        lSignal = ctx.signals[lSignal.equivalence];
+                    }
+
+
+                    const isolatedSignalEquivalence = {
+                        type: "LINEARCOMBINATION",
+                        values: {}
+                    };
+                    const invCoef = c.c.values[isolatedSignal].modInv(__P__);
+                    for (const s in c.c.values) {
+                        if (s != isolatedSignal) {
+                            const v = __P__.minus(c.c.values[s]).times(invCoef).mod(__P__);
+                            if (!v.isZero()) {
+                                isolatedSignalEquivalence.values[s] = v;
+                            }
                         }
                     }
-                }
 
-                for (let j=0; j<newConstraints.length; j++) {
-                    newConstraints[j] = lc.substitute(newConstraints[j], isolatedSignal, isolatedSignalEquivalence);
-                }
-                for (let j=i+1; j<ctx.constraints.length; j++ ) {
-                    ctx.constraints[j] = lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
-                }
-                c.a={ type: "LINEARCOMBINATION", values: {} };
-                c.b={ type: "LINEARCOMBINATION", values: {} };
-                c.c={ type: "LINEARCOMBINATION", values: {} };
+                    for (let j in lSignal.inConstraints) {
+                        if ((j!=i)&&(ctx.constraints[j])) {
+                            ctx.constraints[j] = lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
+                            linkSignalsConstraint(j);
+                            if (j<i) {
+                                nextPossibleConstraints[j] = true;
+                            }
+                        }
+                    }
 
-                let lSignal = ctx.signals[isolatedSignal];
-                while (lSignal.equivalence) {
-                    lSignal = ctx.signals[lSignal.equivalence];
+                    ctx.constraints[i] = null;
+
+                    lSignal.category = "constant";
+                } else {
+                    if (lc.isZero(c.c)) ctx.constraints[i] = null;
                 }
-                lSignal.category = "constant";
             }
         }
+        possibleConstraints = Object.keys(nextPossibleConstraints);
+    }
+    unindexVariables();
 
-        if (!lc.isZero(c)) {
-            newConstraints.push(c);
+    // Pack the constraints
+    let o = 0;
+    for (let i=0; i<ctx.constraints.length; i++) {
+        if (ctx.constraints[i]) {
+            if (o != i) {
+                ctx.constraints[o] = ctx.constraints[i];
+            }
+            o++;
         }
     }
-    ctx.constraints = newConstraints;
+    ctx.constraints.length = o;
+
+    function indexVariables() {
+        for (let i=0; i<ctx.constraints.length; i++) linkSignalsConstraint(i);
+    }
+
+    function linkSignalsConstraint(cidx) {
+        const ct = ctx.constraints[cidx];
+        for (let k in ct.a.values) linkSignal(k, cidx);
+        for (let k in ct.b.values) linkSignal(k, cidx);
+        for (let k in ct.c.values) linkSignal(k, cidx);
+    }
+
+    function unindexVariables() {
+        for (let s in ctx.signals) {
+            let lSignal = ctx.signals[s];
+            while (lSignal.equivalence) {
+                lSignal = ctx.signals[lSignal.equivalence];
+            }
+            if (lSignal.inConstraints) delete lSignal.inConstraints;
+        }
+    }
+
+/*
+    function unlinkSignal(signalName, cidx) {
+        let lSignal = ctx.signals[signalName];
+        while (lSignal.equivalence) {
+            lSignal = ctx.signals[lSignal.equivalence];
+        }
+        if ((lSignal.inConstraints)&&(lSignal.inConstraints[cidx])) {
+            delete lSignal.inConstraints[cidx];
+        }
+    }
+*/
+
+    function linkSignal(signalName, cidx) {
+        let lSignal = ctx.signals[signalName];
+        while (lSignal.equivalence) {
+            lSignal = ctx.signals[lSignal.equivalence];
+        }
+        if (!lSignal.inConstraints) lSignal.inConstraints = {};
+        lSignal.inConstraints[cidx] = true;
+    }
 
     function getFirstInternalSignal(ctx, l) {
         for (let k in l.values) {

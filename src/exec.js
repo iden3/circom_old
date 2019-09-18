@@ -996,7 +996,12 @@ function execSignalAssign(ctx, ast) {
 
     let sDest=ctx.signals[dst.fullName];
     if (!sDest) return error(ctx, ast, "Invalid signal: "+dst.fullName);
-    while (sDest.equivalence) sDest=ctx.signals[sDest.equivalence];
+
+    let isOut = (sDest.component == "main")&&(sDest.direction=="OUT");
+    while (sDest.equivalence) {
+        sDest=ctx.signals[sDest.equivalence];
+        isOut = isOut || ((sDest.component == "main")&&(sDest.direction=="OUT"));
+    }
 
     if (sDest.value) return error(ctx, ast, "Signals cannot be assigned twice");
 
@@ -1024,10 +1029,20 @@ function execSignalAssign(ctx, ast) {
 
     let assignValue = true;
     if (src.type == "SIGNAL") {
-        sDest.equivalence = src.fullName;
-        sDest.alias = sDest.alias.concat(src.alias);
-        while (sDest.equivalence) sDest=ctx.signals[sDest.equivalence];
-        assignValue = false;
+        let sSrc = ctx.signals[src.fullName];
+        let isIn  = (sSrc.component == "main")&&(sSrc.direction == "IN");
+        while (sSrc.equivalence) {
+            sSrc=ctx.signals[sSrc.equivalence];
+            isIn = isIn || ((sSrc.component == "main")&&(sSrc.direction == "IN"));
+        }
+
+        // Skip if an out is assigned directly to an input.
+        if ((!isIn)||(!isOut)) {
+            sDest.equivalence = src.fullName;
+            sDest.alias = sDest.alias.concat(src.alias);
+            while (sDest.equivalence) sDest=ctx.signals[sDest.equivalence];
+            assignValue = false;
+        }
     }
 
     if (assignValue) {

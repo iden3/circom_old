@@ -1,0 +1,75 @@
+{
+ "mainCode": "{\n}\n",
+ "signalName2Idx": {
+  "one": 0,
+  "main.in": 2,
+  "main.out": 1,
+  "main.internal.in": 2,
+  "main.internal.out": 2
+ },
+ "components": [
+  {
+   "name": "main",
+   "params": {},
+   "template": "InOut",
+   "inputSignals": 1
+  },
+  {
+   "name": "main.internal",
+   "params": {},
+   "template": "Internal",
+   "inputSignals": 1
+  }
+ ],
+ "componentName2Idx": {
+  "main": 0,
+  "main.internal": 1
+ },
+ "signals": [
+  {
+   "names": [
+    "one"
+   ],
+   "triggerComponents": []
+  },
+  {
+   "names": [
+    "main.out"
+   ],
+   "triggerComponents": []
+  },
+  {
+   "names": [
+    "main.in",
+    "main.internal.in",
+    "main.internal.out"
+   ],
+   "triggerComponents": [
+    0,
+    1
+   ]
+  }
+ ],
+ "constraints": [
+  [
+   {},
+   {},
+   {
+    "1": "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+    "2": "1"
+   }
+  ]
+ ],
+ "templates": {
+  "Internal": "function(ctx) {\n    ctx.setSignal(\"out\", [], ctx.getSignal(\"in\", []));\n}\n",
+  "InOut": "function(ctx) {\n    ctx.setPin(\"internal\", [], \"in\", [], ctx.getSignal(\"in\", []));\n    ctx.setSignal(\"out\", [], ctx.getPin(\"internal\", [], \"out\", []));\n}\n"
+ },
+ "functions": {},
+ "nPrvInputs": 0,
+ "nPubInputs": 1,
+ "nInputs": 1,
+ "nOutputs": 1,
+ "nVars": 3,
+ "nConstants": 0,
+ "nSignals": 3
+}

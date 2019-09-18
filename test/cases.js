@@ -59,4 +59,9 @@ describe("Sum test", () => {
         assert(witness[1].equals(bigInt(37)));
         assert(witness[2].equals(bigInt(6)));
     });
+    it("Should compile a code with compute", async () => {
+        const cirDef = await compiler(path.join(__dirname, "circuits", "inout.circom"));
+
+        assert.equal(cirDef.constraints.length, 1);
+    });
 });
