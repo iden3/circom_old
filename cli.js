@@ -34,8 +34,16 @@ const argv = require("yargs")
     .alias("o", "output")
     .help("h")
     .alias("h", "help")
-    .alias("v", "verbose")
-    .alias("f", "fast")
+    .option("verbose", {
+        alias: "v",
+        type: "boolean",
+        description: "Run with verbose logging"
+    })
+    .option("fast", {
+        alias: "f",
+        type: "boolean",
+        description: "Do not optimize constraints"
+    })
     .epilogue(`Copyright (C) 2018  0kims association
     This program comes with ABSOLUTELY NO WARRANTY;
     This is free software, and you are welcome to redistribute it
@@ -57,7 +65,7 @@ if (argv._.length == 0) {
 const fullFileName = path.resolve(process.cwd(), inputFile);
 const outName = argv.output ?  argv.output : "circuit.json";
 
-compiler(fullFileName, {reduceConstraints: !argv.fast}).then( (cir) => {
+compiler(fullFileName, {reduceConstraints: !argv.fast, verbose: argv.verbose}).then( (cir) => {
     fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
     process.exit(0);
 }, (err) => {

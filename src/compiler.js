@@ -65,7 +65,8 @@ async function compile(srcFile, options) {
         functions: {},
         functionParams: {},
         filePath: fullFilePath,
-        fileName: fullFileName
+        fileName: fullFileName,
+        verbose: options.verbose || false
     };
 
 
@@ -75,8 +76,10 @@ async function compile(srcFile, options) {
         throw new Error("A main component must be defined");
     }
 
+    if (ctx.verbose) console.log("Classify Signals");
     classifySignals(ctx);
 
+    if (ctx.verbose) console.log("Reduce Constraints");
     reduceConstants(ctx);
     if (options.reduceConstraints) {
 
@@ -217,6 +220,7 @@ function generateWitnessNames(ctx) {
 function reduceConstants(ctx) {
     const newConstraints = [];
     for (let i=0; i<ctx.constraints.length; i++) {
+        if ((ctx.verbose)&&(i%10000 == 0)) console.log("reducing constants: ", i);
         const c = lc.canonize(ctx, ctx.constraints[i]);
         if (!lc.isZero(c)) {
             newConstraints.push(c);
@@ -231,6 +235,7 @@ function reduceConstrains(ctx) {
     while (possibleConstraints.length>0) {
         let nextPossibleConstraints = {};
         for (let i in possibleConstraints) {
+            if ((ctx.verbose)&&(i%10000 == 0)) console.log("reducing constraints: ", i);
             if (!ctx.constraints[i]) continue;
             const c = ctx.constraints[i];
 
