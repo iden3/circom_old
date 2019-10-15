@@ -177,7 +177,7 @@ To waranty binary outputs:
     .
     .
     .
-    out[n+e-1] * (out[n+e-1] - 1) == 0
+    out[n+e-1] * (out[n+e-1] - 1) === 0
 
  */
 
