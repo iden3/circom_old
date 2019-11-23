@@ -22,10 +22,12 @@ const path = require("path");
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const __MASK__ = new bigInt(2).pow(253).minus(1);
+const sONE = 0;
 const assert = require("assert");
-const gen = require("./gencode");
+const buildC = require("./c_build");
 const exec = require("./exec");
 const lc = require("./lcalgebra");
+const Ctx = require("./ctx");
 
 module.exports = compile;
 
@@ -48,41 +50,34 @@ async function compile(srcFile, options) {
 
     assert(ast.type == "BLOCK");
 
-    const ctx = {
-        scopes: [{}],
-        signals: {
-            one: {
-                fullName: "one",
-                value: bigInt(1),
-                equivalence: "",
-                direction: ""
-            }
-        },
-        currentComponent: "",
-        constraints: [],
-        components: {},
-        templates: {},
-        functions: {},
-        functionParams: {},
-        filePath: fullFilePath,
-        fileName: fullFileName,
-        verbose: options.verbose || false
-    };
+    const ctx = new Ctx();
+    ctx.mainComponent = options.mainComponent || "main";
+    ctx.filePath= fullFilePath;
+    ctx.fileName= fullFileName;
+    ctx.includedFiles = {};
+    ctx.includedFiles[fullFileName] = src.split("\n");
+
+    ctx.verbose= options.verbose || false;
 
 
     exec(ctx, ast);
 
-    if (!ctx.components["main"]) {
+    if (ctx.error) {
+        throw(ctx.error);
+    }
+
+    if (ctx.getComponentIdx(ctx.mainComponent)<0) {
         throw new Error("A main component must be defined");
     }
 
     if (ctx.verbose) console.log("Classify Signals");
     classifySignals(ctx);
 
-    if (ctx.verbose) console.log("Reduce Constraints");
+    if (ctx.verbose) console.log("Reduce Constants");
     reduceConstants(ctx);
     if (options.reduceConstraints) {
 
+        if (ctx.verbose) console.log("Reduce Constraints");
         // Repeat while reductions are performed
         let oldNConstrains = -1;
         while (ctx.constraints.length != oldNConstrains) {
@@ -97,121 +92,134 @@ async function compile(srcFile, options) {
         throw(ctx.error);
     }
 
-    ctx.scopes = [{}];
 
-    const mainCode = gen(ctx,ast);
+    if (options.cSourceWriteStream) {
+        const cSrc = buildC(ctx);
+        options.cSourceWriteStream.write(cSrc);
+    }
+
+    // const mainCode = gen(ctx,ast);
     if (ctx.error) throw(ctx.error);
 
-    const def = buildCircuitDef(ctx, mainCode);
+    if (options.r1csWriteStream) {
+        buildR1cs(ctx, options.r1csWriteStream);
+    }
 
-    return def;
+    if (options.symWriteStream) {
+        buildSyms(ctx, options.symWriteStream);
+    }
+
+//    const def = buildCircuitDef(ctx, mainCode);
+
 }
+
 
 
 function classifySignals(ctx) {
 
+    const ERROR = 0xFFFF;
+
     function priorize(t1, t2) {
-        if ((t1 == "error") || (t2=="error")) return "error";
-        if (t1 == "internal") {
+        if ((t1 == ERROR) || (t2==ERROR)) return ERROR;
+        if (t1 == ctx.stINTERNAL) {
             return t2;
-        } else if (t2=="internal") {
+        } else if (t2==ctx.stINTERNAL) {
             return t1;
         }
-        if ((t1 == "one") || (t2 == "one")) return "one";
-        if ((t1 == "constant") || (t2 == "constant")) return "constant";
-        if (t1!=t2) return "error";
+        if ((t1 == ctx.stONE) || (t2 == ctx.stONE)) return ctx.stONE;
+        if ((t1 == ctx.stCONSTANT) || (t2 == ctx.stCONSTANT)) return ctx.stCONSTANT;
+        if ((t1 == ctx.stDISCARDED) || (t2 == ctx.stDISCARDED)) return ctx.stDISCARDED;
+        if (t1!=t2) return ERROR;
         return t1;
     }
 
     // First classify the signals
     for (let s in ctx.signals) {
         const signal = ctx.signals[s];
-        let tAll = "internal";
+        let tAll = ctx.stINTERNAL;
         let lSignal = signal;
         let end = false;
         while (!end) {
-            let t = lSignal.category || "internal";
-            if (s == "one") {
-                t = "one";
-            } else if (lSignal.value) {
-                t = "constant";
-            } else if (lSignal.component=="main") {
-                if (lSignal.direction == "IN") {
-                    if (lSignal.private) {
-                        t = "prvInput";
+            let t = lSignal.c || ctx.stINTERNAL;
+            if (s == 0) {
+                t = ctx.stONE;
+            } else if (lSignal.v) {
+                t = ctx.stCONSTANT;
+            } else if (lSignal.o & ctx.MAIN) {
+                if (lSignal.o & ctx.IN) {
+                    if (lSignal.o & ctx.PRV) {
+                        t = ctx.stPRVINPUT;
                     } else {
-                        t = "pubInput";
+                        t = ctx.stPUBINPUT;
                     }
-                } else if (lSignal.direction == "OUT") {
-                    t = "output";
+                } else if (lSignal.o & ctx.OUT) {
+                    t = ctx.stOUTPUT;
                 }
             }
             tAll = priorize(t,tAll);
-            if (lSignal.equivalence) {
-                lSignal = ctx.signals[lSignal.equivalence];
+            if (lSignal.e>=0) {
+                lSignal = ctx.signals[lSignal.e];
             } else {
                 end=true;
             }
         }
-        if (tAll == "error") {
+        if (tAll == ERROR) {
             throw new Error("Incompatible types in signal: " + s);
         }
-        lSignal.category = tAll;
+        lSignal.c = tAll;
     }
 }
 
 
 function generateWitnessNames(ctx) {
-
-    const totals = {
-        "output": 0,
-        "pubInput": 0,
-        "one": 0,
-        "prvInput": 0,
-        "internal": 0,
-        "constant": 0,
-    };
+    const totals = {};
+    totals[ctx.stONE] = 0;
+    totals[ctx.stOUTPUT] = 0;
+    totals[ctx.stPUBINPUT] = 0;
+    totals[ctx.stPRVINPUT] = 0;
+    totals[ctx.stINTERNAL] = 0;
+    totals[ctx.stDISCARDED] = 0;
+    totals[ctx.stCONSTANT] = 0;
     const ids = {};
 
-    const counted = {};
-
     // First classify the signals
-    for (let s in ctx.signals) {
+    for (let s=0; s<ctx.signals.length; s++) {
+
+        if ((ctx.verbose)&&(s%10000 == 0)) console.log("generate witness (counting): ", s);
+
         const signal = ctx.signals[s];
         let lSignal = signal;
-        while (lSignal.equivalence) lSignal = ctx.signals[lSignal.equivalence];
+        while (lSignal.e>=0) lSignal = ctx.signals[lSignal.e];
 
-        if (!counted[lSignal.fullName]) {
-            counted[lSignal.fullName] = true;
-            totals[lSignal.category] ++;
+        if (!( lSignal.o & ctx.COUNTED) ) {
+            lSignal.o |= ctx.COUNTED;
+            totals[lSignal.c] ++;
         }
     }
 
-    ids["one"] = 0;
-    ids["output"] = 1;
-    ids["pubInput"] = ids["output"] + totals["output"];
-    ids["prvInput"] = ids["pubInput"] + totals["pubInput"];
-    ids["internal"] = ids["prvInput"] + totals["prvInput"];
-    ids["constant"] = ids["internal"] + totals["internal"];
-    const nSignals = ids["constant"] + totals["constant"];
+    ids[ctx.stONE] = 0;
+    ids[ctx.stOUTPUT] = 1;
+    ids[ctx.stPUBINPUT] = ids[ctx.stOUTPUT] + totals[ctx.stOUTPUT];
+    ids[ctx.stPRVINPUT] = ids[ctx.stPUBINPUT] + totals[ctx.stPUBINPUT];
+    ids[ctx.stINTERNAL] = ids[ctx.stPRVINPUT] + totals[ctx.stPRVINPUT];
+    ids[ctx.stDISCARDED] = ids[ctx.stINTERNAL] + totals[ctx.stINTERNAL];
+    ids[ctx.stCONSTANT] = ids[ctx.stDISCARDED] + totals[ctx.stDISCARDED];
+    const nSignals = ids[ctx.stCONSTANT] + totals[ctx.stCONSTANT];
 
-    ctx.signalNames = new Array(nSignals);
-    for (let i=0; i< nSignals; i++) ctx.signalNames[i] = [];
-    ctx.signalName2Idx = {};
+    for (let s=0; s<ctx.signals.length; s++) {
 
-    for (let s in ctx.signals) {
+        if ((ctx.verbose)&&(s%10000 == 0)) console.log("seting id: ", s);
+
         const signal = ctx.signals[s];
         let lSignal = signal;
-        while (lSignal.equivalence) {
-            lSignal = ctx.signals[lSignal.equivalence];
+        while (lSignal.e>=0) {
+            lSignal = ctx.signals[lSignal.e];
         }
         if ( typeof(lSignal.id) === "undefined" ) {
-            lSignal.id = ids[lSignal.category] ++;
+            lSignal.id = ids[lSignal.c] ++;
         }
 
         signal.id = lSignal.id;
-        ctx.signalNames[signal.id].push(signal.fullName);
-        ctx.signalName2Idx[signal.fullName] = signal.id;
     }
 
     ctx.totals = totals;
@@ -225,6 +233,7 @@ function reduceConstants(ctx) {
         if (!lc.isZero(c)) {
             newConstraints.push(c);
         }
+        delete ctx.constraints[i];
     }
     ctx.constraints = newConstraints;
 }
@@ -232,10 +241,12 @@ function reduceConstants(ctx) {
 function reduceConstrains(ctx) {
     indexVariables();
     let possibleConstraints = Object.keys(ctx.constraints);
+    let ii=0;
     while (possibleConstraints.length>0) {
         let nextPossibleConstraints = {};
         for (let i in possibleConstraints) {
-            if ((ctx.verbose)&&(i%10000 == 0)) console.log("reducing constraints: ", i);
+            ii++;
+            if ((ctx.verbose)&&(ii%10000 == 0)) console.log("reducing constraints: ", i);
             if (!ctx.constraints[i]) continue;
             const c = ctx.constraints[i];
 
@@ -248,13 +259,13 @@ function reduceConstrains(ctx) {
 
             // Mov to C if possible.
             if (isConstant(c.a)) {
-                const ct = {type: "NUMBER", value: c.a.values["one"]};
+                const ct = {type: "NUMBER", value: c.a.values[sONE]};
                 c.c = lc.add(lc.mul(c.b, ct), c.c);
                 c.a = { type: "LINEARCOMBINATION", values: {} };
                 c.b = { type: "LINEARCOMBINATION", values: {} };
             }
             if (isConstant(c.b)) {
-                const ct = {type: "NUMBER", value: c.b.values["one"]};
+                const ct = {type: "NUMBER", value: c.b.values[sONE]};
                 c.c = lc.add(lc.mul(c.a, ct), c.c);
                 c.a = { type: "LINEARCOMBINATION", values: {} };
                 c.b = { type: "LINEARCOMBINATION", values: {} };
@@ -265,8 +276,8 @@ function reduceConstrains(ctx) {
                 if (isolatedSignal) {
 
                     let lSignal = ctx.signals[isolatedSignal];
-                    while (lSignal.equivalence) {
-                        lSignal = ctx.signals[lSignal.equivalence];
+                    while (lSignal.e>=0) {
+                        lSignal = ctx.signals[lSignal.e];
                     }
 
 
@@ -296,7 +307,7 @@ function reduceConstrains(ctx) {
 
                     ctx.constraints[i] = null;
 
-                    lSignal.category = "constant";
+                    lSignal.c = ctx.stDISCARDED;
                 } else {
                     if (lc.isZero(c.c)) ctx.constraints[i] = null;
                 }
@@ -332,8 +343,8 @@ function reduceConstrains(ctx) {
     function unindexVariables() {
         for (let s in ctx.signals) {
             let lSignal = ctx.signals[s];
-            while (lSignal.equivalence) {
-                lSignal = ctx.signals[lSignal.equivalence];
+            while (lSignal.e>=0) {
+                lSignal = ctx.signals[lSignal.e];
             }
             if (lSignal.inConstraints) delete lSignal.inConstraints;
         }
@@ -342,8 +353,8 @@ function reduceConstrains(ctx) {
 /*
     function unlinkSignal(signalName, cidx) {
         let lSignal = ctx.signals[signalName];
-        while (lSignal.equivalence) {
-            lSignal = ctx.signals[lSignal.equivalence];
+        while (lSignal.e>=0) {
+            lSignal = ctx.signals[lSignal.e];
         }
         if ((lSignal.inConstraints)&&(lSignal.inConstraints[cidx])) {
             delete lSignal.inConstraints[cidx];
@@ -353,8 +364,8 @@ function reduceConstrains(ctx) {
 
     function linkSignal(signalName, cidx) {
         let lSignal = ctx.signals[signalName];
-        while (lSignal.equivalence) {
-            lSignal = ctx.signals[lSignal.equivalence];
+        while (lSignal.e>=0) {
+            lSignal = ctx.signals[lSignal.e];
         }
         if (!lSignal.inConstraints) lSignal.inConstraints = {};
         lSignal.inConstraints[cidx] = true;
@@ -363,21 +374,22 @@ function reduceConstrains(ctx) {
     function getFirstInternalSignal(ctx, l) {
         for (let k in l.values) {
             const signal = ctx.signals[k];
-            if (signal.category == "internal") return k;
+            if (signal.c == ctx.stINTERNAL) return k;
         }
         return null;
     }
 
     function isConstant(l) {
         for (let k in l.values) {
-            if ((k != "one") && (!l.values[k].isZero())) return false;
+            if ((k != sONE) && (!l.values[k].isZero())) return false;
         }
-        if (!l.values["one"] || l.values["one"].isZero()) return false;
+        if (!l.values[sONE] || l.values[sONE].isZero()) return false;
         return true;
     }
 
 }
 
+/*
 
 function buildCircuitDef(ctx, mainCode) {
     const res = {
@@ -436,6 +448,9 @@ function buildCircuitDef(ctx, mainCode) {
     return res;
 }
 
+*/
+
+
 /*
     Build constraints
 
@@ -483,6 +498,97 @@ function buildConstraints(ctx) {
     }
 
     return res;
+}
+
+function buildR1cs(ctx, strm) {
+
+    strm.write(Buffer.from([0x72,0x31,0x63,0x73]));
+    writeU32(1);
+    writeU32(4);
+    writeU32(1 + ctx.totals.output + ctx.totals.pubInput + ctx.totals.prvInput + ctx.totals.internal);
+    writeU32(ctx.totals.output);
+    writeU32(ctx.totals.pubInput);
+    writeU32(ctx.totals.prvInput);
+    writeU32(ctx.constraints.length);
+
+    for (let i=0; i<ctx.constraints.length; i++) {
+        if ((ctx.verbose)&&(i%10000 == 0)) console.log("writing constraint: ", i);
+        writeConstraint(ctx.constraints[i]);
+    }
+
+    function writeU32(v) {
+        const b = Buffer.allocUnsafe(4);
+        b.writeInt32LE(v);
+        strm.write(b);
+    }
+
+    function writeConstraint(c) {
+        writeLC(c.a);
+        writeLC(c.b);
+        writeLC(lc.negate(c.c));
+    }
+
+    function writeLC(lc) {
+        const idxs = Object.keys(lc.values);
+        writeU32(idxs.length);
+        for (let s in lc.values) {
+            let lSignal = ctx.signals[s];
+
+            while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+
+            writeU32(lSignal.id);
+            writeBigInt(lc.values[s]);
+        }
+    }
+
+    function writeBigInt(n) {
+        const bytes = [];
+        let r = bigInt(n);
+        while (r.greater(bigInt.zero)) {
+            bytes.push(r.and(bigInt("255")).toJSNumber());
+            r = r.shiftRight(8);
+        }
+        assert(bytes.length<=32);
+        assert(bytes.length>0);
+        strm.write( Buffer.from([bytes.length, ...bytes ]));
+    }
+}
+
+function buildSyms(ctx, strm) {
+
+
+
+    addSymbolsComponent(ctx.mainComponent + ".", ctx.getComponentIdx(ctx.mainComponent));
+
+
+    function addSymbolsComponent(prefix, idComponet) {
+        for (let n in  ctx.components[idComponet].names.o) {
+            const entrie = ctx.components[idComponet].names.o[n];
+            addSymbolArray(prefix+n, entrie.type, entrie.sizes, entrie.offset);
+        }
+    }
+
+    function addSymbolArray(prefix, type, sizes, offset) {
+        if (sizes.length==0) {
+            if (type == "S") {
+                let s=offset;
+                while (ctx.signals[s].e >= 0) s = ctx.signals[s].e;
+                let wId = ctx.signals[s].id;
+                if (typeof(wId) == "undefined") wId=-1;
+                strm.write(`${offset},${wId},${prefix}\n`);
+            } else {
+                addSymbolsComponent(prefix+".", offset);
+            }
+            return 1;
+        } else {
+            let acc = 0;
+            for (let i=0; i<sizes[0]; i++) {
+                acc += addSymbolArray(`${prefix}[${i}]`, type, sizes.slice(1), offset + acc );
+            }
+            return acc;
+        }
+    }
+
 }
 
 

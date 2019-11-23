@@ -60,6 +60,7 @@ QEQ     QEQ     ERR     ERR
 
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const sONE = 0;
 
 exports.add = add;
 exports.mul = mul;
@@ -79,7 +80,7 @@ function signal2lc(a) {
             type: "LINEARCOMBINATION",
             values: {}
         };
-        lc.values[a.fullName] = bigInt(1);
+        lc.values[a.sIdx] = bigInt(1);
         return lc;
     } else {
         return a;
@@ -163,10 +164,10 @@ function addLCNum(a,b) {
         return { type: "ERROR", errStr: "LinearCombination + undefined" };
     }
     if (b.value.isZero()) return res;
-    if (!res.values["one"]) {
-        res.values["one"]=bigInt(b.value);
+    if (!res.values[sONE]) {
+        res.values[sONE]=bigInt(b.value);
     } else {
-        res.values["one"]= res.values["one"].add(b.value).mod(__P__);
+        res.values[sONE]= res.values[sONE].add(b.value).mod(__P__);
     }
     return res;
 }
@@ -278,16 +279,16 @@ function mulQEQNum(a,b) {
     return res;
 }
 
-function getSignalValue(ctx, signalName) {
-    const s = ctx.signals[signalName];
-    if (s.equivalence != "") {
-        return getSignalValue(ctx, s.equivalence);
+function getSignalValue(ctx, sIdx) {
+    const s = ctx.signals[sIdx];
+    if (s.e >= 0) {
+        return getSignalValue(ctx, s.e);
     } else {
         const res = {
             type: "NUMBER"
         };
-        if (s.value) {
-            res.value = s.value;
+        if (s.v) {
+            res.value = s.v;
         }
         return res;
     }
@@ -297,7 +298,7 @@ function evaluate(ctx, n) {
     if (n.type == "NUMBER") {
         return n;
     } else if (n.type == "SIGNAL") {
-        return getSignalValue(ctx, n.fullName);
+        return getSignalValue(ctx, n.sIdx);
     } else if (n.type == "LINEARCOMBINATION") {
         const v= {
             type: "NUMBER",
@@ -362,7 +363,7 @@ function toQEQ(a) {
             type: "QEQ",
             a: {type: "LINEARCOMBINATION", values: {}},
             b: {type: "LINEARCOMBINATION", values: {}},
-            c: {type: "LINEARCOMBINATION", values: {"one": bigInt(a.value)}}
+            c: {type: "LINEARCOMBINATION", values: {sONE: bigInt(a.value)}}
         };
     } else if (a.type == "LINEARCOMBINATION") {
         return {
@@ -415,11 +416,11 @@ function toString(a, ctx) {
                 if (!c.equals(1)) {
                     S = S + c.toString() + "*";
                 }
-                let sigName = k;
+                let sIdx = k;
                 if (ctx) {
-                    while (ctx.signals[sigName].equivalence) sigName = ctx.signals[sigName].equivalence;
+                    while (ctx.signals[sIdx].e>=0) sIdx = ctx.signals[sIdx].e;
                 }
-                S =  S + sigName;
+                S =  S + "[" + sIdx + "]";
             }
         }
         if (S=="") return "0"; else return S;
@@ -437,13 +438,13 @@ function canonize(ctx, a) {
         const res = clone(a);
         for (let k in a.values) {
             let s = k;
-            while (ctx.signals[s].equivalence) s= ctx.signals[s].equivalence;
-            if ((typeof(ctx.signals[s].value) != "undefined")&&(k != "one")) {
+            while (ctx.signals[s].e>=0) s= ctx.signals[s].e;
+            if ((typeof(ctx.signals[s].value) != "undefined")&&(k != sONE)) {
                 const v = res.values[k].times(ctx.signals[s].value).mod(__P__);
-                if (!res.values["one"]) {
-                    res.values["one"]=v;
+                if (!res.values[sONE]) {
+                    res.values[sONE]=v;
                 } else {
-                    res.values["one"]= res.values["one"].add(v).mod(__P__);
+                    res.values[sONE]= res.values[sONE].add(v).mod(__P__);
                 }
                 delete res.values[k];
             } else if (s != k) {

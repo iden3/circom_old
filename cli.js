@@ -30,8 +30,11 @@ const version = require("./package").version;
 
 const argv = require("yargs")
     .version(version)
-    .usage("circom [input source circuit file] -o [output definition circuit file]")
+    .usage("circom [input source circuit file] -o [output definition circuit file] -c [output c file]")
     .alias("o", "output")
+    .alias("c", "csource")
+    .alias("s", "sym")
+    .alias("r", "r1cs")
     .help("h")
     .alias("h", "help")
     .option("verbose", {
@@ -63,11 +66,49 @@ if (argv._.length == 0) {
 }
 
 const fullFileName = path.resolve(process.cwd(), inputFile);
-const outName = argv.output ?  argv.output : "circuit.json";
+const fileName = path.basename(fullFileName, ".circom");
+const outName = argv.output ?  argv.output : fileName + ".json";
+const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
+const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
+const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 
-compiler(fullFileName, {reduceConstraints: !argv.fast, verbose: argv.verbose}).then( (cir) => {
-    fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
-    process.exit(0);
+const options = {};
+options.reduceConstraints = !argv.fast;
+options.verbose = argv.verbose || false;
+if (argv.csource) {
+    options.cSourceWriteStream = fs.createWriteStream(cSourceName);
+}
+if (argv.r1cs) {
+    options.r1csWriteStream = fs.createWriteStream(r1csName);
+}
+if (argv.sym) {
+    options.symWriteStream = fs.createWriteStream(symName);
+}
+
+compiler(fullFileName, options).then( () => {
+    let r1csDone = false;
+    let cSourceDone = false;
+    if (options.r1csWriteStream) {
+        options.r1csWriteStream.end(() => {
+            r1csDone = true;
+            finishIfDone();
+        });
+    } else {
+        r1csDone = true;
+    }
+    if (options.cSourceWriteStream) {
+        options.cSourceWriteStream.end(() => {
+            cSourceDone = true;
+            finishIfDone();
+        });
+    } else {
+        cSourceDone = true;
+    }
+    function finishIfDone() {
+        if ((r1csDone)&&(cSourceDone)) {
+            process.exit(0);
+        }
+    }
 }, (err) => {
 //    console.log(err);
     console.log(err.stack);

@@ -188,26 +188,28 @@ function genBlock(ctx, ast) {
 }
 
 function genTemplateDef(ctx, ast) {
-    let S = "function(ctx) ";
 
-    const newScope = {};
+    if (ctx.f) return error(ctx, ast, "Already in function");
+
+    ctx.f = ctx.module.addFunction(ast.name);
+    ctx.c = ctx.f.getCodeBuilder();
+
+    ctx.scope = {};
     for (let i=0; i< ast.params.length; i++) {
-        newScope[ast.params[i]] = { type: "VARIABLE" };
+        ctx.f.addParam(ast.params[i].name, "i32");
+        ctx.scope[ast.params[i].name] = {
+            type: "PARAM",
+            sels: ast.params[i].sels,
+            getter: () => { return ctx.c.getLocal(ast.params[i].name); },
+            setter: (v) => { return ctx.c.setLocal(ast.params[i].name, v); }
+        };
     }
 
-    ctx.scopes.push(newScope);
-    S += genBlock(ctx, ast.block);
-    ctx.scopes.pop();
+    genBlock(ctx, ast.block);
 
-//    const scope = ctx.scopes[ctx.scopes.length-1];
-    const scope = ctx.scopes[0];  // Scope for templates is top
-
-    scope[ast.name] = {
-        type: "TEMPLATE"
-    };
-
-    ctx.templates[ast.name] = S;
-    return "";
+    ctx.scope = null;
+    ctx.c = null;
+    ctx.f = null;
 }
 
 function genFunctionDef(ctx, ast) {

@@ -214,16 +214,38 @@ function getScope(ctx, name, selectors) {
     }
 
 
-    function select(v, s) {
-        s = s || [];
-        if (s.length == 0)  return v;
-        return select(v[s[0]], s.slice(1));
+    function select(v, sels) {
+        if (v.type == "SIGNAL") {
+            return reduce(v, sels, "sIdx");
+        } else if (v.type == "COMPONENT") {
+            return reduce(v, sels, "cIdx");
+        } else {
+            const s = sels || [];
+            if (s.length == 0)  return v;
+            return select(v[s[0]], s.slice(1));
+        }
     }
 
     for (let i=ctx.scopes.length-1; i>=0; i--) {
         if (ctx.scopes[i][name]) return select(ctx.scopes[i][name], sels);
     }
     return null;
+
+    function reduce(v, _sels, idxName) {
+        let sels = _sels || [];
+        let sizes = v.sizes || [];
+
+        let accSizes = [1];
+        for (let i=sizes.length-1; i>0; i--) {
+            accSizes = [accSizes[0]*sizes[i], ...accSizes];
+        }
+        const res = Object.assign({}, v);
+        res.sizes = sizes.slice(sels.length);
+        for (let i=0; i<sels.length; i++) {
+            res[idxName] += sels[i]*accSizes[i];
+        }
+        return res;
+    }
 }
 
 function getScopeLevel(ctx, name) {
@@ -255,6 +277,10 @@ function execTemplateDef(ctx, ast) {
         filePath: ctx.filePath,
         scopes: copyScope(ctx.scopes)
     };
+    ctx.templates[ast.name] = {
+        block: ast.block,
+        params: ast.params
+    };
 }
 
 function execFunctionDef(ctx, ast) {
@@ -272,6 +298,10 @@ function execFunctionDef(ctx, ast) {
         filePath: ctx.filePath,
         scopes: copyScope(ctx.scopes)
     };
+    ctx.functions[ast.name] = {
+        block: ast.block,
+        params: ast.params
+    };
 }
 
 
@@ -280,8 +310,6 @@ function execDeclareComponent(ctx, ast) {
 
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
     if (getScope(ctx, ast.name.name)) return error(ctx, ast, "Name already exists: "+ast.name.name);
-
-    const baseName = ctx.currentComponent ? ctx.currentComponent + "." + ast.name.name : ast.name.name;
 
     const sizes=[];
     for (let i=0; i< ast.name.selectors.length; i++) {
@@ -293,16 +321,13 @@ function execDeclareComponent(ctx, ast) {
         sizes.push( size.value.toJSNumber() );
     }
 
+    const cIdx = ctx.addComponent(ast.name.name, sizes);
 
-    scope[ast.name.name] = iterateSelectors(ctx, sizes, baseName, function(fullName) {
-
-        ctx.components[fullName] = "UNINSTANTIATED";
-
-        return {
-            type: "COMPONENT",
-            fullName: fullName
-        };
-    });
+    scope[ast.name.name] = {
+        type: "COMPONENT",
+        sizes: sizes,
+        cIdx: Array.isArray(cIdx) ? cIdx[0] : cIdx
+    };
 
     return {
         type: "VARIABLE",
@@ -333,15 +358,20 @@ function execInstantiateComponet(ctx, vr, fn) {
 
         paramValues.push(v);
     }
-    if (template.params.length != paramValues.length) error(ctx, fn, "Invalid Number of parameters");
+    if (template.params.length != paramValues.length) return error(ctx, fn, "Invalid Number of parameters");
 
-    const vv = getScope(ctx, componentName, vr.selectors);
 
-    if (!vv) return error(ctx, vr, "Component not defined"+ componentName);
+    const vComp = getScope(ctx, componentName, vr.selectors);
+    if (vComp.type != "COMPONENT") return error(ctx, fn, "Assigning to a non component");
+    const cIdx = vComp.cIdx;
+    if (cIdx == -1) return error(ctx, fn, "Component not defined");
+    let l=1;
+    for (let i=0; i<vComp.sizes.length; i++) l = l*vComp.sizes[i];
+    for (let i=0; i<l; i++) {
+        instantiateComponent(cIdx+i);
+    }
 
-    instantiateComponent(vv);
-
-    function instantiateComponent(varVal) {
+    function instantiateComponent(cIdx) {
 
         function extractValue(v) {
             if (Array.isArray(v)) {
@@ -351,23 +381,25 @@ function execInstantiateComponet(ctx, vr, fn) {
             }
         }
 
-        if (Array.isArray(varVal)) {
-            for (let i =0; i<varVal.length; i++) {
-                instantiateComponent(varVal[i]);
-            }
-            return;
-        }
-
-        if (ctx.components[varVal.fullName] != "UNINSTANTIATED") error(ctx, fn, "Component already instantiated");
+        if (ctx.components[cIdx]) return error(ctx, fn, "Component already instantiated");
 
         const oldComponent = ctx.currentComponent;
         const oldFileName = ctx.fileName;
         const oldFilePath = ctx.filePath;
-        ctx.currentComponent = varVal.fullName;
+        const oldMain = ctx.main;
 
-        ctx.components[ctx.currentComponent] = {
-            signals: [],
-            params: {}
+        if ((componentName == "main")&&(ctx.currentComponent==-1)) {
+            ctx.main=true;
+        } else {
+            ctx.main=false;
+        }
+
+        ctx.currentComponent = cIdx;
+
+        ctx.components[cIdx] = {
+            params: {},
+            names: ctx.newTableName(),
+            nInSignals: 0
         };
 
         const oldScopes = ctx.scopes;
@@ -379,20 +411,22 @@ function execInstantiateComponet(ctx, vr, fn) {
         const scope = {};
         for (let i=0; i< template.params.length; i++) {
             scope[template.params[i]] = paramValues[i];
-            ctx.components[ctx.currentComponent].params[template.params[i]] = extractValue(paramValues[i]);
+            ctx.components[cIdx].params[template.params[i]] = extractValue(paramValues[i]);
         }
 
-        ctx.components[ctx.currentComponent].template = templateName;
+        ctx.components[cIdx].template = templateName;
         ctx.fileName = template.fileName;
         ctx.filePath = template.filePath;
         ctx.scopes = copyScope( template.scopes );
         ctx.scopes.push(scope);
+
 
         execBlock(ctx, template.block);
 
         ctx.fileName = oldFileName;
         ctx.filePath = oldFilePath;
         ctx.currentComponent = oldComponent;
+        ctx.main = oldMain;
         ctx.scopes = oldScopes;
     }
 }
@@ -461,32 +495,47 @@ function execDeclareSignal(ctx, ast) {
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
     if (getScope(ctx, ast.name.name)) return error(ctx, ast, "Name already exists: "+ast.name.name);
 
-    const baseName = ctx.currentComponent ? ctx.currentComponent + "." + ast.name.name : ast.name.name;
-
     const sizes=[];
+    let totalSize=1;
     for (let i=0; i< ast.name.selectors.length; i++) {
         const size = exec(ctx, ast.name.selectors[i]);
         if (ctx.error) return;
 
         if (size.type != "NUMBER") return error(ctx, ast.name.selectors[i], "expected a number");
-        sizes.push( size.value.toJSNumber() );
+        const s = size.value.toJSNumber();
+        totalSize *= s;
+        sizes.push( s );
     }
 
-    scope[ast.name.name] = iterateSelectors(ctx, sizes, baseName, function(fullName) {
-        ctx.signals[fullName] = {
-            fullName: fullName,
-            direction: ast.declareType == "SIGNALIN" ? "IN" : (ast.declareType == "SIGNALOUT" ? "OUT" : ""),
-            private: ast.private,
-            component: ctx.currentComponent,
-            equivalence: "",
-            alias: [fullName]
+    let sIdx = ctx.addSignal(ast.name.name, sizes);
+    if (!Array.isArray(sIdx)) sIdx = [sIdx, sIdx+1];
+    for (let i=sIdx[0]; i<sIdx[1]; i++) {
+        ctx.signals[i] = {
+            o: 0,
+            e: -1
         };
-        ctx.components[ctx.currentComponent].signals.push(fullName);
-        return {
-            type: "SIGNAL",
-            fullName: fullName,
-        };
-    });
+
+        if (ast.declareType == "SIGNALIN") {
+            ctx.signals[i].o |= ctx.IN;
+            ctx.components[ctx.currentComponent].nInSignals+=1;
+        }
+        if (ast.declareType == "SIGNALOUT") {
+            ctx.signals[i].o |= ctx.OUT;
+        }
+        if (ast.private ) {
+            ctx.signals[i].o |= ctx.PRV;
+        }
+        if (ctx.main) {
+            ctx.signals[i].o |= ctx.MAIN;
+        }
+
+//        ctx.components[ctx.currentComponent].signals.push(i);
+    }
+    scope[ast.name.name] = {
+        type: "SIGNAL",
+        sizes: sizes,
+        sIdx: sIdx[0]
+    };
     return {
         type: "VARIABLE",
         name: ast.name.name,
@@ -535,10 +584,10 @@ function execVariable(ctx, ast) {
     if (!v) return error(ctx, ast, "Variable not defined");
 
     // If the signal has an assigned value (constant) just return the constant
-    if ((v.type == "SIGNAL") && (ctx.signals[v.fullName].value)) {
+    if ((v.type == "SIGNAL") && (ctx.signals[v.sIdx].value)) {
         return {
             type: "NUMBER",
-            value: ctx.signals[v.fullName].value
+            value: ctx.signals[v.sIdx].value
         };
     }
     let res;
@@ -547,23 +596,43 @@ function execVariable(ctx, ast) {
 }
 
 function execPin(ctx, ast) {
-    const component = getScope(ctx, ast.component.name, ast.component.selectors);
-    if (!component) return error(ctx, ast.component, "Component does not exists: "+ast.component.name);
-    if (ctx.error) return;
-    let signalFullName = component.fullName + "." + ast.pin.name;
+    const selsC = [];
+    for (let i=0; i< ast.component.selectors.length; i++) {
+        const sel = exec(ctx, ast.component.selectors[i]);
+        if (sel.type != "NUMBER") return error(ctx, ast.pin.selectors[i], "expected a number");
+        selsC.push(sel.value.toJSNumber());
+    }
+
+    const cIdx = ctx.getComponentIdx(ast.component.name, selsC);
+    if (cIdx<0) return error(ctx, ast.component, "Component does not exists: "+ast.component.name);
+
+    const selsP = [];
     for (let i=0; i< ast.pin.selectors.length; i++) {
         const sel = exec(ctx, ast.pin.selectors[i]);
-        if (ctx.error) return;
-
         if (sel.type != "NUMBER") return error(ctx, ast.pin.selectors[i], "expected a number");
-
-        signalFullName += "[" + sel.value.toJSNumber() + "]";
+        selsP.push(sel.value.toJSNumber());
     }
-    if (!ctx.signals[signalFullName]) error(ctx, ast, "Signal not defined:" + signalFullName);
+    const sIdx = ctx.components[cIdx].names.getSignalIdx(ast.pin.name, selsP);
+
+    if (sIdx<0) error(ctx, ast, "Signal not defined:" + buildFullName() );
     return {
         type: "SIGNAL",
-        fullName: signalFullName
+        sIdx: sIdx
     };
+
+    function buildFullName() {
+        return ast.component.name + sels2str(selsC) + "." + ast.pin.name + sels2str(selsP);
+    }
+
+    function sels2str(sels) {
+        let S = "";
+        for (let i=0; i< sels.length; i++) {
+            const sel = exec(ctx, ast.pin.selectors[i]);
+            if (sel.type != "NUMBER") return error(ctx, ast.pin.selectors[i], "expected a number");
+            S += "[" + sel.value.toString() + "]";
+        }
+        return S;
+    }
 }
 
 function execFor(ctx, ast) {
@@ -994,13 +1063,13 @@ function execSignalAssign(ctx, ast) {
     if (!dst) return  error(ctx, ast, "Signal not defined");
     if (dst.type != "SIGNAL") return  error(ctx, ast, "Signal assigned to a non signal");
 
-    let sDest=ctx.signals[dst.fullName];
-    if (!sDest) return error(ctx, ast, "Invalid signal: "+dst.fullName);
+    let sDest=ctx.signals[dst.sIdx];
+    if (!sDest) return error(ctx, ast, "Invalid signal: "+dst.sIdx);
 
-    let isOut = (sDest.component == "main")&&(sDest.direction=="OUT");
-    while (sDest.equivalence) {
-        sDest=ctx.signals[sDest.equivalence];
-        isOut = isOut || ((sDest.component == "main")&&(sDest.direction=="OUT"));
+    let isOut = (sDest.o & ctx.MAIN)&&(sDest.o & ctx.OUT);
+    while (sDest.e>=0) {
+        sDest=ctx.signals[sDest.e];
+        isOut = isOut || ((sDest.o & ctx.MAIN)&&(sDest.o & ctx.OUT));
     }
 
     if (sDest.value) return error(ctx, ast, "Signals cannot be assigned twice");
@@ -1029,18 +1098,17 @@ function execSignalAssign(ctx, ast) {
 
     let assignValue = true;
     if (src.type == "SIGNAL") {
-        let sSrc = ctx.signals[src.fullName];
-        let isIn  = (sSrc.component == "main")&&(sSrc.direction == "IN");
-        while (sSrc.equivalence) {
-            sSrc=ctx.signals[sSrc.equivalence];
-            isIn = isIn || ((sSrc.component == "main")&&(sSrc.direction == "IN"));
+        let sSrc = ctx.signals[src.sIdx];
+        let isIn  = (sSrc.o & ctx.main)&&(sSrc.o & ctx.IN);
+        while (sSrc.e>=0) {
+            sSrc=ctx.signals[sSrc.e];
+            isIn = isIn || ((sSrc.o & ctx.main)&&(sSrc.o & ctx.IN));
         }
 
         // Skip if an out is assigned directly to an input.
         if ((!isIn)||(!isOut)) {
-            sDest.equivalence = src.fullName;
-            sDest.alias = sDest.alias.concat(src.alias);
-            while (sDest.equivalence) sDest=ctx.signals[sDest.equivalence];
+            sDest.e = src.sIdx;
+            while (sDest.e >= 0) sDest=ctx.signals[sDest.e];
             assignValue = false;
         }
     }
@@ -1095,9 +1163,10 @@ function execInclude(ctx, ast) {
     ctx.includedFiles = ctx.includedFiles || [];
     if (ctx.includedFiles[incFileName]) return;
 
-    ctx.includedFiles[incFileName] = true;
 
     const src = fs.readFileSync(incFileName, "utf8");
+
+    ctx.includedFiles[incFileName] = src.split("\n");
 
     if (!src) return error(ctx, ast, "Include file not found: "+incFileName);
 
