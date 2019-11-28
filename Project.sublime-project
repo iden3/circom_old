@@ -1,0 +1,24 @@
+  {
+    "folders": [
+        {
+            "path": ".",
+        }
+    ],
+    "settings": {
+        "SublimeAnarchyDebug": {
+            "debug": {
+                "executable": "${project_path}/test/circuits/add",
+                "params": [
+			"addin.json",
+			"out.bin",
+                ],
+                "path": [
+                ],
+                "environment": [
+                ],
+                "working_dir": "${project_path}"
+            }
+        }
+    }
+  }
+

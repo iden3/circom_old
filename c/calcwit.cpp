@@ -25,8 +25,12 @@ Circom_CalcWit::Circom_CalcWit(Circom_Circuit *aCircuit) {
     // Initialize remaining signals
     for (int i=1; i<circuit->NSignals; i++) mpz_init2(signalValues[i], 256);
 
-    reset();
+    BigInt p;
+    mpz_init_set_str(p, circuit->P, 10);
+    field = new ZqField(&p);
+    mpz_clear(p);
 
+    reset();
 }
 
 void Circom_CalcWit::reset() {
@@ -43,6 +47,8 @@ void Circom_CalcWit::reset() {
 
 
 Circom_CalcWit::~Circom_CalcWit() {
+    delete field;
+
 #ifdef SANITY_CHECK
     delete signalAssigned;
 #endif

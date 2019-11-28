@@ -17,15 +17,18 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-const utils = require("./utils");
 const assert = require("assert");
-const gen = require("./c_gen");
+const bigInt = require("big-integer");
+const utils = require("./utils");
+const gen = require("./c_gen").gen;
+const newRef = require("./c_gen").newRef;
 
 module.exports =  buildC;
 
 
 function buildC(ctx) {
     ctx.code = "";
+    ctx.conditionalCodeHeader = "";
     ctx.tmpNames = {};
     ctx.getTmpName = getTmpName;
     ctx.codes_sizes = [];
@@ -158,6 +161,7 @@ function buildCode(ctx) {
 
             const scope = {_prefix : ""};
             ctx.scopes = [scope];
+            ctx.conditionalCode = false;
             ctx.nScopes = 0;
             ctx.code = "";
             ctx.codeHeader = "// Header\n";
@@ -165,7 +169,7 @@ function buildCode(ctx) {
             ctx.tmpNames = Object.assign({},globalNames);
 
             for (let p in ctx.components[i].params) {
-                newRef(ctx, "BIGINT", p, ctx.components[i].params[p]);
+                newRef(ctx, "BIGINT", p, bigInt(ctx.components[i].params[p]));
             }
 
             gen(ctx, ctx.templates[ctx.components[i].template].block);
@@ -212,6 +216,7 @@ function buildHeader(ctx) {
            `#define NInputs ${ctx.components[ ctx.getComponentIdx("main") ].nInSignals}\n`+
            `#define NOutputs ${ctx.totals[ ctx.stOUTPUT ]}\n`+
            `#define NVars ${ctx.totals[ctx.stONE] + ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT] + ctx.totals[ctx.stPRVINPUT] + ctx.totals[ctx.stINTERNAL]}\n` +
+           `#define __P__ "${ctx.field.p.toString()}"\n` +
            "\n";
 }
 
@@ -310,7 +315,8 @@ function buildCircuitVar() {
         "   NVars,\n"+
         "   _wit2sig,\n"+
         "   _components,\n"+
-        "   _mapIsInput\n"+
+        "   _mapIsInput,\n"+
+        "   __P__\n" +
         "};\n";
 }
 

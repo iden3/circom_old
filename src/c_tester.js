@@ -8,8 +8,8 @@ const compiler = require("./compiler");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const stringifyBigInts = require("snarkjs").stringifyBigInts;
-const unstringifyBigInts = require("snarkjs").unstringifyBigInts;
+const stringifyBigInts = require("./utils").stringifyBigInts;
+const unstringifyBigInts = require("./utils").unstringifyBigInts;
 const bigInt = require("snarkjs").bigInt;
 
 module.exports = c_tester;
@@ -35,12 +35,13 @@ async function  c_tester(circomFile, mainComponent, _options) {
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
+               ` ${path.join(cdir,  "zqfield.cpp")}` +
                ` -o ${path.join(dir.path, baseName)}` +
                ` -I ${cdir}` +
                " -lgmp -std=c++11 -DSANITY_CHECK"
     );
 
-    console.log(dir.path);
+    // console.log(dir.path);
     return new CTester(dir, baseName, mainComponent);
 }
 
@@ -102,7 +103,7 @@ class CTester {
                 for (let i=0; i<eOut.length; i++) {
                     checkObject(prefix + "["+i+"]", eOut[i]);
                 }
-            } else if (typeof eOut == "object") {
+            } else if ((typeof eOut == "object")&&(eOut.constructor.name == "Object")) {
                 for (let k in eOut) {
                     checkObject(prefix + "."+k, eOut[k]);
                 }

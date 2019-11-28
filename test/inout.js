@@ -1,8 +1,7 @@
-const chai = require("chai");
 const path = require("path");
 
 const c_tester = require("../index.js").c_tester;
-const stringifyBigInts = require("snarkjs").stringifyBigInts;
+// const stringifyBigInts = require("snarkjs").stringifyBigInts;
 
 
 describe("inout test", function () {

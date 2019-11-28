@@ -48,6 +48,7 @@ public:
     int *wit2sig;
     Circom_Component *components;
     u32 *mapIsInput;
+    const char *P;
 };
 
 #define BITMAP_ISSET(m, b) (m[b>>5] & (1 << (b&0x1F)))

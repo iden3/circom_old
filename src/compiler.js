@@ -28,6 +28,7 @@ const buildC = require("./c_build");
 const exec = require("./exec");
 const lc = require("./lcalgebra");
 const Ctx = require("./ctx");
+const ZqField = require("./zqfield");
 
 module.exports = compile;
 
@@ -36,6 +37,7 @@ const parser = require("../parser/jaz.js").parser;
 const timeout = ms => new Promise(res => setTimeout(res, ms));
 
 async function compile(srcFile, options) {
+    options.p = options.p || __P__;
     if (!options) {
         options = {};
     }
@@ -51,6 +53,7 @@ async function compile(srcFile, options) {
     assert(ast.type == "BLOCK");
 
     const ctx = new Ctx();
+    ctx.field = new ZqField(options.p);
     ctx.mainComponent = options.mainComponent || "main";
     ctx.filePath= fullFilePath;
     ctx.fileName= fullFileName;

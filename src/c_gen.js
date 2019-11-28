@@ -1,8 +1,9 @@
 const bigInt = require("big-integer");
 const utils = require("./utils");
+const assert = require("assert");
 
-module.exports =  gen;
-
+module.exports.gen =  gen;
+module.exports.newRef = newRef;
 
 function newRef(ctx, type, _name, value, _sizes) {
     const isValue = ((typeof(value) != "undefined")&&(value != null));
@@ -28,7 +29,7 @@ function newRef(ctx, type, _name, value, _sizes) {
     }
 
     const scope = ctx.scopes[ctx.scopes.length-1];
-    if (scope[name]) return error("Variable already exists: " + name);
+    if (scope[name]) return error(ctx, null, "Variable already exists: " + name);
 
     const label = scope._prefix + name;
     scope[name] = {
@@ -64,9 +65,9 @@ function newSizes(ctx, sizes) {
 }
 
 
-function instantiateRef(ctx, name) {
+function instantiateRef(ctx, name, initValue) {
     const v = getScope(ctx, name);
-    if (!v.stack) return error("Using a non existing var: " + name);
+    if (!v.stack) return error(ctx, null, "Using a non existing var: " + name);
     if (v.used) return;
 
     if (v.type=="BIGINT") {
@@ -76,7 +77,12 @@ function instantiateRef(ctx, name) {
         if (iSize.used) {
             const labelSize = iSize.label;
             ctx.codeHeader += `PBigInt ${v.label};\n`;
-            ctx.code += `${v.label} = ctx->allocBigInts(${labelSize});\n`;
+            const c = `${v.label} = ctx->allocBigInts(${labelSize});\n`;
+            if (ctx.conditionalCode) {
+                ctx.conditionalCodeHeader += c;
+            } else {
+                ctx.code += c;
+            }
             ctx.codeFooter += `ctx->freeBigInts(${v.label}, ${labelSize});\n`;
         } else if (iSize.value) {
             const labelSize = ctx.addSizes(iSize.value);
@@ -92,6 +98,30 @@ function instantiateRef(ctx, name) {
         ctx.codeHeader += `Circom_Sizes ${v.label};\n`;
     }
     v.used = true;
+    if ((typeof initValue!= "undefined")&&(initValue != null)) {
+        const flatedValue = utils.flatArray(initValue);
+        for (let i=0; i<flatedValue.length; i++) {
+            const c = `mpz_set_str(${v.label}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
+            if (ctx.conditionalCode) {
+                ctx.conditionalCodeHeader += c;
+            } else {
+                ctx.code += c;
+            }
+        }
+    }
+}
+
+function instantiateConstant(ctx, value) {
+    const labelSize = ctx.addSizes(utils.extractSizes(value));
+    const flatedValue = utils.flatArray(value);
+    const res = ctx.getTmpName("_const");
+    ctx.codeHeader += `PBigInt ${res};\n`;
+    ctx.codeHeader += `${res} = ctx->allocBigInts(${labelSize});\n`;
+    for (let i=0; i<flatedValue.length; i++) {
+        ctx.codeHeader += `mpz_set_str(${res}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
+    }
+    ctx.codeFooter += `ctx->freeBigInts(${res}, ${labelSize});\n`;
+    return res;
 }
 
 
@@ -140,7 +170,7 @@ function gen(ctx, ast) {
         } else if (ast.op == "*=") {
             return genVarMulAssignement(ctx, ast);
         } else if (ast.op == "+") {
-            return genAdd(ctx, ast);
+            return genBinaryOp(ctx, ast, "add");
         } else if (ast.op == "-") {
             return genSub(ctx, ast);
         } else if (ast.op == "UMINUS") {
@@ -174,7 +204,7 @@ function gen(ctx, ast) {
         } else if (ast.op == ">>") {
             return genShr(ctx, ast);
         } else if (ast.op == "<") {
-            return genLt(ctx, ast);
+            return genBinaryOp(ctx, ast, "lt");
         } else if (ast.op == ">") {
             return genGt(ctx, ast);
         } else if (ast.op == "<=") {
@@ -226,6 +256,7 @@ function gen(ctx, ast) {
 }
 
 function genBlock(ctx, ast) {
+    ctx.scopes.push({_prefix : ""});
     const oldCode = ctx.code;
     let res = null;
     ctx.code = "";
@@ -236,26 +267,35 @@ function genBlock(ctx, ast) {
         res = gen(ctx, ast.statements[i]);
         if (ctx.error) return;
     }
-    if (ctx.scopes.length>1) {
-        ctx.code = oldCode + `{\n${utils.ident(ctx.code)}}\n`;
-    } else {
-        ctx.code = oldCode + ctx.code;
-    }
+    ctx.code = oldCode + ctx.code;
+    ctx.scopes.pop();
     return res;
 }
 
-function genSrcComment(ctx, ast) {
+function getSource(ctx, ast) {
     let codes = [];
     const fl= ast.first_line-1;
     const ll = ast.last_line-1;
-    const fc = ast.first_column-1;
+    const fc = ast.first_column;
     const lc = ast.last_column;
     for (let i=fl; i<=ll; i++) {
         const p1 = i==fl ? fc : 0;
         const p2 = i==ll ? lc : -1;
         codes.push(ctx.includedFiles[ctx.fileName][i].slice(p1, p2>=0 ? p2 : undefined));
     }
-    ctx.code += "\n/* "+codes.join("\n")+"*/\n";
+    return codes.join("\n");
+}
+
+function genSrcComment(ctx, ast) {
+    const code = getSource(ctx, ast);
+    ctx.code += "\n/* "+code+"  */\n";
+}
+
+function genForSrcComment(ctx, ast) {
+    const init = getSource(ctx, ast.init);
+    const condition = getSource(ctx, ast.condition);
+    const step = getSource(ctx, ast.step);
+    ctx.code += `\n/* for (${init},${condition},${step}) */\n`;
 }
 
 
@@ -297,7 +337,7 @@ function genDeclareVariable(ctx, ast) {
     const labelName = scope._prefix + ast.name.name;
 
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
-    if (ctx.scope[varName]) return error(ctx, ast, "Name already exists: "+varName);
+    if (typeof scope[varName] != "undefined") return error(ctx, ast, "Name already exists: "+varName);
 
     const sizes=[];
     let instantiate = false;
@@ -329,16 +369,17 @@ function genDeclareVariable(ctx, ast) {
         iSizes.value = sizes;
     }
 
-    const res = ctx.scope[varName] = {
+    const res = scope[varName] = {
         stack: true,
         type: "BIGINT",
         sizes: vSizes,
-        label: labelName
+        label: labelName,
+        used: false,
     };
 
     scope[varName] = res;
 
-    return res;
+    return varName;
 }
 
 function genNumber(ctx, ast) {
@@ -432,17 +473,23 @@ function genVariable(ctx, ast) {
 
     } else if (v.type == "BIGINT") {
         const vOffset = genGetOffset(ctx, 0, v.sizes, ast.sels );
+        const offset = getScope(ctx, vOffset);
         if (v.used) {
-            if (vOffset == 0) {
-                return ast.name;
-            } else {
+            if (offset.used) {
                 const res = newRef(ctx, "BIGINT", "_v");
                 instantiateRef(ctx, res);
                 ctx.code += `${res} = ${ast.name} + ${vOffset};\n`;
                 return res;
+            } else if (offset.value) {
+                const res = newRef(ctx, "BIGINT", "_v");
+                instantiateRef(ctx, res);
+                ctx.code += `${res} = ${ast.name} + ${vOffset.value};\n`;
+                return res;
+            } else {
+                return ast.name;
             }
         } else {
-            if (typeof(vOffset) == "string") {
+            if (offset.used) {
                 instantiateRef(ctx, ast.name);
                 const vConstant = instantiateConstant(ctx, v.value);
                 const res = newRef(ctx, "BIGINT", "_v");
@@ -475,17 +522,6 @@ function genVariable(ctx, ast) {
     }
 }
 
-function instantiateConstant(ctx, value) {
-    const flatedValue = utils.flatArray(value);
-    const res = ctx.getTmpName("_const");
-    ctx.codeHeader += `PBigInt ${res};\n`;
-    ctx.code += `${res.label} = ctx->allocBigInts(${flatedValue.length});\n`;
-    for (let i=0; i<flatedValue.length; i++) {
-        ctx.code += `mpz_init_set_str(${res.label}[${i}], ${flatedValue[i].toString(16)}, 16);\n`;
-    }
-    ctx.codeFooter += `ctx->freeBigInts(${res.label});\n`;
-    return res;
-}
 
 function genPin(ctx, ast) {
     let vcIdx;
@@ -546,7 +582,12 @@ function genGetSignalSizes(ctx, sIdx, label) {
 }
 
 function genSetSignal(ctx, cIdx, sIdx, value) {
+    const v = getScope(ctx, value);
+    if (!v.used) {
+        value = instantiateConstant(ctx, v.value);
+    }
     ctx.code += `ctx->setSignal(${cIdx}, ${sIdx}, ${value});\n`;
+
     return value;
 }
 
@@ -604,6 +645,10 @@ function genVarAssignement(ctx, ast) {
     const left = getScope(ctx, lName);
     if (!left) return error(ctx, ast, "Variable does not exists: "+ast.values[0].name);
 
+    if (ctx.conditionalCode && !left.used) {
+        instantiateRef(ctx, lName, left.value);
+    }
+
     // Component instantiation is already done.
     if (left.type == "COMPONENT") {
         ctx.last = lName;
@@ -626,36 +671,29 @@ function genVarAssignement(ctx, ast) {
         }
 
         return genSetSignal(ctx, "ctx->cIdx", vsIdx, rName);
-    } else if (left.type == "VAR") {
+    } else if (left.type == "BIGINT") {
         if (left.used) {
             if (!right.used) {
                 instantiateRef(ctx, rName);
             }
-            ctx.code += `BigInt_copy(${left.label}, ${right.label});\n`;
-            return lName;
+            ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
         } else {
             if (right.used) {
                 instantiateRef(ctx, lName);
-                ctx.code += `BigInt_copy(${left.label}, ${right.label});\n`;
-                return lName;
+                ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
             } else {
-                if (!left.value) {
-                    left.value = right.value;
+                if (ctx.conditionalCode) {
+                    instantiateRef(ctx, lName);
+                    ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
                 } else {
-                    if (!left.value.equals(right.value)) {
-                        if (ctx.scopes.length > 1) {
-                            instantiateRef(ctx, lName);
-                            ctx.code += `BigInt_copy(${left.label}, ${right.label});\n`;
-                        } else {
-                            left.value = right.value;
-                        }
-                    }
+                    left.value = right.value;
                 }
             }
         }
     } else {
         return error(ctx, ast, "Assigning to invalid");
     }
+    return lName;
 }
 
 function genConstraint(ctx, ast) {
@@ -690,18 +728,103 @@ function genFunctionCall(ctx, ast) {
     return `ctx.callFunction("${ast.name}", ${S})`;
 }
 
+function enterConditionalCode(ctx) {
+    if (!ctx.conditionalCode) {
+        ctx.conditionalCode = 1;
+        ctx.conditionalCodeHeader = "";
+        ctx.code += "__CONDITIONAL_CODE_HEADER__";
+    } else {
+        ctx.conditionalCode ++;
+    }
+}
+
+function leaveConditionalCode(ctx) {
+    assert(ctx.conditionalCode, "Leaving conditional code too many times");
+    ctx.conditionalCode --;
+    if (!ctx.conditionalCode) {
+        ctx.code = ctx.code.replace("__CONDITIONAL_CODE_HEADER__",
+            "// Conditional Code Header\n" +
+            ctx.conditionalCodeHeader+
+            "\n");
+        delete ctx.conditionalCodeHeader;
+        delete ctx.conditionalCode;
+    }
+}
+
 function genFor(ctx, ast) {
-    ctx.scopes.push({});
-    const init = gen(ctx, ast.init);
+    genForSrcComment(ctx, ast);
+    let inLoop = false;
+    ctx.scopes.push({_prefix : ""});
+    gen(ctx, ast.init);
     if (ctx.error) return;
-    const condition = gen(ctx, ast.condition);
-    if (ctx.error) return;
-    const step = gen(ctx, ast.step);
-    if (ctx.error) return;
-    const body = gen(ctx, ast.body);
-    if (ctx.error) return;
+
+    let end=false;
+    let condVar;
+
+
+    const condName = gen(ctx, ast.condition);
+    const cond = getScope(ctx, condName);
+    if (cond.used) {
+        inLoop = true;
+        enterConditionalCode(ctx);
+        condVar = newRef(ctx, "INT", "_cond");
+        instantiateRef(ctx, condVar);
+
+        ctx.code +=
+            `${condVar} = ctx->field->isTrue(${condName});\n` +
+            `while (${condVar}) {\n`;
+    } else {
+        if ((typeof cond.value == "undefined")||(cond.value == null)) return error(ctx, ast, "condition value not assigned");
+        if (cond.value.isZero()) end=true;
+    }
+
+
+    while (!end) {
+
+        const oldCode = ctx.code;
+        ctx.code = "";
+
+        if (ast.body.type != "BLOCK") genSrcComment(ctx, ast.body);
+        gen(ctx, ast.body);
+        if (ctx.error) return;
+
+        gen(ctx, ast.step);
+        if (ctx.error) return;
+
+        const condName2 = gen(ctx, ast.condition);
+        const cond2 = getScope(ctx, condName2);
+
+        if (!inLoop) {
+            if (cond2.used) {
+                ctx.code = oldCode + ctx.code;
+                inLoop = true;
+                enterConditionalCode(ctx);
+                condVar = newRef(ctx, "INT", "_cond");
+                instantiateRef(ctx, condVar);
+
+                ctx.code =
+                    oldCode +
+                    ctx.code +
+                    `${condVar} = ctx->field->isTrue(${condName2});\n` +
+                    `while (${condVar}) {\n`;
+            } else {
+                ctx.code = oldCode  + ctx.code;
+                if (cond2.value.isZero()) end=true;
+            }
+        } else {
+            ctx.code =
+                oldCode +
+                utils.ident(
+                    ctx.code +
+                    `${condVar} = ctx->field->isTrue(${condName2});\n`);
+            end=true;
+        }
+    }
+    if (inLoop) {
+        ctx.code += "}\n";
+        leaveConditionalCode(ctx);
+    }
     ctx.scopes.pop();
-    return `for (${init};bigInt(${condition}).neq(bigInt(0));${step}) { \n${body}\n }\n`;
 }
 
 function genWhile(ctx, ast) {
@@ -743,9 +866,9 @@ function genReturn(ctx, ast) {
 
 function genSignalAssignConstrain(ctx, ast) {
     const res = genVarAssignement(ctx, ast);
-    genConstraint(ctx, ast);
+    //    genConstraint(ctx, ast);
     return res;
-//    return genVarAssignement(ctx, ast);
+    //    return genVarAssignement(ctx, ast);
 }
 
 function genVarAddAssignement(ctx, ast) {
@@ -772,12 +895,34 @@ function genMinusMinusLeft(ctx, ast) {
     return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
 }
 
-function genAdd(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
+function genBinaryOp(ctx, ast, op) {
+    let aName = gen(ctx, ast.values[0]);
     if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
+    const a = getScope(ctx, aName);
+
+    let bName = gen(ctx, ast.values[1]);
     if (ctx.error) return;
-    return `bigInt(${a}).add(bigInt(${b})).mod(__P__)`;
+    const b = getScope(ctx, bName);
+
+    if ((!a.used)&&(typeof a.value == "undefined")) return error(ctx, ast, "Using a not assigned varialble: "+aName);
+    if ((!b.used)&&(typeof b.value == "undefined")) return error(ctx, ast, "Using a not assigned varialble: "+bName);
+
+    let rName;
+    if (a.used || b.used) {
+        if (!a.used) {
+            aName = instantiateConstant(ctx, a.value);
+        }
+        if (!b.used) {
+            bName = instantiateConstant(ctx, b.value);
+        }
+
+        rName = newRef(ctx, "BIGINT", "_tmp");
+        instantiateRef(ctx, rName);
+        ctx.code += `ctx->field->${op}(${rName},${aName}, ${bName});\n`;
+    } else {
+        rName = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](a.value, b.value));
+    }
+    return rName;
 }
 
 function genMul(ctx, ast) {

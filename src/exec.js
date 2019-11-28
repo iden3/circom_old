@@ -1143,7 +1143,7 @@ function execConstrain(ctx, ast) {
         ctx.constraints.push(lc.toQEQ(res));
     }
 
-    if (ctx.constraints.length % 10000 == 0) console.log("Constraints: " + ctx.constraints.length);
+    if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
 
     return res;
 }

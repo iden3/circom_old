@@ -2,6 +2,7 @@
 #define CIRCOM_CALCWIT_H
 
 #include "circom.h"
+#include "zqfield.h"
 
 class Circom_CalcWit {
 
@@ -18,13 +19,12 @@ class Circom_CalcWit {
 
     Circom_Circuit *circuit;
 
-
-
     void triggerComponent(int newCIdx);
     void calculateWitness(void *input, void *output);
 
 
 public:
+    ZqField *field;
     int cIdx;
 // Functions called by the circuit
     Circom_CalcWit(Circom_Circuit *aCircuit);
