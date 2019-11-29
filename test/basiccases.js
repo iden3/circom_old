@@ -19,6 +19,14 @@ async function doTest(circuit, testVectors) {
 
 describe("basic cases", function () {
     this.timeout(100000);
+    it("inout", async () => {
+        await doTest(
+            "inout.circom",
+            [
+                [{in1: 1, in2: [2,3], in3:[[4,5], [6,7], [8,9]]}, {out1: 1, out2: [2,3], out3: [[4,5], [6,7],[8,9]]}],
+            ]
+        );
+    });
     it("add", async () => {
         await doTest(
             "add.circom",
@@ -56,6 +64,26 @@ describe("basic cases", function () {
             [
                 [{in: 0}, {out: 0}],
                 [{in: 10}, {out: 10}],
+            ]
+        );
+    });
+    it("function1", async () => {
+        await doTest(
+            "function1.circom",
+            [
+                [{in: 0}, {out: 3}],
+                [{in: 10}, {out: 13}],
+                [{in: __P__.minus(2)}, {out: 1}],
+            ]
+        );
+    });
+    it("function2", async () => {
+        await doTest(
+            "function2.circom",
+            [
+                [{in: 0}, {out: 3}],
+                [{in: 10}, {out: 13}],
+                [{in: __P__.minus(2)}, {out: 1}],
             ]
         );
     });

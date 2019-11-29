@@ -5,10 +5,9 @@ const assert = require("assert");
 module.exports.gen =  gen;
 module.exports.newRef = newRef;
 
-function newRef(ctx, type, _name, value, _sizes) {
+function newRef(ctx, type, _name, value, sizes) {
     const isValue = ((typeof(value) != "undefined")&&(value != null));
     let name;
-    let sizes;
     if (!_name) {
         name = ctx.getTmpName();
     } else {
@@ -18,14 +17,12 @@ function newRef(ctx, type, _name, value, _sizes) {
             name = _name;
         }
     }
-    if (typeof(_sizes) == "string") {
-        sizes = _sizes;
-    } else if (Array.isArray(_sizes)) {
-        sizes = newSizes(ctx, _sizes);
+    if (Array.isArray(sizes)) {
+        sizes = utils.accSizes(sizes);
     } else if (isValue) {
-        sizes = newSizes(ctx, utils.extractSizes(value));
+        sizes = utils.accSizes(utils.extractSizes(value));
     } else {
-        sizes = newSizes(ctx, []);
+        sizes = [1, 0];
     }
 
     const scope = ctx.scopes[ctx.scopes.length-1];
@@ -47,23 +44,6 @@ function newRef(ctx, type, _name, value, _sizes) {
     return name;
 }
 
-function newSizes(ctx, sizes) {
-    const scope = ctx.scopes[ctx.scopes.length-1];
-
-    const name = ctx.getTmpName("_sz");
-
-    scope[name] = {
-        stack: true,
-        type: "SIZES",
-        used: false,
-        dim: sizes.length,
-        label: name,
-        value: sizes
-    };
-
-    return name;
-}
-
 
 function instantiateRef(ctx, name, initValue) {
     const v = getScope(ctx, name);
@@ -71,27 +51,8 @@ function instantiateRef(ctx, name, initValue) {
     if (v.used) return;
 
     if (v.type=="BIGINT") {
-
-        const iSize = getScope(ctx, v.sizes);
-
-        if (iSize.used) {
-            const labelSize = iSize.label;
-            ctx.codeHeader += `PBigInt ${v.label};\n`;
-            const c = `${v.label} = ctx->allocBigInts(${labelSize});\n`;
-            if (ctx.conditionalCode) {
-                ctx.conditionalCodeHeader += c;
-            } else {
-                ctx.code += c;
-            }
-            ctx.codeFooter += `ctx->freeBigInts(${v.label}, ${labelSize});\n`;
-        } else if (iSize.value) {
-            const labelSize = ctx.addSizes(iSize.value);
-            ctx.codeHeader += `PBigInt ${v.label} = ctx->allocBigInts(${labelSize});\n`;
-            ctx.codeFooter += `ctx->freeBigInts(${v.label}, ${labelSize});\n`;
-        } else {
-            return error(ctx, null, "Undefined Sizes: " +name);
-        }
-
+        ctx.codeHeader += `PBigInt ${v.label} = ctx->allocBigInts(${v.sizes[0]});\n`;
+        ctx.codeFooter += `ctx->freeBigInts(${v.label}, ${v.sizes[0]});\n`;
     } else if (v.type=="INT") {
         ctx.codeHeader += `int ${v.label};\n`;
     } else if (v.type=="SIZES") {
@@ -112,15 +73,15 @@ function instantiateRef(ctx, name, initValue) {
 }
 
 function instantiateConstant(ctx, value) {
-    const labelSize = ctx.addSizes(utils.extractSizes(value));
+    const sizes = utils.accSizes(utils.extractSizes(value));
     const flatedValue = utils.flatArray(value);
     const res = ctx.getTmpName("_const");
     ctx.codeHeader += `PBigInt ${res};\n`;
-    ctx.codeHeader += `${res} = ctx->allocBigInts(${labelSize});\n`;
+    ctx.codeHeader += `${res} = ctx->allocBigInts(${sizes[0]});\n`;
     for (let i=0; i<flatedValue.length; i++) {
         ctx.codeHeader += `mpz_set_str(${res}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
     }
-    ctx.codeFooter += `ctx->freeBigInts(${res}, ${labelSize});\n`;
+    ctx.codeFooter += `ctx->freeBigInts(${res}, ${sizes[0]});\n`;
     return res;
 }
 
@@ -339,40 +300,23 @@ function genDeclareVariable(ctx, ast) {
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
     if (typeof scope[varName] != "undefined") return error(ctx, ast, "Name already exists: "+varName);
 
-    const sizes=[];
-    let instantiate = false;
+    let sizes=[];
     for (let i=0; i< ast.name.selectors.length; i++) {
         const size = gen(ctx, ast.name.selectors[i]);
         if (ctx.error) return;
 
         if (size.used) {
-            instantiate = true;
-            sizes.push(`BigInt2Int(${scope[size].label})`);
+            return error(ctx, ast, "Variable size variables not allowed");
         } else {
             sizes.push(size.value.toJSNumber());
         }
-
-        sizes.push( size.value.toJSNumber() );
     }
-
-    const vSizes = newRef(ctx, "SIZES", "_sizes");
-    const iSizes = scope[vSizes];
-    iSizes.dim = ast.name.selectors.length;
-    if (instantiate) {
-        instantiateRef(ctx, vSizes);
-        ctx.code += `${iSizes.label}[${iSizes.dim+1}]=0`;
-        ctx.code += `${iSizes.label}[${iSizes.dim}]=1`;
-        for (let i=iSizes.dim-1; i>=0; i--) {
-            ctx.code += `${iSizes.label}[${i}] = ${sizes[i]}*${iSizes.label}[${i+1}];\n`;
-        }
-    } else {
-        iSizes.value = sizes;
-    }
+    sizes = utils.accSizes(sizes);
 
     const res = scope[varName] = {
         stack: true,
         type: "BIGINT",
-        sizes: vSizes,
+        sizes: sizes,
         label: labelName,
         used: false,
     };
@@ -405,7 +349,15 @@ function genGetOffset(ctx, vOffset, vSizes, sels) {
 
     if ((sels)&&(sels.length>0)) {
 
-        const iSizes = getScope(ctx, vSizes);
+        let iSizes;
+        if (typeof vSizes == "string") {
+            iSizes = getScope(ctx, vSizes);
+        } else {
+            iSizes = {
+                used: false,
+                sizes: vSizes
+            };
+        }
 
         for (let i=0; i<sels.length; i++) {
             const vIdx = gen(ctx, sels[i]);
@@ -459,7 +411,6 @@ function genGetOffset(ctx, vOffset, vSizes, sels) {
 function genVariable(ctx, ast) {
     const v = getScope(ctx, ast.name);
 
-
     if (v.type == "SIGNAL") {
         let vOffset;
         if (ast.selectors.length>0) {
@@ -476,13 +427,15 @@ function genVariable(ctx, ast) {
         const offset = getScope(ctx, vOffset);
         if (v.used) {
             if (offset.used) {
-                const res = newRef(ctx, "BIGINT", "_v");
-                instantiateRef(ctx, res);
-                ctx.code += `${res} = ${ast.name} + ${vOffset};\n`;
+                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                res.used = true;
+                ctx.codeHeader += `PBigInt ${res.label}`;
+                ctx.code += `${res} = ${ast.name} + ${vOffset.label};\n`;
                 return res;
             } else if (offset.value) {
-                const res = newRef(ctx, "BIGINT", "_v");
-                instantiateRef(ctx, res);
+                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                res.used = true;
+                ctx.codeHeader += `PBigInt ${res.label}`;
                 ctx.code += `${res} = ${ast.name} + ${vOffset.value};\n`;
                 return res;
             } else {
@@ -490,11 +443,11 @@ function genVariable(ctx, ast) {
             }
         } else {
             if (offset.used) {
-                instantiateRef(ctx, ast.name);
-                const vConstant = instantiateConstant(ctx, v.value);
-                const res = newRef(ctx, "BIGINT", "_v");
-                instantiateRef(ctx, res);
-                ctx.code += `${res} = ${vConstant} + ${vOffset};\n`;
+                instantiateRef(ctx, ast.name, v.value);
+                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                res.used = true;
+                ctx.codeHeader += `PBigInt ${res.label}`;
+                ctx.code += `${res} = ${ast.name} + ${vOffset.label};\n`;
                 return res;
             } else {
                 const sa = utils.subArray(v.value, ast.selectors);
@@ -672,22 +625,18 @@ function genVarAssignement(ctx, ast) {
 
         return genSetSignal(ctx, "ctx->cIdx", vsIdx, rName);
     } else if (left.type == "BIGINT") {
+        if (!utils.sameSizes(left.sizes, right.sizes)) return error(ctx, ast, "Sizes do not match");
         if (left.used) {
             if (!right.used) {
-                instantiateRef(ctx, rName);
+                instantiateRef(ctx, rName, right.value);
             }
-            ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
+            ctx.code += `ctx->field->copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
         } else {
             if (right.used) {
                 instantiateRef(ctx, lName);
-                ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
+                ctx.code += `ctx->field->copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
             } else {
-                if (ctx.conditionalCode) {
-                    instantiateRef(ctx, lName);
-                    ctx.code += `ctx->field->copy(${left.label}, ${right.label});\n`;
-                } else {
-                    left.value = right.value;
-                }
+                left.value = right.value;
             }
         }
     } else {
@@ -718,14 +667,29 @@ function genArray(ctx, ast) {
 
 
 function genFunctionCall(ctx, ast) {
-    let S = "[";
+    const params = [];
     for (let i=0; i<ast.params.length; i++) {
-        if (i>0) S += ",";
-        S += gen(ctx, ast.params[i]);
+        const pName = gen(ctx, ast.params[i]);
+        params.push(getScope(ctx, pName));
     }
-    S+="]";
 
-    return `ctx.callFunction("${ast.name}", ${S})`;
+    const fn = ctx.buildFunction(ast.name, params);
+
+    if (fn.type == "VARVAL_CONSTSIZE") {
+        const res = newRef(ctx, "BIGINT", `_ret${ast.name}Sizes`, fn.retSizes);
+        instantiateRef(ctx, res);
+
+        ctx.code +=`${fn.fnName}(ctx, ${res}`;
+        for (let i=0; i<params.length; i++) {
+            if (params[i].used) ctx.code+=`,${params[i].label}`;
+        }
+        ctx.code+=");\n";
+
+        return res;
+    } else {
+        const res = newRef(ctx, "BIGINT", "_retVal", fn.returnValue);
+        return res;
+    }
 }
 
 function enterConditionalCode(ctx) {
@@ -857,9 +821,26 @@ function genIf(ctx, ast) {
 
 
 function genReturn(ctx, ast) {
-    const value = gen(ctx, ast.value);
-    if (ctx.error) return;
-    return `return ${value};`;
+    const vName = gen(ctx, ast.value);
+    const v= getScope(ctx, vName);
+    if (ctx.returnSizes) {
+        if (!utils.sizesEqual(vName.sizes, ctx.returnSizes)) return error(ctx, ast, "Diferent return sizes");
+    } else {
+        ctx.returnSizes = v.sizes;
+    }
+    if (ctx.conditionalCode) {
+        instantiateRef(ctx, vName, vName.value);
+    }
+    if (v.used) {
+        ctx.code += `ctx->field->copyn(__retValue, ${vName}, ${v.sizes[0]});\n`;
+    } else {
+        if ((typeof v.value == "undefined") || v == null) return error(ctx, ast, "Returning an unknown value");
+        if ((typeof ctx.returnValue == "undefined") || (ctx.returnValue == null))  {
+            ctx.returnValue = v.value;
+        }
+    }
+    ctx.code += "goto returnFunc;\n";
+    return vName;
 }
 
 

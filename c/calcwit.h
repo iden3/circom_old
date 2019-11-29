@@ -35,8 +35,8 @@ public:
     int getSignalOffset(int cIdx, u64 hash);
     Circom_Sizes getSignalSizes(int cIdx, u64 hash);
 
-    PBigInt allocBigInts(Circom_Sizes sizes);
-    void freeBigInts(PBigInt bi, Circom_Sizes sizes);
+    PBigInt allocBigInts(int n);
+    void freeBigInts(PBigInt bi, int n);
 
     void getSignal(int cIdx, int sIdx, PBigInt value);
     void setSignal(int cIdx, int sIdx, PBigInt value);

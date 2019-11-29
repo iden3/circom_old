@@ -11,6 +11,7 @@ module.exports.accSizes = accSizes;
 module.exports.fnvHash = fnvHash;
 module.exports.stringifyBigInts = stringifyBigInts;
 module.exports.unstringifyBigInts = unstringifyBigInts;
+module.exports.sameSizes = sameSizes;
 
 function ident(text) {
     let lines = text.split("\n");
@@ -103,6 +104,16 @@ function unstringifyBigInts(o) {
     } else {
         return o;
     }
+}
+
+function sameSizes(s1, s2) {
+    if (!Array.isArray(s1)) return false;
+    if (!Array.isArray(s2)) return false;
+    if (s1.length != s2.length) return false;
+    for (let i=0; i<s1.length; i++) {
+        if (s1[i] != s2[i]) return false;
+    }
+    return true;
 }
 
 

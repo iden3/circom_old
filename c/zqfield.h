@@ -11,7 +11,7 @@ public:
     BigInt zero;
     ZqField(PBigInt ap);
 
-    void copy(PBigInt a, PBigInt b);
+    void copyn(PBigInt a, PBigInt b, int n);
     void add(PBigInt r,PBigInt a, PBigInt b);
     void lt(PBigInt r, PBigInt a, PBigInt b);
     int isTrue(PBigInt a);

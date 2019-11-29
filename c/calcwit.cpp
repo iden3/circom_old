@@ -109,14 +109,14 @@ Circom_Sizes Circom_CalcWit::getSignalSizes(int cIdx, u64 hash) {
     return circuit->components[cIdx].entries[entryPos].sizes;
 }
 
-PBigInt Circom_CalcWit::allocBigInts(Circom_Sizes sizes) {
-    PBigInt res = new BigInt[sizes[0]];
-    for (int i=0; i<sizes[0]; i++) mpz_init2(res[i], 256);
+PBigInt Circom_CalcWit::allocBigInts(int n) {
+    PBigInt res = new BigInt[n];
+    for (int i=0; i<n; i++) mpz_init2(res[i], 256);
     return res;
 }
 
-void Circom_CalcWit::freeBigInts(PBigInt bi, Circom_Sizes sizes) {
-    for (int i=0; i<sizes[0]; i++) mpz_clear(bi[i]);
+void Circom_CalcWit::freeBigInts(PBigInt bi, int n) {
+    for (int i=0; i<n; i++) mpz_clear(bi[i]);
     delete[] bi;
 }
 

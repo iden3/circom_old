@@ -6,7 +6,6 @@ ZqField::ZqField(PBigInt ap) {
     mpz_init_set_ui(one, 1);
 }
 
-
 void ZqField::add(PBigInt r, PBigInt a, PBigInt b) {
     mpz_add(*r,*a,*b);
     mpz_fdiv_r(*r, *r, p);
@@ -25,6 +24,6 @@ int ZqField::isTrue(PBigInt a) {
     return mpz_sgn(*a);
 }
 
-void ZqField::copy(PBigInt a, PBigInt b) {
-    return mpz_set(*a, *b);
+void ZqField::copyn(PBigInt a, PBigInt b, int n) {
+    for (int i=0;i<n; i++) mpz_set(a[i], b[i]);
 }

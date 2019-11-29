@@ -27,6 +27,9 @@ module.exports =  buildC;
 
 
 function buildC(ctx) {
+    ctx.definedFunctions = {};
+    ctx.functionCodes = [];
+    ctx.buildFunction = buildFunction;
     ctx.code = "";
     ctx.conditionalCodeHeader = "";
     ctx.tmpNames = {};
@@ -36,7 +39,10 @@ function buildC(ctx) {
     ctx.addSizes = addSizes;
 
     const entryTables = buildEntryTables(ctx);
+    ctx.globalNames = ctx.tmpNames;
+
     const code = buildCode(ctx);
+    const functions = buildFuncFunctions(ctx);
     const compnentsArray = buildComponentsArray(ctx);
 
     const headder = buildHeader(ctx);
@@ -49,6 +55,7 @@ function buildC(ctx) {
         headder + "\n" +
         sizes + "\n" +
         entryTables + "\n" +
+        functions + "\n" +
         code + "\n" +
         compnentsArray + "\n" +
         mapIsInput + "\n" +
@@ -128,31 +135,10 @@ function buildEntryTables(ctx) {
 }
 
 function buildCode(ctx) {
-    const globalNames = ctx.tmpNames;
 
     const fDefined = {};
 
-    const functions = [];
-    for (let f in ctx.functions) {
-        ctx.scope = {};
-        const paramsList = [];
-        for (let p in ctx.functions[f].params) {
-            const param = ctx.functions[f].params[p];
-            paramsList.push("POINTER "+param.name);
-
-            ctx.scope[param.name] = {
-                type: "LOCAL",
-                sels: param.sels,
-                getter: () => { return param.name; },
-            };
-        }
-
-        ctx.code += "void "+f+"(POINTER _ret, "+paramsList.join(",")+") {\n";
-
-        ctx.code += gen(ctx, ctx.functions[f].block);
-        ctx.code += "}";
-    }
-
+    const fnComponents = [];
     for (let i=0; i<ctx.components.length; i++) {
         const h = hashComponentCall(ctx, i);
         const fName = ctx.components[i].template+"_"+h;
@@ -162,11 +148,10 @@ function buildCode(ctx) {
             const scope = {_prefix : ""};
             ctx.scopes = [scope];
             ctx.conditionalCode = false;
-            ctx.nScopes = 0;
             ctx.code = "";
             ctx.codeHeader = "// Header\n";
             ctx.codeFooter = "// Footer\n";
-            ctx.tmpNames = Object.assign({},globalNames);
+            ctx.tmpNames = Object.assign({},ctx.globalNames);
 
             for (let p in ctx.components[i].params) {
                 newRef(ctx, "BIGINT", p, bigInt(ctx.components[i].params[p]));
@@ -182,12 +167,17 @@ function buildCode(ctx) {
                         ) +
                       "}\n";
 
-            functions.push(S);
+            fnComponents.push(S);
         }
         ctx.components[i].fnName = fName;
     }
 
-    return functions.join("\n");
+    return fnComponents.join("\n");
+}
+
+function buildFuncFunctions(ctx) {
+    return "// Functions\n" +
+        ctx.functionCodes.join("\n");
 }
 
 function buildComponentsArray(ctx) {
@@ -327,6 +317,7 @@ function hashComponentCall(ctx, cIdx) {
     return cIdx;
 }
 
+
 function getTmpName(_suggestedName) {
     let suggestedName;
     if (_suggestedName) {
@@ -381,3 +372,90 @@ function addSizes(_sizes) {
     return labelName;
 }
 
+function buildFunction(name, paramValues) {
+    const ctx = this;
+    const h = hashFunctionCall(ctx, name, paramValues);
+
+    if (ctx.definedFunctions[h]) return ctx.definedFunctions[h];
+
+    const res = {
+        fnName: `${name}_${h}`
+    };
+
+    const oldScopes = ctx.scopes;
+    const oldConditionalCode = ctx.conditionalCode;
+    const oldCode = ctx.code;
+    const oldCodeHeader = ctx.codeHeader;
+    const oldCodeFooter = ctx.codeFooter;
+    const oldTmpNames = ctx.tmpNames;
+
+
+    const scope = {_prefix : ""};
+    ctx.scopes = [scope];
+    ctx.conditionalCode = false;
+    ctx.code = "";
+    ctx.codeHeader = "// Header\n";
+    ctx.codeFooter = "// Footer\n";
+    ctx.tmpNames = Object.assign({},ctx.globalNames);
+    ctx.returnValue = null;
+    ctx.returnSizes = null;
+
+    let paramsStr = "";
+
+    for (let i=0; i<ctx.functions[name].params.length; i++) {
+
+        if (paramValues[i].used) {
+            paramsStr += `,PBigInt ${ctx.functions[name].params[i]}`;
+            scope[ctx.functions[name].params[i]] = {
+                stack: true,
+                type: "BIGINT",
+                used: true,
+                sizes: paramValues[i].sizes,
+                label: ctx.functions[name].params[i],
+            };
+        } else {
+            scope[ctx.functions[name].params[i]] = {
+                stack: true,
+                type: "BIGINT",
+                used: false,
+                sizes: paramValues[i].sizes,
+                label: ctx.functions[name].params[i],
+                value: paramValues[i].value
+            };
+        }
+    }
+
+    gen(ctx, ctx.functions[name].block);
+
+    if (ctx.returnValue == null) {
+        if (ctx.returnSizes ==  null) assert(false, `Funciont ${name} does not return any value`);
+        res.type = "VARVAL_CONSTSIZE";
+        let code = `void ${name}_${h}(Circom_CalcWit *ctx, PBigInt __retValue ${paramsStr}) {`;
+        code += utils.ident(ctx.codeHeader);
+        code += utils.ident(ctx.code);
+        code += utils.ident("returnFunc:\n");
+        code += utils.ident(ctx.codeFooter);
+        code += "}\n";
+        res.returnSizes = ctx.returnSizes;
+        ctx.functionCodes.push(code);
+    } else {
+        res.type = "CONSTVAL";
+        res.returnValue = ctx.returnValue;
+    }
+
+    ctx.scopes = oldScopes;
+    ctx.conditionalCode = oldConditionalCode;
+    ctx.code = oldCode;
+    ctx.codeHeader = oldCodeHeader;
+    ctx.codeFooter = oldCodeFooter;
+    ctx.tmpNames = oldTmpNames;
+
+    ctx.definedFunctions[h] = res;
+
+    return res;
+}
+
+function hashFunctionCall(ctx, name, paramValues) {
+    // TODO
+    return "1234";
+}
