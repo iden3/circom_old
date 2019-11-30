@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <stdlib.h>
 #include <gmp.h>
+#include <assert.h>
 #include "calcwit.h"
 #include "utils.h"
 

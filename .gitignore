@@ -64,3 +64,6 @@ tmp
 
 .DS_Store
 
+# Workspace files are user-specific
+*.sublime-workspace
+

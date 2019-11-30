@@ -6,7 +6,6 @@ module.exports.gen =  gen;
 module.exports.newRef = newRef;
 
 function newRef(ctx, type, _name, value, sizes) {
-    const isValue = ((typeof(value) != "undefined")&&(value != null));
     let name;
     if (!_name) {
         name = ctx.getTmpName();
@@ -19,7 +18,7 @@ function newRef(ctx, type, _name, value, sizes) {
     }
     if (Array.isArray(sizes)) {
         sizes = utils.accSizes(sizes);
-    } else if (isValue) {
+    } else if (utils.isDefined(value)) {
         sizes = utils.accSizes(utils.extractSizes(value));
     } else {
         sizes = [1, 0];
@@ -37,7 +36,7 @@ function newRef(ctx, type, _name, value, sizes) {
         label: label
     };
 
-    if (isValue) {
+    if (utils.isDefined(value)) {
         scope[name].value = value;
     }
 
@@ -59,7 +58,7 @@ function instantiateRef(ctx, name, initValue) {
         ctx.codeHeader += `Circom_Sizes ${v.label};\n`;
     }
     v.used = true;
-    if ((typeof initValue!= "undefined")&&(initValue != null)) {
+    if (utils.isDefined(initValue)) {
         const flatedValue = utils.flatArray(initValue);
         for (let i=0; i<flatedValue.length; i++) {
             const c = `mpz_set_str(${v.label}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
@@ -738,7 +737,7 @@ function genFor(ctx, ast) {
             `${condVar} = ctx->field->isTrue(${condName});\n` +
             `while (${condVar}) {\n`;
     } else {
-        if ((typeof cond.value == "undefined")||(cond.value == null)) return error(ctx, ast, "condition value not assigned");
+        if (!utils.isDefined(cond.value)) return error(ctx, ast, "condition value not assigned");
         if (cond.value.isZero()) end=true;
     }
 
@@ -834,8 +833,8 @@ function genReturn(ctx, ast) {
     if (v.used) {
         ctx.code += `ctx->field->copyn(__retValue, ${vName}, ${v.sizes[0]});\n`;
     } else {
-        if ((typeof v.value == "undefined") || v == null) return error(ctx, ast, "Returning an unknown value");
-        if ((typeof ctx.returnValue == "undefined") || (ctx.returnValue == null))  {
+        if (!utils.isDefined(v.value)) return error(ctx, ast, "Returning an unknown value");
+        if (!utils.isDefined(ctx.returnValue))  {
             ctx.returnValue = v.value;
         }
     }
@@ -885,8 +884,8 @@ function genBinaryOp(ctx, ast, op) {
     if (ctx.error) return;
     const b = getScope(ctx, bName);
 
-    if ((!a.used)&&(typeof a.value == "undefined")) return error(ctx, ast, "Using a not assigned varialble: "+aName);
-    if ((!b.used)&&(typeof b.value == "undefined")) return error(ctx, ast, "Using a not assigned varialble: "+bName);
+    if ((!a.used)&&(!utils.isDefined(a.value))) return error(ctx, ast, "Using a not assigned varialble: "+aName);
+    if ((!b.used)&&(!utils.isDefined(b.value))) return error(ctx, ast, "Using a not assigned varialble: "+bName);
 
     let rName;
     if (a.used || b.used) {

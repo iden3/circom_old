@@ -12,6 +12,7 @@ module.exports.fnvHash = fnvHash;
 module.exports.stringifyBigInts = stringifyBigInts;
 module.exports.unstringifyBigInts = unstringifyBigInts;
 module.exports.sameSizes = sameSizes;
+module.exports.isDefined = isDefined;
 
 function ident(text) {
     let lines = text.split("\n");
@@ -114,6 +115,10 @@ function sameSizes(s1, s2) {
         if (s1[i] != s2[i]) return false;
     }
     return true;
+}
+
+function isDefined(v) {
+    return ((typeof(v) != "undefined")&&(v != null));
 }
 
 

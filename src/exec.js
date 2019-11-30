@@ -20,6 +20,8 @@
 const path = require("path");
 const fs = require("fs");
 
+const utils = require("./utils");
+
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const __MASK__ = new bigInt(2).pow(253).minus(1);
@@ -495,15 +497,15 @@ function execDeclareSignal(ctx, ast) {
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
     if (getScope(ctx, ast.name.name)) return error(ctx, ast, "Name already exists: "+ast.name.name);
 
+    let totalSize = 1;
     const sizes=[];
-    let totalSize=1;
     for (let i=0; i< ast.name.selectors.length; i++) {
         const size = exec(ctx, ast.name.selectors[i]);
         if (ctx.error) return;
 
         if (size.type != "NUMBER") return error(ctx, ast.name.selectors[i], "expected a number");
         const s = size.value.toJSNumber();
-        totalSize *= s;
+        totalSize = totalSize * s;
         sizes.push( s );
     }
 
@@ -529,7 +531,7 @@ function execDeclareSignal(ctx, ast) {
             ctx.signals[i].o |= ctx.MAIN;
         }
 
-//        ctx.components[ctx.currentComponent].signals.push(i);
+        // ctx.components[ctx.currentComponent].signals.push(i);
     }
     scope[ast.name.name] = {
         type: "SIGNAL",
@@ -584,10 +586,10 @@ function execVariable(ctx, ast) {
     if (!v) return error(ctx, ast, "Variable not defined");
 
     // If the signal has an assigned value (constant) just return the constant
-    if ((v.type == "SIGNAL") && (ctx.signals[v.sIdx].value)) {
+    if ((v.type == "SIGNAL") && (utils.isDefined(ctx.signals[v.sIdx].v))) {
         return {
             type: "NUMBER",
-            value: ctx.signals[v.sIdx].value
+            value: ctx.signals[v.sIdx].v
         };
     }
     let res;
@@ -1121,7 +1123,7 @@ function execSignalAssign(ctx, ast) {
         const v = lc.evaluate(ctx, src);
 
         if (v.value) {
-            sDest.value = v.value;
+            sDest.v = v.value;
         }
     }
 

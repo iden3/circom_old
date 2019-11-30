@@ -140,7 +140,7 @@ function buildCode(ctx) {
 
     const fnComponents = [];
     for (let i=0; i<ctx.components.length; i++) {
-        const h = hashComponentCall(ctx, i);
+        const {h, instanceDef} = hashComponentCall(ctx, i);
         const fName = ctx.components[i].template+"_"+h;
         if (!fDefined[fName]) {
 
@@ -159,15 +159,20 @@ function buildCode(ctx) {
 
             gen(ctx, ctx.templates[ctx.components[i].template].block);
 
-            const S = `void ${fName}(Circom_CalcWit *ctx) {\n` +
+            const S =
+                    "/*\n" +
+                    instanceDef +
+                    "\n*/\n" +
+                    `void ${fName}(Circom_CalcWit *ctx) {\n` +
                         utils.ident(
                             ctx.codeHeader + "\n" +
                             ctx.code + "\n" +
                             ctx.codeFooter
                         ) +
-                      "}\n";
+                    "}\n";
 
             fnComponents.push(S);
+            fDefined[fName] = true;
         }
         ctx.components[i].fnName = fName;
     }
@@ -269,9 +274,9 @@ function buildWit2Sig(ctx) {
     const arr = Array(NVars);
     for (let i=0; i<ctx.signals.length; i++) {
         const outIdx = ctx.signals[i].id;
-        if (typeof outIdx  == "undefined") continue;
         if (ctx.signals[i].e>=0) continue;     // If has an alias, continue..
-        assert(outIdx<NVars);
+        assert(typeof outIdx  != "undefined", `Signal ${i} does not have index`);
+        if (outIdx>=NVars) continue; // Is a constant or a discarded variable
         if (typeof arr[ctx.signals[i].id] == "undefined") {
             arr[outIdx] = i;
         }
@@ -311,11 +316,6 @@ function buildCircuitVar() {
 }
 
 
-
-function hashComponentCall(ctx, cIdx) {
-    // TODO: At the moment generate a diferent function for each instance of the component
-    return cIdx;
-}
 
 
 function getTmpName(_suggestedName) {
@@ -374,7 +374,7 @@ function addSizes(_sizes) {
 
 function buildFunction(name, paramValues) {
     const ctx = this;
-    const h = hashFunctionCall(ctx, name, paramValues);
+    const {h, instanceDef} = hashFunctionCall(ctx, name, paramValues);
 
     if (ctx.definedFunctions[h]) return ctx.definedFunctions[h];
 
@@ -430,7 +430,11 @@ function buildFunction(name, paramValues) {
     if (ctx.returnValue == null) {
         if (ctx.returnSizes ==  null) assert(false, `Funciont ${name} does not return any value`);
         res.type = "VARVAL_CONSTSIZE";
-        let code = `void ${name}_${h}(Circom_CalcWit *ctx, PBigInt __retValue ${paramsStr}) {`;
+        let code =
+            "/*\n" +
+            instanceDef +
+            "\n*/\n" +
+            `void ${name}_${h}(Circom_CalcWit *ctx, PBigInt __retValue ${paramsStr}) {`;
         code += utils.ident(ctx.codeHeader);
         code += utils.ident(ctx.code);
         code += utils.ident("returnFunc:\n");
@@ -455,7 +459,77 @@ function buildFunction(name, paramValues) {
     return res;
 }
 
+
+
+function hashComponentCall(ctx, cIdx) {
+    // TODO: At the moment generate a diferent function for each instance of the component
+    const constParams = [];
+    for (let p in ctx.components[cIdx].params) {
+        constParams.push(p + "=" + value2str(ctx.components[cIdx].params[p]));
+    }
+
+    for (let n in ctx.components[cIdx].names.o) {
+        const entry = ctx.components[cIdx].names.o[n];
+        if ((entry.type == "S")&&(ctx.signals[entry.offset].o & ctx.IN)) {
+            travelSizes(n, entry.offset, entry.sizes, (prefix, offset) => {
+                if (utils.isDefined(ctx.signals[offset].v)) {
+                    constParams.push(prefix + "=" + bigInt(ctx.signals[offset].value));
+                }
+            });
+        }
+    }
+
+    let instanceDef = ctx.components[cIdx].template;
+    if (constParams.length>0) {
+        instanceDef += "\n";
+        constParams.sort();
+        instanceDef += constParams.join("\n");
+    }
+    const h = utils.fnvHash(instanceDef);
+    return {h, instanceDef};
+
+    function travelSizes(prefix, offset, sizes, fn) {
+        if (sizes.length == 0) {
+            fn(prefix, offset);
+            return 1;
+        } else {
+            let o = offset;
+            for (let i=0; i<sizes[0]; i++) {
+                o += travelSizes(prefix + "[" + i + "]", o, sizes.slice(1), fn);
+            }
+            return o-offset;
+        }
+    }
+}
+
 function hashFunctionCall(ctx, name, paramValues) {
     // TODO
-    return "1234";
+    const constParams = [];
+    for (let i=0; i<ctx.functions[name].params.length; i++) {
+        if (!paramValues[i].used) {
+            constParams.push(ctx.functions[name].params[i] + "=" + value2str(paramValues[i]));
+        }
+    }
+    let instanceDef = name;
+    if (constParams.length>0) {
+        instanceDef += "\n";
+        constParams.sort();
+        instanceDef += constParams.join("\n");
+    }
+
+    const h = utils.fnvHash(instanceDef);
+    return {h, instanceDef};
+}
+
+function value2str(v) {
+    if (Array.isArray(v)) {
+        let S="[";
+        for (let i=0; i<v.length; i++) {
+            if (i>0) S+=",";
+            S+=value2str(v[i]);
+        }
+        return S;
+    } else {
+        return bigInt(v).toString();
+    }
 }

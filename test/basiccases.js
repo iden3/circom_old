@@ -87,4 +87,14 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("constants1", async () => {
+        await doTest(
+            "constants1.circom",
+            [
+                [{in: 0}, {out: 42}],
+                [{in: 10}, {out: 52}],
+                [{in: __P__.minus(2)}, {out: 40}],
+            ]
+        );
+    });
 });

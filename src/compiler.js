@@ -29,6 +29,7 @@ const exec = require("./exec");
 const lc = require("./lcalgebra");
 const Ctx = require("./ctx");
 const ZqField = require("./zqfield");
+const utils = require("./utils");
 
 module.exports = compile;
 
@@ -130,6 +131,7 @@ function classifySignals(ctx) {
             return t1;
         }
         if ((t1 == ctx.stONE) || (t2 == ctx.stONE)) return ctx.stONE;
+        if ((t1 == ctx.stOUTPUT) || (t2 == ctx.stOUTPUT)) return ctx.stOUTPUT;
         if ((t1 == ctx.stCONSTANT) || (t2 == ctx.stCONSTANT)) return ctx.stCONSTANT;
         if ((t1 == ctx.stDISCARDED) || (t2 == ctx.stDISCARDED)) return ctx.stDISCARDED;
         if (t1!=t2) return ERROR;
@@ -146,8 +148,6 @@ function classifySignals(ctx) {
             let t = lSignal.c || ctx.stINTERNAL;
             if (s == 0) {
                 t = ctx.stONE;
-            } else if (lSignal.v) {
-                t = ctx.stCONSTANT;
             } else if (lSignal.o & ctx.MAIN) {
                 if (lSignal.o & ctx.IN) {
                     if (lSignal.o & ctx.PRV) {
@@ -158,6 +158,8 @@ function classifySignals(ctx) {
                 } else if (lSignal.o & ctx.OUT) {
                     t = ctx.stOUTPUT;
                 }
+            } else if (utils.isDefined(lSignal.v)) {
+                t = ctx.stCONSTANT;
             }
             tAll = priorize(t,tAll);
             if (lSignal.e>=0) {

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <iomanip>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
