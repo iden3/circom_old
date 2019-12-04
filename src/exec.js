@@ -183,24 +183,6 @@ function iterateSelectors(ctx, sizes, baseName, fn) {
     return res;
 }
 
-function setScope(ctx, name, selectors, value) {
-    let l = getScopeLevel(ctx, name);
-    if (l==-1) l= ctx.scopes.length-1;
-
-    if (selectors.length == 0) {
-        ctx.scopes[l][name] = value;
-    } else {
-        setScopeArray(ctx.scopes[l][name], selectors);
-    }
-
-    function setScopeArray(a, sels) {
-        if (sels.length == 1) {
-            a[sels[0].value] = value;
-        } else {
-            setScopeArray(a[sels[0]], sels.slice(1));
-        }
-    }
-}
 
 function getScope(ctx, name, selectors) {
 
@@ -229,7 +211,7 @@ function getScope(ctx, name, selectors) {
     }
 
     for (let i=ctx.scopes.length-1; i>=0; i--) {
-        if (ctx.scopes[i][name]) return select(ctx.scopes[i][name], sels);
+        if (ctx.scopes[i][name]) return select(ctx.scopes[i][name].value, sels);
     }
     return null;
 
@@ -247,6 +229,52 @@ function getScope(ctx, name, selectors) {
             res[idxName] += sels[i]*accSizes[i];
         }
         return res;
+    }
+}
+
+function getScopeRef(ctx, name, selectors) {
+
+    const sels = [];
+    if (selectors) {
+        for (let i=0; i< selectors.length; i++) {
+            const idx = exec(ctx, selectors[i]);
+            if (ctx.error) return;
+
+            if (idx.type != "NUMBER") return error(ctx, selectors[i], "expected a number");
+            sels.push( idx.value.toJSNumber() );
+        }
+    }
+
+
+    function select(v, s, t) {
+        s = s || [];
+        if (s.length == 0)  return [v, sels, t];
+        return select(v[s[0]], s.slice(1), t);
+    }
+
+    for (let i=ctx.scopes.length-1; i>=0; i--) {
+        if (ctx.scopes[i][name]) return select(ctx.scopes[i][name].value, sels, ctx.scopes[i][name].type);
+    }
+    return [null, [], ""];
+}
+
+
+function setScopeRef(ctx, name, sels, value) {
+    let l = getScopeLevel(ctx, name);
+    if (l==-1) l= ctx.scopes.length-1;
+
+    if (sels.length == 0) {
+        ctx.scopes[l][name].value = value;
+    } else {
+        setScopeArray(ctx.scopes[l][name].value, sels);
+    }
+
+    function setScopeArray(a, sels) {
+        if (sels.length == 1) {
+            a[sels[0]] = value;
+        } else {
+            setScopeArray(a[sels[0]], sels.slice(1));
+        }
     }
 }
 
@@ -273,11 +301,14 @@ function execTemplateDef(ctx, ast) {
     }
     scope[ast.name] = {
         type: "TEMPLATE",
-        params: ast.params,
-        block: ast.block,
-        fileName: ctx.fileName,
-        filePath: ctx.filePath,
-        scopes: copyScope(ctx.scopes)
+        value: {
+            type: "TEMPLATE",
+            params: ast.params,
+            block: ast.block,
+            fileName: ctx.fileName,
+            filePath: ctx.filePath,
+            scopes: copyScope(ctx.scopes)
+        }
     };
     ctx.templates[ast.name] = {
         block: ast.block,
@@ -294,11 +325,14 @@ function execFunctionDef(ctx, ast) {
     ctx.functionParams[ast.name] = ast.params;
     scope[ast.name] = {
         type: "FUNCTION",
-        params: ast.params,
-        block: ast.block,
-        fileName: ctx.fileName,
-        filePath: ctx.filePath,
-        scopes: copyScope(ctx.scopes)
+        value: {
+            type: "FUNCTION",
+            params: ast.params,
+            block: ast.block,
+            fileName: ctx.fileName,
+            filePath: ctx.filePath,
+            scopes: copyScope(ctx.scopes)
+        }
     };
     ctx.functions[ast.name] = {
         block: ast.block,
@@ -327,8 +361,11 @@ function execDeclareComponent(ctx, ast) {
 
     scope[ast.name.name] = {
         type: "COMPONENT",
-        sizes: sizes,
-        cIdx: Array.isArray(cIdx) ? cIdx[0] : cIdx
+        value: {
+            type: "COMPONENT",
+            sizes: sizes,
+            cIdx: Array.isArray(cIdx) ? cIdx[0] : cIdx
+        }
     };
 
     return {
@@ -412,7 +449,10 @@ function execInstantiateComponet(ctx, vr, fn) {
 
         const scope = {};
         for (let i=0; i< template.params.length; i++) {
-            scope[template.params[i]] = paramValues[i];
+            scope[template.params[i]] = {
+                type: "VARIABLE",
+                value: paramValues[i]
+            };
             ctx.components[cIdx].params[template.params[i]] = extractValue(paramValues[i]);
         }
 
@@ -466,7 +506,10 @@ function execFunctionCall(ctx, ast) {
 
     const scope = {};
     for (let i=0; i< fnc.params.length; i++) {
-        scope[fnc.params[i]] = paramValues[i];
+        scope[fnc.params[i]] = {
+            type: "VARIABLE",
+            value: paramValues[i]
+        };
     }
 
     ctx.fileName = fnc.fileName;
@@ -535,8 +578,11 @@ function execDeclareSignal(ctx, ast) {
     }
     scope[ast.name.name] = {
         type: "SIGNAL",
-        sizes: sizes,
-        sIdx: sIdx[0]
+        value: {
+            type: "SIGNAL",
+            sizes: sizes,
+            sIdx: sIdx[0]
+        }
     };
     return {
         type: "VARIABLE",
@@ -560,12 +606,15 @@ function execDeclareVariable(ctx, ast) {
         sizes.push( size.value.toJSNumber() );
     }
 
-    scope[ast.name.name] = iterateSelectors(ctx, sizes, "", function() {
-        return {
-            type: "NUMBER",
-            value: bigInt(0)
-        };
-    });
+    scope[ast.name.name] = {
+        type: "VARIABLE",
+        value: iterateSelectors(ctx, sizes, "", function() {
+            return {
+                type: "NUMBER",
+                value: bigInt(0)
+            };
+        })
+    };
 
     return {
         type: "VARIABLE",
@@ -702,21 +751,20 @@ function execVarAssignement(ctx, ast) {
     } else {
         v = ast.values[0];
     }
-    const num = getScope(ctx, v.name, v.selectors);
+    const [num, sels, typ] = getScopeRef(ctx, v.name, v.selectors);
     if (ctx.error) return;
 
     if ((typeof(num) != "object")||(num == null)) return  error(ctx, ast, "Variable not defined");
 
-    if (num.type == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
+    if (typ == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
     if (ctx.error) return;
-    if ((num.type == "SIGNAL")&&(ast.op == "=")) return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
-    if ((["NUMBER", "COMPONENT"].indexOf(num.type) >= 0 )&&(ast.op != "=")) return error(ctx, ast, `Cannot assign to a var with ${ast.op}. use = op`);
+    if ((typ == "SIGNAL")&&(ast.op == "=")) return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
+    if ((["NUMBER", "COMPONENT"].indexOf(typ) >= 0 )&&(ast.op != "=")) return error(ctx, ast, `Cannot assign to a var with ${ast.op}. use = op`);
 
     const res = exec(ctx, ast.values[1]);
     if (ctx.error) return;
 
-    Object.assign(num, res);
-//    setScope(ctx, v.name, v.selectors, res);
+    setScopeRef(ctx, v.name, sels, res);
 
     return v;
 }
