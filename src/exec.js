@@ -638,12 +638,14 @@ function execVarAssignement(ctx, ast) {
 
     if (num.type == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
     if (ctx.error) return;
-//    if (num.type == "SIGNAL") return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
+    if ((num.type == "SIGNAL")&&(ast.op == "=")) return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
+    if ((["NUMBER", "COMPONENT"].indexOf(num.type) >= 0 )&&(ast.op != "=")) return error(ctx, ast, `Cannot assign to a var with ${ast.op}. use = op`);
 
     const res = exec(ctx, ast.values[1]);
     if (ctx.error) return;
 
-    setScope(ctx, v.name, v.selectors, res);
+    Object.assign(num, res);
+//    setScope(ctx, v.name, v.selectors, res);
 
     return v;
 }
@@ -915,13 +917,13 @@ function execMul(ctx, ast) {
 function execVarAddAssignement(ctx, ast) {
     const res = execAdd(ctx,{ values: [ast.values[0], ast.values[1]] } );
     if (ctx.error) return;
-    return execVarAssignement(ctx, { values: [ast.values[0], res] });
+    return execVarAssignement(ctx, { op:"=", values: [ast.values[0], res] });
 }
 
 function execVarMulAssignement(ctx, ast) {
     const res = execMul(ctx,{ values: [ast.values[0], ast.values[1]] } );
     if (ctx.error) return;
-    return execVarAssignement(ctx, { values: [ast.values[0], res] });
+    return execVarAssignement(ctx, { op:"=", values: [ast.values[0], res] });
 }
 
 function execPlusPlusRight(ctx, ast) {
@@ -929,7 +931,7 @@ function execPlusPlusRight(ctx, ast) {
     if (ctx.error) return;
     const resAfter = execAdd(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
     if (ctx.error) return;
-    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    execVarAssignement(ctx, { op:"=", values: [ast.values[0], resAfter] });
     return resBefore;
 }
 
@@ -937,7 +939,7 @@ function execPlusPlusLeft(ctx, ast) {
     if (ctx.error) return;
     const resAfter = execAdd(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
     if (ctx.error) return;
-    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    execVarAssignement(ctx, { op:"=", values: [ast.values[0], resAfter] });
     return resAfter;
 }
 
@@ -946,7 +948,7 @@ function execMinusMinusRight(ctx, ast) {
     if (ctx.error) return;
     const resAfter = execSub(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
     if (ctx.error) return;
-    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    execVarAssignement(ctx, { op:"=", values: [ast.values[0], resAfter] });
     return resBefore;
 }
 
@@ -954,7 +956,7 @@ function execMinusMinusLeft(ctx, ast) {
     if (ctx.error) return;
     const resAfter = execSub(ctx,{ values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}] } );
     if (ctx.error) return;
-    execVarAssignement(ctx, { values: [ast.values[0], resAfter] });
+    execVarAssignement(ctx, { op:"=", values: [ast.values[0], resAfter] });
     return resAfter;
 }
 
