@@ -1,14 +1,27 @@
 #include "zqfield.h"
 
 ZqField::ZqField(PBigInt ap) {
+    mpz_init2(tmp, 1024);
     mpz_init_set(p, *ap);
     mpz_init_set_ui(zero, 0);
     mpz_init_set_ui(one, 1);
 }
 
+ZqField::~ZqField() {
+    mpz_clear(tmp);
+    mpz_clear(p);
+    mpz_clear(zero);
+    mpz_clear(one);
+}
+
 void ZqField::add(PBigInt r, PBigInt a, PBigInt b) {
-    mpz_add(*r,*a,*b);
-    mpz_fdiv_r(*r, *r, p);
+    mpz_add(tmp,*a,*b);
+    mpz_fdiv_r(*r, tmp, p);
+}
+
+void ZqField::mul(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_mul(tmp,*a,*b);
+    mpz_fdiv_r(*r, tmp, p);
 }
 
 void ZqField::lt(PBigInt r, PBigInt a, PBigInt b) {

@@ -17,7 +17,7 @@ function newRef(ctx, type, _name, value, sizes) {
         }
     }
     if (Array.isArray(sizes)) {
-        sizes = utils.accSizes(sizes);
+        // sizes = sizes;
     } else if (utils.isDefined(value)) {
         sizes = utils.accSizes(utils.extractSizes(value));
     } else {
@@ -37,12 +37,11 @@ function newRef(ctx, type, _name, value, sizes) {
     };
 
     if (utils.isDefined(value)) {
-        scope[name].value = value;
+        scope[name].value = utils.flatArray(value);
     }
 
     return name;
 }
-
 
 function instantiateRef(ctx, name, initValue) {
     const v = getScope(ctx, name);
@@ -59,13 +58,16 @@ function instantiateRef(ctx, name, initValue) {
     }
     v.used = true;
     if (utils.isDefined(initValue)) {
-        const flatedValue = utils.flatArray(initValue);
-        for (let i=0; i<flatedValue.length; i++) {
-            const c = `mpz_set_str(${v.label}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
-            if (ctx.conditionalCode) {
-                ctx.conditionalCodeHeader += c;
-            } else {
-                ctx.code += c;
+        if (v.type == "BIGINT") {
+            for (let i=0; i<initValue.length; i++) {
+                if (utils.isDefined(initValue[i])) {
+                    const c = `mpz_set_str(${v.label}[${i}], "${initValue[i].toString(10)}", 10);\n`;
+                    if (ctx.conditionalCode) {
+                        ctx.conditionalCodeHeader += c;
+                    } else {
+                        ctx.code += c;
+                    }
+                }
             }
         }
     }
@@ -118,11 +120,11 @@ function gen(ctx, ast) {
         return genPin(ctx, ast);
     } else if (ast.type == "OP") {
         if (ast.op == "=") {
-            return genVarAssignement(ctx, ast);
+            return genAssignement(ctx, ast);
         } else if (ast.op == "<--") {
-            return genVarAssignement(ctx, ast);
+            return genAssignement(ctx, ast);
         } else if (ast.op == "<==") {
-            return genSignalAssignConstrain(ctx, ast);
+            return genSignalAssignConstraint(ctx, ast);
         } else if (ast.op == "===") {
             return genConstraint(ctx, ast);
         } else if (ast.op == "+=") {
@@ -136,7 +138,7 @@ function gen(ctx, ast) {
         } else if (ast.op == "UMINUS") {
             return genUMinus(ctx, ast);
         } else if (ast.op == "*") {
-            return genMul(ctx, ast);
+            return genBinaryOp(ctx, ast, "mul");
         } else if (ast.op == "%") {
             return genMod(ctx, ast);
         } else if (ast.op == "PLUSPLUSRIGHT") {
@@ -299,18 +301,26 @@ function genDeclareVariable(ctx, ast) {
     if (ast.name.type != "VARIABLE") return error(ctx, ast, "Invalid component name");
     if (typeof scope[varName] != "undefined") return error(ctx, ast, "Name already exists: "+varName);
 
-    let sizes=[];
-    for (let i=0; i< ast.name.selectors.length; i++) {
-        const size = gen(ctx, ast.name.selectors[i]);
-        if (ctx.error) return;
+    let sizes;
 
-        if (size.used) {
-            return error(ctx, ast, "Variable size variables not allowed");
-        } else {
-            sizes.push(size.value.toJSNumber());
+    if (ast.name.selectors.length>0) {
+        sizes=[];
+        for (let i=0; i< ast.name.selectors.length; i++) {
+            const sizeName = gen(ctx, ast.name.selectors[i]);
+            const size = getScope(ctx, sizeName);
+            if (size.sizes[0] != 1) return error(ctx, ast, "A selector cannot be an array");
+            if (ctx.error) return;
+
+            if (size.used) {
+                return error(ctx, ast, "Variable size variables not allowed");
+            } else {
+                sizes.push(size.value[0].toJSNumber());
+            }
         }
+        sizes = utils.accSizes(sizes);
+    } else {
+        sizes = null; // If not sizes, the sized are defined in the first assignement.
     }
-    sizes = utils.accSizes(sizes);
 
     const res = scope[varName] = {
         stack: true,
@@ -319,6 +329,10 @@ function genDeclareVariable(ctx, ast) {
         label: labelName,
         used: false,
     };
+
+    if (sizes) {
+        res.value = new Array(sizes[0]);
+    }
 
     scope[varName] = res;
 
@@ -396,7 +410,7 @@ function genGetOffset(ctx, vOffset, vSizes, sels) {
             rStr += rN;
             rN =0;
         }
-        if (rStr == iOffset.label) {
+        if ((vOffset)&&(rStr == iOffset.label)) {
             return vOffset;
         } else {
             const res = newRef(ctx, "INT", "_offset");
@@ -410,9 +424,11 @@ function genGetOffset(ctx, vOffset, vSizes, sels) {
 function genVariable(ctx, ast) {
     const v = getScope(ctx, ast.name);
 
+    const l = ast.selectors ? ast.selectors.length : 0;
+
     if (v.type == "SIGNAL") {
         let vOffset;
-        if (ast.selectors.length>0) {
+        if (l>0) {
             const vsOffset = genGetSigalOffset(ctx, "ctx->cIdx", ast.name);
             const vsSizes = genGetSignalSizes(ctx, "ctx->cIdx", ast.name);
             vOffset = genGetOffset(ctx, vsOffset, vsSizes, ast.selectors );
@@ -422,36 +438,37 @@ function genVariable(ctx, ast) {
         return genGetSignal(ctx, "ctx->cIdx", vOffset);
 
     } else if (v.type == "BIGINT") {
-        const vOffset = genGetOffset(ctx, 0, v.sizes, ast.sels );
+        const vOffset = genGetOffset(ctx, 0, v.sizes, ast.selectors );
         const offset = getScope(ctx, vOffset);
         if (v.used) {
             if (offset.used) {
-                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                const resN = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
+                const res = getScope(ctx, resN);
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label}`;
-                ctx.code += `${res} = ${ast.name} + ${vOffset.label};\n`;
-                return res;
+                ctx.codeHeader += `PBigInt ${res.label};\n`;
+                ctx.code += `${res.label} = ${ast.name} + ${offset.label};\n`;
+                return resN;
             } else if (offset.value) {
-                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                const resN = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
+                const res = getScope(ctx, resN);
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label}`;
-                ctx.code += `${res} = ${ast.name} + ${vOffset.value};\n`;
-                return res;
+                ctx.codeHeader += `PBigInt ${res.label};\n`;
+                ctx.code += `${res.label} = ${ast.name} + ${offset.value};\n`;
+                return resN;
             } else {
                 return ast.name;
             }
         } else {
             if (offset.used) {
                 instantiateRef(ctx, ast.name, v.value);
-                const res = newRef(ctx, "BIGINT", "_v", v.sizes.slice(ast.sels.length));
+                const res = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label}`;
-                ctx.code += `${res} = ${ast.name} + ${vOffset.label};\n`;
+                ctx.codeHeader += `PBigInt ${res};\n`;
+                ctx.code += `${res} = ${ast.name} + ${offset.label};\n`;
                 return res;
             } else {
-                const sa = utils.subArray(v.value, ast.selectors);
-                const res = newRef(ctx, "BIGINT", "_v", sa);
-                return res;
+                // return newSubRef(ctx, ast.name, ast.selectors);
+                return newRef(ctx, "BIGINT", "_v", v.value.slice(offset.value[0], offset.value[0] + v.sizes[l]),v.sizes.slice(l));
             }
         }
     }
@@ -550,39 +567,106 @@ function genGetSignal(ctx, cIdx, sIdx) {
     return res;
 }
 
-function genVarAssignement(ctx, ast) {
+function genPinAssignement(ctx, ast) {
+    let vcIdx;
+    if (ast.values[0].component.selectors.length>0) {
+        const vcOffset = genGetSubComponentOffset(ctx, "ctx->cIdx", ast.values[0].component.name);
+        const vcSizes = genGetSubComponentSizes(ctx, "ctx->cIdx", ast.values[0].component.name);
+        vcIdx = genGetOffset(ctx, vcOffset, vcSizes, ast.values[0].component.selectors );
+    } else {
+        vcIdx = genGetSubComponentOffset(ctx, "ctx->cIdx", ast.values[0].component.name);
+    }
+
+    let vsIdx;
+    if (ast.values[0].pin.selectors.length>0) {
+        const vsOffset = genGetSigalOffset(ctx, vcIdx, ast.values[0].pin.name);
+        const vsSizes = genGetSignalSizes(ctx, vcIdx, ast.values[0].pin.name);
+        vsIdx = genGetOffset(ctx, vsOffset, vsSizes, ast.values[0].pin.selectors );
+    } else {
+        vsIdx = genGetSigalOffset(ctx, vcIdx, ast.values[0].pin.name);
+    }
+
+    const vVal = gen(ctx, ast.values[1]);
+
+    genSetSignal(ctx, vcIdx, vsIdx, vVal);
+
+    return vVal;
+}
+
+function genSignalAssignmen(ctx, ast, lName, sels, rName) {
+    let vsIdx;
+    if (sels.length>0) {
+        const vsOffset = genGetSigalOffset(ctx, "ctx->cIdx", lName);
+        const vsSizes = genGetSignalSizes(ctx, "ctx->cIdx", lName);
+        vsIdx = genGetOffset(ctx, vsOffset, vsSizes, sels );
+    } else {
+        vsIdx = genGetSigalOffset(ctx, "ctx->cIdx", lName);
+    }
+
+    return genSetSignal(ctx, "ctx->cIdx", vsIdx, rName);
+}
+
+function genVarAssignment(ctx, ast, lName, sels, rName) {
+
+    const left = getScope(ctx, lName);
+    const right = getScope(ctx, rName);
+    if (!utils.isDefined(left.sizes)) {
+        left.sizes = right.sizes;
+        left.value = new Array(left.sizes[0]);
+    }
+    if (!utils.sameSizes(left.sizes.slice(sels.length), right.sizes)) return error(ctx, ast, "Sizes do not match");
+
+    const oName = genGetOffset(ctx, 0, left.sizes, sels);
+    const offset = getScope(ctx, oName);
+
+    let instantiated=false;
+    if (left.used) {
+        instantiateRef(ctx, rName, right.value);
+        instantiated=true;
+    } else if (right.used) {
+        if (sels.length == 0) {
+            instantiateRef(ctx,lName);
+        } else {
+            instantiateRef(ctx,lName, left.value);
+        }
+        instantiated=true;
+    } else if (offset.used) {
+        instantiateRef(ctx, rName, right.value);
+        if (sels.length == 0) {
+            instantiateRef(ctx,lName);
+        } else {
+            instantiateRef(ctx,lName, left.value);
+        }
+        instantiated=true;
+    }
+
+    if (instantiated) {
+        if (offset.used) {
+            ctx.code += `ctx->field->copyn(${lName} + ${oName}, ${rName}, ${right.sizes[0]});\n`;
+        } else {
+            if (offset.value[0]>0) {
+                ctx.code += `ctx->field->copyn(${lName} + ${offset.value[0]}, ${rName}, ${right.sizes[0]});\n`;
+            } else {
+                ctx.code += `ctx->field->copyn(${lName}, ${rName}, ${right.sizes[0]});\n`;
+            }
+        }
+    } else {
+        if (offset.value[0]>0) {
+            for (let i=0; i<right.sizes[0]; i++) left.value[offset.value[0] + i] = right.value[i];
+        } else {
+            for (let i=0; i<right.sizes[0]; i++) left.value[i] = right.value[i];
+        }
+    }
+}
+
+function genAssignement(ctx, ast) {
 
     let lName;
     let sels;
 
     if (ctx.error) return;
 
-    if (ast.values[0].type == "PIN") {
-
-        let vcIdx;
-        if (ast.values[0].component.selectors.length>0) {
-            const vcOffset = genGetSubComponentOffset(ctx, "ctx->cIdx", ast.values[0].component.name);
-            const vcSizes = genGetSubComponentSizes(ctx, "ctx->cIdx", ast.values[0].component.name);
-            vcIdx = genGetOffset(ctx, vcOffset, vcSizes, ast.values[0].component.selectors );
-        } else {
-            vcIdx = genGetSubComponentOffset(ctx, "ctx->cIdx", ast.values[0].component.name);
-        }
-
-        let vsIdx;
-        if (ast.values[0].pin.selectors.length>0) {
-            const vsOffset = genGetSigalOffset(ctx, vcIdx, ast.values[0].pin.name);
-            const vsSizes = genGetSignalSizes(ctx, vcIdx, ast.values[0].pin.name);
-            vsIdx = genGetOffset(ctx, vsOffset, vsSizes, ast.values[0].pin.selectors );
-        } else {
-            vsIdx = genGetSigalOffset(ctx, vcIdx, ast.values[0].pin.name);
-        }
-
-        const vVal = gen(ctx, ast.values[1]);
-
-        genSetSignal(ctx, vcIdx, vsIdx, vVal);
-
-        return vVal;
-    }
+    if (ast.values[0].type == "PIN") return genPinAssignement(ctx, ast);
 
     if (ast.values[0].type == "DECLARE") {
         lName = gen(ctx, ast.values[0]);
@@ -597,51 +681,23 @@ function genVarAssignement(ctx, ast) {
     const left = getScope(ctx, lName);
     if (!left) return error(ctx, ast, "Variable does not exists: "+ast.values[0].name);
 
-    if (ctx.conditionalCode && !left.used) {
-        instantiateRef(ctx, lName, left.value);
-    }
-
     // Component instantiation is already done.
     if (left.type == "COMPONENT") {
         ctx.last = lName;
         return;
     }
 
+    if (ctx.conditionalCode && !left.used) {
+        instantiateRef(ctx, lName, left.value);
+    }
 
     const rName = gen(ctx, ast.values[1]);
-    const right = getScope(ctx, rName);
 
-    if (left.type == "SIGNAL") {
+    if (left.type == "SIGNAL") return genSignalAssignmen(ctx, ast, lName, sels, rName);
 
-        let vsIdx;
-        if (sels.length>0) {
-            const vsOffset = genGetSigalOffset(ctx, "ctx->cIdx", lName);
-            const vsSizes = genGetSignalSizes(ctx, "ctx->cIdx", lName);
-            vsIdx = genGetOffset(ctx, vsOffset, vsSizes, sels );
-        } else {
-            vsIdx = genGetSigalOffset(ctx, "ctx->cIdx", lName);
-        }
+    if (left.type == "BIGINT") return genVarAssignment(ctx, ast, lName, sels, rName);
 
-        return genSetSignal(ctx, "ctx->cIdx", vsIdx, rName);
-    } else if (left.type == "BIGINT") {
-        if (!utils.sameSizes(left.sizes, right.sizes)) return error(ctx, ast, "Sizes do not match");
-        if (left.used) {
-            if (!right.used) {
-                instantiateRef(ctx, rName, right.value);
-            }
-            ctx.code += `ctx->field->copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
-        } else {
-            if (right.used) {
-                instantiateRef(ctx, lName);
-                ctx.code += `ctx->field->copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
-            } else {
-                left.value = right.value;
-            }
-        }
-    } else {
-        return error(ctx, ast, "Assigning to invalid");
-    }
-    return lName;
+    return error(ctx, ast, "Assigning to invalid");
 }
 
 function genConstraint(ctx, ast) {
@@ -655,13 +711,43 @@ function genConstraint(ctx, ast) {
 
 
 function genArray(ctx, ast) {
-    let S = "[";
+    let subSizes;
+    let instantiate = false;
+    if (ast.values.length == 0) return error(ctx, ast, "Arrays with zero elements not allowed");
+    const value = [];
+    const names = [];
     for (let i=0; i<ast.values.length; i++) {
-        if (i>0) S += ",";
-        S += gen(ctx, ast.values[i]);
+        const eName = gen(ctx, ast.values[i]);
+        const e = getScope(ctx, eName);
+
+        if (i==0) {
+            subSizes = e.sizes;
+        } else {
+            if (!utils.sameSizes(subSizes, e.sizes)) return error(ctx, ast, "Heteroeneus array not allowed");
+        }
+        if (e.used) {
+            instantiate = true;
+        }
+        if (!instantiate) {
+            value.push(...e.value);
+        }
+        names.push(eName);
     }
-    S+="]";
-    return S;
+
+    const newSize = [subSizes[0]*ast.values.length , ...subSizes];
+
+    if (instantiate) {
+        const rName = newRef(ctx, "BIGINT", "_arr", null, newSize);
+        instantiateRef(ctx, rName);
+        for (let i=0; i<ast.values.length; i++) {
+            ctx.code += `ctx->field->copyn(${rName}+${i*subSizes[0]}, ${names[i]}, ${subSizes[0]});\n`;
+        }
+        return rName;
+    } else {
+        const rName = newRef(ctx, "BIGINT", "_arr", value, newSize);
+        return rName;
+    }
+
 }
 
 
@@ -675,7 +761,7 @@ function genFunctionCall(ctx, ast) {
     const fn = ctx.buildFunction(ast.name, params);
 
     if (fn.type == "VARVAL_CONSTSIZE") {
-        const res = newRef(ctx, "BIGINT", `_ret${ast.name}Sizes`, fn.retSizes);
+        const res = newRef(ctx, "BIGINT", `_ret${ast.name}Sizes`, null, fn.returnSizes);
         instantiateRef(ctx, res);
 
         ctx.code +=`${fn.fnName}(ctx, ${res}`;
@@ -686,7 +772,7 @@ function genFunctionCall(ctx, ast) {
 
         return res;
     } else {
-        const res = newRef(ctx, "BIGINT", "_retVal", fn.returnValue);
+        const res = newRef(ctx, "BIGINT", "_retVal", fn.returnValue, fn.returnSizes);
         return res;
     }
 }
@@ -727,6 +813,8 @@ function genFor(ctx, ast) {
 
     const condName = gen(ctx, ast.condition);
     const cond = getScope(ctx, condName);
+    if (!utils.sameSizes(cond.sizes, [1,0])) return error(ctx, ast.condition, "Operation cannot be done on an array");
+
     if (cond.used) {
         inLoop = true;
         enterConditionalCode(ctx);
@@ -738,7 +826,7 @@ function genFor(ctx, ast) {
             `while (${condVar}) {\n`;
     } else {
         if (!utils.isDefined(cond.value)) return error(ctx, ast, "condition value not assigned");
-        if (cond.value.isZero()) end=true;
+        if (cond.value[0].isZero()) end=true;
     }
 
 
@@ -772,7 +860,7 @@ function genFor(ctx, ast) {
                     `while (${condVar}) {\n`;
             } else {
                 ctx.code = oldCode  + ctx.code;
-                if (cond2.value.isZero()) end=true;
+                if (cond2.value[0].isZero()) end=true;
             }
         } else {
             ctx.code =
@@ -844,35 +932,35 @@ function genReturn(ctx, ast) {
 
 
 
-function genSignalAssignConstrain(ctx, ast) {
-    const res = genVarAssignement(ctx, ast);
+function genSignalAssignConstraint(ctx, ast) {
+    const res = genAssignement(ctx, ast);
     //    genConstraint(ctx, ast);
     return res;
     //    return genVarAssignement(ctx, ast);
 }
 
 function genVarAddAssignement(ctx, ast) {
-    return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: ast.values}]});
+    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: ast.values}]});
 }
 
 function genVarMulAssignement(ctx, ast) {
-    return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "*", values: ast.values}]});
+    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "*", values: ast.values}]});
 }
 
 function genPlusPlusRight(ctx, ast) {
-    return `(${genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
+    return `(${genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
 }
 
 function genPlusPlusLeft(ctx, ast) {
-    return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
+    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
 }
 
 function genMinusMinusRight(ctx, ast) {
-    return `(${genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
+    return `(${genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
 }
 
 function genMinusMinusLeft(ctx, ast) {
-    return genVarAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
+    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
 }
 
 function genBinaryOp(ctx, ast, op) {
@@ -886,6 +974,8 @@ function genBinaryOp(ctx, ast, op) {
 
     if ((!a.used)&&(!utils.isDefined(a.value))) return error(ctx, ast, "Using a not assigned varialble: "+aName);
     if ((!b.used)&&(!utils.isDefined(b.value))) return error(ctx, ast, "Using a not assigned varialble: "+bName);
+    if (!utils.sameSizes(a.sizes, [1,0])) return error(ctx, ast, "Operation cannot be done on an array");
+    if (!utils.sameSizes(b.sizes, [1,0])) return error(ctx, ast, "Operation cannot be done on an array");
 
     let rName;
     if (a.used || b.used) {
@@ -900,18 +990,11 @@ function genBinaryOp(ctx, ast, op) {
         instantiateRef(ctx, rName);
         ctx.code += `ctx->field->${op}(${rName},${aName}, ${bName});\n`;
     } else {
-        rName = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](a.value, b.value));
+        rName = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](a.value[0], b.value[0]));
     }
     return rName;
 }
 
-function genMul(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).mul(bigInt(${b})).mod(__P__)`;
-}
 
 function genSub(ctx, ast) {
     const a = gen(ctx, ast.values[0]);
@@ -993,14 +1076,6 @@ function genMod(ctx, ast) {
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${a}).mod(bigInt(${b}))`;
-}
-
-function genLt(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).lt(bigInt(${b})) ? 1 : 0`;
 }
 
 function genGt(ctx, ast) {

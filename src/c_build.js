@@ -445,6 +445,7 @@ function buildFunction(name, paramValues) {
     } else {
         res.type = "CONSTVAL";
         res.returnValue = ctx.returnValue;
+        res.returnSizes = ctx.returnSizes;
     }
 
     ctx.scopes = oldScopes;
@@ -507,7 +508,7 @@ function hashFunctionCall(ctx, name, paramValues) {
     const constParams = [];
     for (let i=0; i<ctx.functions[name].params.length; i++) {
         if (!paramValues[i].used) {
-            constParams.push(ctx.functions[name].params[i] + "=" + value2str(paramValues[i]));
+            constParams.push(ctx.functions[name].params[i] + "=" + value2str(paramValues[i].value));
         }
     }
     let instanceDef = name;
@@ -528,6 +529,7 @@ function value2str(v) {
             if (i>0) S+=",";
             S+=value2str(v[i]);
         }
+        S+="]";
         return S;
     } else {
         return bigInt(v).toString();

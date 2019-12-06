@@ -97,4 +97,14 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("arrays", async () => {
+        await doTest(
+            "arrays.circom",
+            [
+                [{in: 0}, {out: [1, 8, 51]}],
+                [{in: 10}, {out: [11, 28, 111]}],
+                [{in: __P__.minus(2)}, {out: [__P__.minus(1), 4,  39]}],
+            ]
+        );
+    });
 });

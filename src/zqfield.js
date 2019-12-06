@@ -9,6 +9,10 @@ module.exports = class ZqField {
         return a.add(b).mod(this.p);
     }
 
+    mul(a, b) {
+        return a.mul(b).mod(this.p);
+    }
+
     lt(a, b) {
         return a.lt(b) ? bigInt(1) : bigInt(0);
     }

@@ -142,7 +142,7 @@ void Circom_CalcWit::checkConstraint(PBigInt value1, PBigInt value2, char const 
 #ifdef SANITY_CHECK
     if (mpz_cmp(*value1, *value2) != 0) {
         char *pcV1 = mpz_get_str(0, 10, *value1);
-        char *pcV2 = mpz_get_str(0, 10, *value1);
+        char *pcV2 = mpz_get_str(0, 10, *value2);
         std::string sV1 = std::string(pcV1);
         std::string sV2 = std::string(pcV2);
         free(pcV1);

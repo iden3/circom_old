@@ -6,7 +6,6 @@ module.exports.ident =ident;
 module.exports.extractSizes =extractSizes;
 module.exports.flatArray = flatArray;
 module.exports.csArr = csArr;
-module.exports.subArray = subArray;
 module.exports.accSizes = accSizes;
 module.exports.fnvHash = fnvHash;
 module.exports.stringifyBigInts = stringifyBigInts;
@@ -54,12 +53,6 @@ function csArr(_arr) {
     return S;
 }
 
-function subArray(value, sels) {
-    if ((!sels) || (sels.length == 0)) return value;
-
-    return subArray(value[sels[0]], sels.slice(1));
-}
-
 function accSizes(_sizes) {
     const sizes = _sizes || [];
     const accSizes = [1, 0];
@@ -90,6 +83,8 @@ function stringifyBigInts(o) {
         return o;
     }
 }
+
+
 
 function unstringifyBigInts(o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
