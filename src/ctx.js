@@ -115,6 +115,8 @@ module.exports = class Ctx {
         this.nComponents =0;
         this.names = new TableName(this);
         this.main=false;
+        this.error = null;
+        this.warnings = [];
 
         const oneIdx = this.addSignal("one");
         this.signals[oneIdx] = {
@@ -122,6 +124,8 @@ module.exports = class Ctx {
             o: this.ONE,
             e: -1,
         };
+
+        this.uniqueNames = {};
     }
 
     addSignal(name, sizes) {
@@ -166,6 +170,57 @@ module.exports = class Ctx {
 
     newTableName() {
         return new TableName(this);
+    }
+
+    _buildErr(ast, errStr) {
+        if (typeof ast == "string") {
+            ast = null;
+            errStr = ast;
+        }
+        if (ast) {
+            return {
+                pos:   {
+                    first_line: ast.first_line,
+                    first_column: ast.first_column,
+                    last_line: ast.last_line,
+                    last_column: ast.last_column
+                },
+                errStr: errStr,
+                ast: ast,
+                message: errStr,
+                errFile: ast.fileName
+            };
+        } else {
+            return {
+                errStr: errStr,
+                message: errStr
+            };
+        }
+    }
+
+    throwError(ast, errStr) {
+        const err = this._buildErr(ast, errStr);
+        this.error = err;
+    }
+
+    logWarning(ast, errStr) {
+        const w = this._buildErr(ast, errStr);
+        this.warnings.push(w);
+    }
+
+    getUniqueName(suggestedName) {
+        if (!suggestedName) {
+            suggestedName = "_tmp";
+        }
+
+        if (typeof(this.uniqueNames[suggestedName]) == "undefined") {
+            this.uniqueNames[suggestedName] = 1;
+            return suggestedName;
+        } else {
+            const name = suggestedName + "_" + this.uniqueNames[suggestedName];
+            this.uniqueNames[suggestedName]++;
+            return name;
+        }
     }
 
 };

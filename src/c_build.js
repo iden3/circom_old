@@ -21,7 +21,7 @@ const assert = require("assert");
 const bigInt = require("big-integer");
 const utils = require("./utils");
 const gen = require("./c_gen").gen;
-const newRef = require("./c_gen").newRef;
+const createRefs = require("./c_gen").createRefs;
 
 module.exports =  buildC;
 
@@ -32,14 +32,12 @@ function buildC(ctx) {
     ctx.buildFunction = buildFunction;
     ctx.code = "";
     ctx.conditionalCodeHeader = "";
-    ctx.tmpNames = {};
-    ctx.getTmpName = getTmpName;
     ctx.codes_sizes = [];
     ctx.definedSizes = {};
     ctx.addSizes = addSizes;
 
     const entryTables = buildEntryTables(ctx);
-    ctx.globalNames = ctx.tmpNames;
+    ctx.globalNames = ctx.uniqueNames;
 
     const code = buildCode(ctx);
     const functions = buildFuncFunctions(ctx);
@@ -72,7 +70,7 @@ function buildEntryTables(ctx) {
         const {htName, htMap} = addHashTable(i);
 
         let code = "";
-        const componentEntriesTableName = ctx.getTmpName("entryTable_" + ctx.components[i].template);
+        const componentEntriesTableName = ctx.getUniqueName("_entryTable" + ctx.components[i].template);
 
         code += `Circom_ComponentEntry ${componentEntriesTableName}[${htMap.length}] = {\n`;
         for (let j=0; j<htMap.length; j++) {
@@ -106,7 +104,7 @@ function buildEntryTables(ctx) {
         const h = utils.fnvHash(keys.join(","));
         if (definedHashTables[h]) return definedHashTables[h];
         definedHashTables[h] = {};
-        definedHashTables[h].htName = ctx.getTmpName("ht_"+ctx.components[cIdx].template);
+        definedHashTables[h].htName = ctx.getUniqueName("_ht"+ctx.components[cIdx].template);
         definedHashTables[h].htMap = [];
         const t = [];
         for (let i=0; i<keys.length; i++) {
@@ -145,19 +143,32 @@ function buildCode(ctx) {
         if (!fDefined[fName]) {
 
 
-            const scope = {_prefix : ""};
-            ctx.scopes = [scope];
+            ctx.scopes = [{}];
             ctx.conditionalCode = false;
             ctx.code = "";
             ctx.codeHeader = "// Header\n";
             ctx.codeFooter = "// Footer\n";
-            ctx.tmpNames = Object.assign({},ctx.globalNames);
+            ctx.uniqueNames = Object.assign({},ctx.globalNames);
+            ctx.refs = [];
 
             for (let p in ctx.components[i].params) {
-                newRef(ctx, "BIGINT", p, bigInt(ctx.components[i].params[p]));
+                if (ctx.scopes[0][p]) return ctx.throwError(`Repeated parameter at ${ctx.components[i].template}: ${p}`);
+                const refId = ctx.refs.length;
+                ctx.refs.push({
+                    type: "BIGINT",
+                    used: false,
+                    value: utils.flatArray(ctx.components[i].params[p]),
+                    sizes: utils.accSizes(utils.extractSizes(ctx.components[i].params[p])),
+                    label: ctx.getUniqueName(p)
+                });
+                ctx.scopes[0][p] = refId;
             }
 
+            createRefs(ctx, ctx.templates[ctx.components[i].template].block);
+            if (ctx.error) return;
+
             gen(ctx, ctx.templates[ctx.components[i].template].block);
+            if (ctx.error) return;
 
             const S =
                     "/*\n" +
@@ -318,34 +329,6 @@ function buildCircuitVar() {
 
 
 
-function getTmpName(_suggestedName) {
-    let suggestedName;
-    if (_suggestedName) {
-        suggestedName = trimUnderscore(_suggestedName);
-    } else {
-        suggestedName = "tmp";
-    }
-
-    if (typeof(this.tmpNames[suggestedName]) == "undefined") {
-        this.tmpNames[suggestedName] = 1;
-        return "_"+suggestedName;
-    } else {
-        const name = "_" + suggestedName + "_" + this.tmpNames[suggestedName];
-        this.tmpNames[suggestedName]++;
-        return name;
-    }
-
-    function trimUnderscore(str) {
-        let p1=0;
-        while ((p1 < str.length)&&(str[p1] == "_")) p1++;
-        let p2=str.length;
-        while ((p2 > 0)&&(str[p2-1] == "_")) p2--;
-
-        return str.slice(p1,p2);
-    }
-
-}
-
 function addSizes(_sizes) {
     const sizes = _sizes || [];
     let name = "sizes";
@@ -355,8 +338,8 @@ function addSizes(_sizes) {
     if (name=="sizes") name="sizes_0";
 
     if (this.definedSizes[name]) return this.definedSizes[name];
-
-    const labelName = this.getTmpName(name);
+    name = "_" + name;
+    const labelName = this.getUniqueName(name);
     this.definedSizes[name] = labelName;
 
     const accSizes = utils.accSizes(sizes);
@@ -382,21 +365,21 @@ function buildFunction(name, paramValues) {
         fnName: `${name}_${h}`
     };
 
-    const oldScopes = ctx.scopes;
+    const oldRefs = ctx.refs;
     const oldConditionalCode = ctx.conditionalCode;
     const oldCode = ctx.code;
     const oldCodeHeader = ctx.codeHeader;
     const oldCodeFooter = ctx.codeFooter;
-    const oldTmpNames = ctx.tmpNames;
+    const oldUniqueNames = ctx.uniqueNames;
 
 
-    const scope = {_prefix : ""};
-    ctx.scopes = [scope];
+    ctx.scopes = [{}];
+    ctx.refs = [];
     ctx.conditionalCode = false;
     ctx.code = "";
     ctx.codeHeader = "// Header\n";
     ctx.codeFooter = "// Footer\n";
-    ctx.tmpNames = Object.assign({},ctx.globalNames);
+    ctx.uniqueNames = Object.assign({},ctx.globalNames);
     ctx.returnValue = null;
     ctx.returnSizes = null;
 
@@ -406,26 +389,32 @@ function buildFunction(name, paramValues) {
 
         if (paramValues[i].used) {
             paramsStr += `,PBigInt ${ctx.functions[name].params[i]}`;
-            scope[ctx.functions[name].params[i]] = {
-                stack: true,
+            const idRef = ctx.refs.length;
+            ctx.refs.push({
                 type: "BIGINT",
                 used: true,
                 sizes: paramValues[i].sizes,
                 label: ctx.functions[name].params[i],
-            };
+            });
+            ctx.scopes[0][ctx.functions[name].params[i]] = idRef;
         } else {
-            scope[ctx.functions[name].params[i]] = {
-                stack: true,
+            const idRef = ctx.refs.length;
+            ctx.refs.push({
                 type: "BIGINT",
                 used: false,
                 sizes: paramValues[i].sizes,
                 label: ctx.functions[name].params[i],
                 value: paramValues[i].value
-            };
+            });
+            ctx.scopes[0][ctx.functions[name].params[i]] = idRef;
         }
     }
 
+    createRefs(ctx, ctx.functions[name].block);
+    if (ctx.error) return;
+
     gen(ctx, ctx.functions[name].block);
+    if (ctx.error) return;
 
     if (ctx.returnValue == null) {
         if (ctx.returnSizes ==  null) assert(false, `Funciont ${name} does not return any value`);
@@ -448,12 +437,12 @@ function buildFunction(name, paramValues) {
         res.returnSizes = ctx.returnSizes;
     }
 
-    ctx.scopes = oldScopes;
+    ctx.refs = oldRefs;
     ctx.conditionalCode = oldConditionalCode;
     ctx.code = oldCode;
     ctx.codeHeader = oldCodeHeader;
     ctx.codeFooter = oldCodeFooter;
-    ctx.tmpNames = oldTmpNames;
+    ctx.uniqueNames = oldUniqueNames;
 
     ctx.definedFunctions[h] = res;
 
@@ -508,7 +497,7 @@ function hashFunctionCall(ctx, name, paramValues) {
     const constParams = [];
     for (let i=0; i<ctx.functions[name].params.length; i++) {
         if (!paramValues[i].used) {
-            constParams.push(ctx.functions[name].params[i] + "=" + value2str(paramValues[i].value));
+            constParams.push(ctx.functions[name].params[i] + utils.accSizes2Str(paramValues[i].sizes) + "=" + value2str(paramValues[i].value));
         }
     }
     let instanceDef = name;

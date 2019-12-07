@@ -12,6 +12,7 @@ module.exports.stringifyBigInts = stringifyBigInts;
 module.exports.unstringifyBigInts = unstringifyBigInts;
 module.exports.sameSizes = sameSizes;
 module.exports.isDefined = isDefined;
+module.exports.accSizes2Str = accSizes2Str;
 
 function ident(text) {
     let lines = text.split("\n");
@@ -114,6 +115,11 @@ function sameSizes(s1, s2) {
 
 function isDefined(v) {
     return ((typeof(v) != "undefined")&&(v != null));
+}
+
+function accSizes2Str(sizes) {
+    if (sizes.length == 2) return "";
+    return `[${sizes[0]/sizes[1]}]`+accSizes2Str(sizes.slice(1));
 }
 
 
