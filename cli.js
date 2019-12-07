@@ -88,6 +88,7 @@ if (argv.sym) {
 compiler(fullFileName, options).then( () => {
     let r1csDone = false;
     let cSourceDone = false;
+    let symDone = false;
     if (options.r1csWriteStream) {
         options.r1csWriteStream.end(() => {
             r1csDone = true;
@@ -104,8 +105,16 @@ compiler(fullFileName, options).then( () => {
     } else {
         cSourceDone = true;
     }
+    if (options.symWriteStream) {
+        options.symWriteStream.end(() => {
+            symDone = true;
+            finishIfDone();
+        });
+    } else {
+        cSourceDone = true;
+    }
     function finishIfDone() {
-        if ((r1csDone)&&(cSourceDone)) {
+        if ((r1csDone)&&(cSourceDone)&&(symDone)) {
             process.exit(0);
         }
     }
