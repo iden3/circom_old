@@ -107,4 +107,26 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("if unrolled", async () => {
+        await doTest(
+            "ifunrolled.circom",
+            [
+                [{in: 0}, {out: [1, 3, 6]}],
+                [{in: 10}, {out: [11, 13, 16]}],
+                [{in: __P__.minus(2)}, {out: [__P__.minus(1), 1,  4]}],
+            ]
+        );
+    });
+    it("if rolled", async () => {
+        await doTest(
+            "ifrolled.circom",
+            [
+                [{in: 0}, {out: [1, 0, 0]}],
+                [{in: 1}, {out: [0, 1, 0]}],
+                [{in: 2}, {out: [0, 0, 1]}],
+                [{in: 3}, {out: [0, 0, 0]}],
+                [{in: __P__.minus(2)}, {out: [0,0,0]}],
+            ]
+        );
+    });
 });

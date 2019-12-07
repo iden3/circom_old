@@ -17,6 +17,11 @@ public:
     void add(PBigInt r,PBigInt a, PBigInt b);
     void mul(PBigInt r,PBigInt a, PBigInt b);
     void lt(PBigInt r, PBigInt a, PBigInt b);
+    void eq(PBigInt r, PBigInt a, PBigInt b);
+    void gt(PBigInt r, PBigInt a, PBigInt b);
+    void leq(PBigInt r, PBigInt a, PBigInt b);
+    void geq(PBigInt r, PBigInt a, PBigInt b);
+    void neq(PBigInt r, PBigInt a, PBigInt b);
     int isTrue(PBigInt a);
 };
 

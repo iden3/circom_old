@@ -17,5 +17,25 @@ module.exports = class ZqField {
         return a.lt(b) ? bigInt(1) : bigInt(0);
     }
 
+    eq(a, b) {
+        return a.eq(b) ? bigInt(1) : bigInt(0);
+    }
+
+    gt(a, b) {
+        return a.gt(b) ? bigInt(1) : bigInt(0);
+    }
+
+    leq(a, b) {
+        return a.leq(b) ? bigInt(1) : bigInt(0);
+    }
+
+    geq(a, b) {
+        return a.geq(b) ? bigInt(1) : bigInt(0);
+    }
+
+    neq(a, b) {
+        return a.neq(b) ? bigInt(1) : bigInt(0);
+    }
+
 };
 

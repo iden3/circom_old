@@ -190,15 +190,15 @@ function gen(ctx, ast) {
         } else if (ast.op == "<") {
             return genBinaryOp(ctx, ast, "lt");
         } else if (ast.op == ">") {
-            return genGt(ctx, ast);
+            return genBinaryOp(ctx, ast, "gt");
         } else if (ast.op == "<=") {
-            return genLte(ctx, ast);
+            return genBinaryOp(ctx, ast, "leq");
         } else if (ast.op == ">=") {
-            return genGte(ctx, ast);
+            return genBinaryOp(ctx, ast, "geq");
         } else if (ast.op == "==") {
-            return genEq(ctx, ast);
+            return genBinaryOp(ctx, ast, "eq");
         } else if (ast.op == "!=") {
-            return genNeq(ctx, ast);
+            return genBinaryOp(ctx, ast, "neq");
         } else if (ast.op == "?") {
             return genTerCon(ctx, ast);
         } else {
@@ -280,6 +280,11 @@ function genForSrcComment(ctx, ast) {
     const condition = getSource(ctx, ast.condition);
     const step = getSource(ctx, ast.step);
     ctx.code += `\n/* for (${init},${condition},${step}) */\n`;
+}
+
+function genIfSrcComment(ctx, ast) {
+    const condition = getSource(ctx, ast.condition);
+    ctx.code += `\n/* if (${condition}) */\n`;
 }
 
 
@@ -835,6 +840,8 @@ function genFor(ctx, ast) {
 
 
     const condRef = gen(ctx, ast.condition);
+    if (ctx.error) return;
+
     const cond = ctx.refs[condRef];
     if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
 
@@ -867,6 +874,8 @@ function genFor(ctx, ast) {
         if (ctx.error) return;
 
         const condRef2 = gen(ctx, ast.condition);
+        if (ctx.error) return;
+
         const cond2 = ctx.refs[condRef2];
 
         if (!inLoop) {
@@ -917,16 +926,45 @@ function genCompute(ctx, ast) {
 }
 
 function genIf(ctx, ast) {
-    const condition = gen(ctx, ast.condition);
+    genIfSrcComment(ctx, ast);
+    const condRef = gen(ctx, ast.condition);
     if (ctx.error) return;
-    const thenBody = gen(ctx, ast.then);
-    if (ctx.error) return;
-    if (ast.else) {
-        const elseBody = gen(ctx, ast.else);
+    const cond = ctx.refs[condRef];
+    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
+
+    if (cond.used) {
+        enterConditionalCode(ctx, ast);
+
+        ctx.code += `if (ctx->field->isTrue(${cond.label})) {\n`;
+
+        const oldCode = ctx.code;
+        ctx.code = "";
+
+        gen(ctx, ast.then);
         if (ctx.error) return;
-        return `if (bigInt(${condition}).neq(bigInt(0))) {\n${thenBody}\n} else {\n${elseBody}\n}\n`;
+
+        ctx.code = oldCode + utils.ident(ctx.code);
+
+        if (ast.else) {
+            ctx.code += "} else {\n";
+            const oldCode = ctx.code;
+            ctx.code = "";
+            gen(ctx, ast.else);
+            if (ctx.error) return;
+            ctx.code = oldCode + utils.ident(ctx.code);
+        }
+
+        ctx.code += "}\n";
+
     } else {
-        return `if (bigInt(${condition}).neq(bigInt(0))) {\n${thenBody}\n}\n`;
+        if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
+        if (!cond.value[0].isZero()) {
+            gen(ctx, ast.then);
+        } else {
+            if (ast.else) {
+                gen(ctx, ast.else);
+            }
+        }
     }
 }
 

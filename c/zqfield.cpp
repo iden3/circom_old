@@ -33,6 +33,51 @@ void ZqField::lt(PBigInt r, PBigInt a, PBigInt b) {
     }
 }
 
+void ZqField::eq(PBigInt r, PBigInt a, PBigInt b) {
+    int c = mpz_cmp(*a, *b);
+    if (c==0) {
+        mpz_set(*r, one);
+    } else {
+        mpz_set(*r, zero);
+    }
+}
+
+void ZqField::gt(PBigInt r, PBigInt a, PBigInt b) {
+    int c = mpz_cmp(*a, *b);
+    if (c>0) {
+        mpz_set(*r, one);
+    } else {
+        mpz_set(*r, zero);
+    }
+}
+
+void ZqField::leq(PBigInt r, PBigInt a, PBigInt b) {
+    int c = mpz_cmp(*a, *b);
+    if (c<=0) {
+        mpz_set(*r, one);
+    } else {
+        mpz_set(*r, zero);
+    }
+}
+
+void ZqField::geq(PBigInt r, PBigInt a, PBigInt b) {
+    int c = mpz_cmp(*a, *b);
+    if (c>=0) {
+        mpz_set(*r, one);
+    } else {
+        mpz_set(*r, zero);
+    }
+}
+
+void ZqField::neq(PBigInt r, PBigInt a, PBigInt b) {
+    int c = mpz_cmp(*a, *b);
+    if (c!=0) {
+        mpz_set(*r, one);
+    } else {
+        mpz_set(*r, zero);
+    }
+}
+
 int ZqField::isTrue(PBigInt a) {
     return mpz_sgn(*a);
 }
