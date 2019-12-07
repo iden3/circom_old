@@ -9,6 +9,10 @@ module.exports = class ZqField {
         return a.add(b).mod(this.p);
     }
 
+    sub(a, b) {
+        return a.minus(b).mod(this.p);
+    }
+
     mul(a, b) {
         return a.mul(b).mod(this.p);
     }
@@ -35,6 +39,18 @@ module.exports = class ZqField {
 
     neq(a, b) {
         return a.neq(b) ? bigInt(1) : bigInt(0);
+    }
+
+    div(a, b) {
+        return a.mul(b.modInv(this.p)).mod(this.p);
+    }
+
+    idiv(a, b) {
+        return a.divide(b);
+    }
+
+    mod(a, b) {
+        return a.mod(b);
     }
 
 };

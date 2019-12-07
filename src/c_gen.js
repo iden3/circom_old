@@ -156,27 +156,27 @@ function gen(ctx, ast) {
         } else if (ast.op == "+") {
             return genBinaryOp(ctx, ast, "add");
         } else if (ast.op == "-") {
-            return genSub(ctx, ast);
+            return genBinaryOp(ctx, ast, "sub");
         } else if (ast.op == "UMINUS") {
             return genUMinus(ctx, ast);
         } else if (ast.op == "*") {
             return genBinaryOp(ctx, ast, "mul");
         } else if (ast.op == "%") {
-            return genMod(ctx, ast);
+            return genBinaryOp(ctx, ast, "mod");
         } else if (ast.op == "PLUSPLUSRIGHT") {
-            return genPlusPlusRight(ctx, ast);
+            return genOpOp(ctx, ast, "add", "RIGHT");
         } else if (ast.op == "PLUSPLUSLEFT") {
-            return genPlusPlusLeft(ctx, ast);
+            return genOpOp(ctx, ast, "add", "LEFT");
         } else if (ast.op == "MINUSMINUSRIGHT") {
-            return genMinusMinusRight(ctx, ast);
+            return genOpOp(ctx, ast, "sub", "RIGHT");
         } else if (ast.op == "MINUSMINUSLEFT") {
-            return genMinusMinusLeft(ctx, ast);
+            return genOpOp(ctx, ast, "sub", "LEFT");
         } else if (ast.op == "**") {
             return genExp(ctx, ast);
         } else if (ast.op == "/") {
-            return genDiv(ctx, ast);
+            return genBinaryOp(ctx, ast, "div");
         } else if (ast.op == "\\") {
-            return genIDiv(ctx, ast);
+            return genBinaryOp(ctx, ast, "idiv");
         } else if (ast.op == "&") {
             return genBAnd(ctx, ast);
         } else if (ast.op == "&&") {
@@ -1009,20 +1009,32 @@ function genVarMulAssignement(ctx, ast) {
     return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "*", values: ast.values}]});
 }
 
-function genPlusPlusRight(ctx, ast) {
-    return `(${genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
-}
+function genOpOp(ctx, ast, op, lr) {
 
-function genPlusPlusLeft(ctx, ast) {
-    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "+", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
-}
+    if (ast.values[0].type != "VARIABLE") return ctx.throwError(ast, "incrementing a non variable");
 
-function genMinusMinusRight(ctx, ast) {
-    return `(${genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]})}).add(__P__).sub(bigInt(1)).mod(__P__)`;
-}
+    const vRef = ast.values[0].refId;
 
-function genMinusMinusLeft(ctx, ast) {
-    return genAssignement(ctx, {values: [ast.values[0], {type: "OP", op: "-", values: [ast.values[0], {type: "NUMBER", value: bigInt(1)}]}]});
+    const vevalRef = gen(ctx, ast.values[0]);
+    if (ctx.error) return;
+    const veval = ctx.refs[vevalRef];
+
+    if (veval.type != "BIGINT") return ctx.throwError(ast, "incrementing a non variable");
+
+    const resRef = newRef(ctx, "BIGINT", "_tmp");
+    const res = ctx.refs[resRef];
+    if (veval.used) {
+        instantiateRef(ctx, resRef);
+        ctx.code += `ctx->field->${op}(${res.label}, ${veval.label}, &(ctx->field->one));\n`;
+    } else {
+        res.value = [ctx.field[op](veval.value[0], bigInt(1))];
+    }
+    genVarAssignment(ctx, ast, vRef, ast.values[0].selectors, resRef);
+    if (lr == "RIGHT") {
+        return vevalRef;
+    } else if (lr == "LEFT") {
+        return resRef;
+    }
 }
 
 function genBinaryOp(ctx, ast, op) {
@@ -1141,46 +1153,6 @@ function genMod(ctx, ast) {
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${a}).mod(bigInt(${b}))`;
-}
-
-function genGt(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).gt(bigInt(${b})) ? 1 : 0`;
-}
-
-function genLte(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).lesserOrEquals(bigInt(${b})) ? 1 : 0`;
-}
-
-function genGte(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).greaterOrEquals(bigInt(${b})) ? 1 : 0`;
-}
-
-function genEq(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `(bigInt(${a}).eq(bigInt(${b})) ? 1 : 0)`;
-}
-
-function genNeq(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `(bigInt(${a}).eq(bigInt(${b})) ? 0 : 1)`;
 }
 
 function genUMinus(ctx, ast) {

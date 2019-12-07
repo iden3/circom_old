@@ -15,7 +15,11 @@ public:
 
     void copyn(PBigInt a, PBigInt b, int n);
     void add(PBigInt r,PBigInt a, PBigInt b);
+    void sub(PBigInt r,PBigInt a, PBigInt b);
     void mul(PBigInt r,PBigInt a, PBigInt b);
+    void div(PBigInt r,PBigInt a, PBigInt b);
+    void idiv(PBigInt r,PBigInt a, PBigInt b);
+    void mod(PBigInt r,PBigInt a, PBigInt b);
     void lt(PBigInt r, PBigInt a, PBigInt b);
     void eq(PBigInt r, PBigInt a, PBigInt b);
     void gt(PBigInt r, PBigInt a, PBigInt b);

@@ -15,13 +15,38 @@ ZqField::~ZqField() {
 }
 
 void ZqField::add(PBigInt r, PBigInt a, PBigInt b) {
-    mpz_add(tmp,*a,*b);
-    mpz_fdiv_r(*r, tmp, p);
+    mpz_add(*r,*a,*b);
+    if (mpz_cmp(*r, p) >= 0) {
+        mpz_sub(*r, *r, p);
+    }
+}
+
+void ZqField::sub(PBigInt r, PBigInt a, PBigInt b) {
+    if (mpz_cmp(*a, *b) >= 0) {
+        mpz_sub(*r, *a, *b);
+    } else {
+        mpz_sub(tmp, *b, *a);
+        mpz_sub(*r, p, tmp);
+    }
 }
 
 void ZqField::mul(PBigInt r, PBigInt a, PBigInt b) {
     mpz_mul(tmp,*a,*b);
     mpz_fdiv_r(*r, tmp, p);
+}
+
+void ZqField::div(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_invert(tmp, *b, p);
+    mpz_mul(tmp,*a,tmp);
+    mpz_fdiv_r(*r, tmp, p);
+}
+
+void ZqField::idiv(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_fdiv_q(*r, *a, *b);
+}
+
+void ZqField::mod(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_fdiv_r(*r, *a, *b);
 }
 
 void ZqField::lt(PBigInt r, PBigInt a, PBigInt b) {
