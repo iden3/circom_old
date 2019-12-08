@@ -92,6 +92,25 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("while unrolled", async () => {
+        await doTest(
+            "whileunrolled.circom",
+            [
+                [{in: 0}, {out: [0,1,2]}],
+                [{in: 10}, {out: [10, 11, 12]}],
+                [{in: __P__.minus(2)}, {out: [__P__.minus(2), __P__.minus(1), 0]}],
+            ]
+        );
+    });
+    it("while rolled", async () => {
+        await doTest(
+            "whilerolled.circom",
+            [
+                [{in: 0}, {out: 0}],
+                [{in: 10}, {out: 10}],
+            ]
+        );
+    });
     it("function1", async () => {
         await doTest(
             "function1.circom",
@@ -243,6 +262,28 @@ describe("basic cases", function () {
                 [{in: [ 0, 1]}, {and: 0, or: 1, not1:1}],
                 [{in: [-1, 9]}, {and: 1, or: 1, not1:0}],
                 [{in: [ 0, 0]}, {and: 0, or: 0, not1:1}],
+            ]
+        );
+    });
+    it("Conditional Ternary operator", async () => {
+        await doTest(
+            "condternary.circom",
+            [
+                [{in: 0}, {out: 21}],
+                [{in: 1}, {out:  1}],
+                [{in: 2}, {out: 23}],
+                [{in:-1}, {out: 20}],
+            ]
+        );
+    });
+    it("Compute block", async () => {
+        await doTest(
+            "compute.circom",
+            [
+                [{x: 1}, {y:  7}],
+                [{x: 2}, {y:  7}],
+                [{x: 3}, {y: 11}],
+                [{x:-1}, {y: -5}],
             ]
         );
     });

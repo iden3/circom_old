@@ -100,7 +100,14 @@ void loadJson(Circom_CalcWit *ctx, std::string filename) {
     for (json::iterator it = j.begin(); it != j.end(); ++it) {
 //      std::cout << it.key() << " => " << it.value() << '\n';
       u64 h = fnv1a(it.key());
-      int o = ctx->getSignalOffset(0, h);
+      int o;
+      try {
+        o = ctx->getSignalOffset(0, h);
+      } catch (std::runtime_error e) {
+        std::ostringstream errStrStream;
+        errStrStream << "Error loadin variable: " << it.key() << "\n" << e.what();
+        throw std::runtime_error(errStrStream.str() );
+      }
       Circom_Sizes sizes = ctx->getSignalSizes(0, h);
       iterateArr(ctx, o, sizes, it.value(), itFunc);
     }

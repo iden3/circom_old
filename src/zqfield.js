@@ -58,6 +58,7 @@ module.exports = class ZqField {
     }
 
     div(a, b) {
+        assert(!b.isZero(), "Division by zero");
         return a.mul(b.modInv(this.p)).mod(this.p);
     }
 

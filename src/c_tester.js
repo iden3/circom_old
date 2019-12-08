@@ -108,6 +108,9 @@ class CTester {
                     checkObject(prefix + "."+k, eOut[k]);
                 }
             } else {
+                if (typeof self.symbols[prefix] == "undefined") {
+                    assert(false, "Output variable not defined: "+ prefix);
+                }
                 const ba = bigInt(actualOut[self.symbols[prefix].idxWit]).toString();
                 const be = bigInt(eOut).toString();
                 assert.strictEqual(ba, be, prefix);

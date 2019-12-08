@@ -229,11 +229,11 @@ function gen(ctx, ast) {
     } else if (ast.type == "BLOCK") {
         return genBlock(ctx, ast);
     } else if (ast.type == "COMPUTE") {
-        return genCompute(ctx, ast);
+        return gen(ctx, ast.body);
     } else if (ast.type == "FOR") {
-        return genFor(ctx, ast);
+        return genLoop(ctx, ast);
     } else if (ast.type == "WHILE") {
-        return genWhile(ctx, ast);
+        return genLoop(ctx, ast);
     } else if (ast.type == "IF") {
         return genIf(ctx, ast);
     } else if (ast.type == "RETURN") {
@@ -283,11 +283,18 @@ function genSrcComment(ctx, ast) {
     ctx.code += "\n/* "+code+"  */\n";
 }
 
-function genForSrcComment(ctx, ast) {
-    const init = getSource(ctx, ast.init);
-    const condition = getSource(ctx, ast.condition);
-    const step = getSource(ctx, ast.step);
-    ctx.code += `\n/* for (${init},${condition},${step}) */\n`;
+function genLoopSrcComment(ctx, ast) {
+    if (ast.type == "FOR") {
+        const init = getSource(ctx, ast.init);
+        const condition = getSource(ctx, ast.condition);
+        const step = getSource(ctx, ast.step);
+        ctx.code += `\n/* for (${init},${condition},${step}) */\n`;
+    } else if (ast.type == "WHILE") {
+        const condition = getSource(ctx, ast.condition);
+        ctx.code += `\n/* while (${condition}) */\n`;
+    } else {
+        assert(false, "Invalid loop type: "+ ast.type);
+    }
 }
 
 function genIfSrcComment(ctx, ast) {
@@ -835,12 +842,14 @@ function leaveConditionalCode(ctx) {
     }
 }
 
-function genFor(ctx, ast) {
-    genForSrcComment(ctx, ast);
+function genLoop(ctx, ast) {
+    genLoopSrcComment(ctx, ast);
     let inLoop = false;
-    ctx.scopes.push({});
-    gen(ctx, ast.init);
-    if (ctx.error) return;
+
+    if (ast.init) {
+        gen(ctx, ast.init);
+        if (ctx.error) return;
+    }
 
     let end=false;
     let condVarRef;
@@ -878,8 +887,10 @@ function genFor(ctx, ast) {
         gen(ctx, ast.body);
         if (ctx.error) return;
 
-        gen(ctx, ast.step);
-        if (ctx.error) return;
+        if (ast.step) {
+            gen(ctx, ast.step);
+            if (ctx.error) return;
+        }
 
         const condRef2 = gen(ctx, ast.condition);
         if (ctx.error) return;
@@ -917,20 +928,6 @@ function genFor(ctx, ast) {
         leaveConditionalCode(ctx);
     }
     ctx.scopes.pop();
-}
-
-function genWhile(ctx, ast) {
-    const condition = gen(ctx, ast.condition);
-    if (ctx.error) return;
-    const body = gen(ctx, ast.body);
-    if (ctx.error) return;
-    return `while (bigInt(${condition}).neq(bigInt(0))) {\n${body}\n}\n`;
-}
-
-function genCompute(ctx, ast) {
-    const body = gen(ctx, ast.body);
-    if (ctx.error) return;
-    return `{\n${body}\n}\n`;
 }
 
 function genIf(ctx, ast) {
@@ -1095,54 +1092,68 @@ function genOp(ctx, ast, op, nOps) {
     return rRef;
 }
 
-function genBAnd(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).and(bigInt(${b})).and(__MASK__)`;
-}
-
-function genAnd(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `((bigInt(${a}).neq(bigInt(0)) && bigInt(${b}).neq(bigInt(0))) ? bigInt(1) : bigInt(0))`;
-}
-
-function genOr(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `((bigInt(${a}).neq(bigInt(0)) || bigInt(${b}).neq(bigInt(0))) ? bigInt(1) : bigInt(0))`;
-}
-
-function genShl(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shl(bigInt(${b})).and(__MASK__)`;
-}
-
-function genShr(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shr(bigInt(${b})).and(__MASK__)`;
-}
 
 function genTerCon(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
+    const condRef = gen(ctx, ast.values[0]);
     if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    const c = gen(ctx, ast.values[2]);
-    if (ctx.error) return;
-    return `bigInt(${a}).neq(bigInt(0)) ? (${b}) : (${c})`;
+    const cond = ctx.refs[condRef];
+    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
+
+    let oldCode;
+    if (cond.used) {
+        enterConditionalCode(ctx, ast);
+
+        const rLabel = ctx.getUniqueName("_ter");
+
+        ctx.codeHeader += `PBigInt ${rLabel};\n`;
+        ctx.code += `if (ctx->field->isTrue(${cond.label})) {\n`;
+
+        oldCode = ctx.code;
+        ctx.code = "";
+
+        const thenRef = gen(ctx, ast.values[1]);
+        if (ctx.error) return;
+        const then = ctx.refs[thenRef];
+
+        ctx.code = oldCode + utils.ident(ctx.code);
+
+        ctx.code += `${rLabel} = ${then.label};\n`;
+
+        ctx.code += "} else {\n";
+
+        oldCode = ctx.code;
+        ctx.code = "";
+        const elseRef = gen(ctx, ast.values[2]);
+        if (ctx.error) return;
+        const els = ctx.refs[elseRef];
+
+        ctx.code = oldCode + utils.ident(ctx.code);
+
+        ctx.code += `${rLabel} = ${els.label};\n`;
+
+        ctx.code += "}\n";
+
+
+        if (!utils.sameSizes(then.sizes, els.sizes)) return ctx.throwError(ast, "Ternary op must return the same sizes");
+
+        const refId = ctx.refs.length;
+        ctx.refs.push({
+            type: "BIGINT",
+            sizes: then.sizes,
+            used: true,
+            label: rLabel
+        });
+
+        return refId;
+
+    } else {
+        if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
+        if (!cond.value[0].isZero()) {
+            return gen(ctx, ast.values[1]);
+        } else {
+            return gen(ctx, ast.values[2]);
+        }
+    }
 }
 
 function genInclude(ctx, ast) {
