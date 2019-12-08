@@ -154,15 +154,15 @@ function gen(ctx, ast) {
         } else if (ast.op == "*=") {
             return genVarMulAssignement(ctx, ast);
         } else if (ast.op == "+") {
-            return genBinaryOp(ctx, ast, "add");
+            return genOp(ctx, ast, "add", 2);
         } else if (ast.op == "-") {
-            return genBinaryOp(ctx, ast, "sub");
+            return genOp(ctx, ast, "sub", 2);
         } else if (ast.op == "UMINUS") {
-            return genUMinus(ctx, ast);
+            return genOp(ctx, ast, "neg", 1);
         } else if (ast.op == "*") {
-            return genBinaryOp(ctx, ast, "mul");
+            return genOp(ctx, ast, "mul", 2);
         } else if (ast.op == "%") {
-            return genBinaryOp(ctx, ast, "mod");
+            return genOp(ctx, ast, "mod", 2);
         } else if (ast.op == "PLUSPLUSRIGHT") {
             return genOpOp(ctx, ast, "add", "RIGHT");
         } else if (ast.op == "PLUSPLUSLEFT") {
@@ -172,33 +172,41 @@ function gen(ctx, ast) {
         } else if (ast.op == "MINUSMINUSLEFT") {
             return genOpOp(ctx, ast, "sub", "LEFT");
         } else if (ast.op == "**") {
-            return genExp(ctx, ast);
+            return genOp(ctx, ast, "pow", 2);
         } else if (ast.op == "/") {
-            return genBinaryOp(ctx, ast, "div");
+            return genOp(ctx, ast, "div", 2);
         } else if (ast.op == "\\") {
-            return genBinaryOp(ctx, ast, "idiv");
+            return genOp(ctx, ast, "idiv", 2);
         } else if (ast.op == "&") {
-            return genBAnd(ctx, ast);
+            return genOp(ctx, ast, "band", 2);
+        } else if (ast.op == "|") {
+            return genOp(ctx, ast, "bor", 2);
+        } else if (ast.op == "^") {
+            return genOp(ctx, ast, "bxor", 2);
+        } else if (ast.op == "~") {
+            return genOp(ctx, ast, "bnot", 1);
         } else if (ast.op == "&&") {
-            return genAnd(ctx, ast);
+            return genOp(ctx, ast, "land", 2);
         } else if (ast.op == "||") {
-            return genOr(ctx, ast);
+            return genOp(ctx, ast, "lor", 2);
+        } else if (ast.op == "!") {
+            return genOp(ctx, ast, "lnot", 1);
         } else if (ast.op == "<<") {
-            return genShl(ctx, ast);
+            return genOp(ctx, ast, "shl", 2);
         } else if (ast.op == ">>") {
-            return genShr(ctx, ast);
+            return genOp(ctx, ast, "shr", 2);
         } else if (ast.op == "<") {
-            return genBinaryOp(ctx, ast, "lt");
+            return genOp(ctx, ast, "lt", 2);
         } else if (ast.op == ">") {
-            return genBinaryOp(ctx, ast, "gt");
+            return genOp(ctx, ast, "gt", 2);
         } else if (ast.op == "<=") {
-            return genBinaryOp(ctx, ast, "leq");
+            return genOp(ctx, ast, "leq", 2);
         } else if (ast.op == ">=") {
-            return genBinaryOp(ctx, ast, "geq");
+            return genOp(ctx, ast, "geq", 2);
         } else if (ast.op == "==") {
-            return genBinaryOp(ctx, ast, "eq");
+            return genOp(ctx, ast, "eq", 2);
         } else if (ast.op == "!=") {
-            return genBinaryOp(ctx, ast, "neq");
+            return genOp(ctx, ast, "neq", 2);
         } else if (ast.op == "?") {
             return genTerCon(ctx, ast);
         } else {
@@ -1037,74 +1045,54 @@ function genOpOp(ctx, ast, op, lr) {
     }
 }
 
-function genBinaryOp(ctx, ast, op) {
-    let aRef = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    let a = ctx.refs[aRef];
+function genOp(ctx, ast, op, nOps) {
+    const vals = [];
+    const valRefs = [];
 
-    let bRef = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    let b = ctx.refs[bRef];
+    var anyUsed=false;
 
-    if ((!a.used)&&(!utils.isDefined(a.value))) return ctx.throwError(ast, "Using a not assigned varialble: ");
-    if ((!b.used)&&(!utils.isDefined(b.value))) return ctx.throwError(ast, "Using a not assigned varialble: ");
-    if (!utils.sameSizes(a.sizes, [1,0])) return ctx.throwError(ast, "Operation cannot be done on an array");
-    if (!utils.sameSizes(b.sizes, [1,0])) return ctx.throwError(ast, "Operation cannot be done on an array");
+    for (let i=0; i<nOps; i++) {
+        const  ref = gen(ctx, ast.values[i]);
+        if (ctx.error) return;
+        let v = ctx.refs[ref];
+        valRefs.push(ref);
+        vals.push(v);
+
+        if (!utils.sameSizes(v.sizes, [1,0])) return ctx.throwError(ast, "Operation cannot be done on an array");
+        if (  (!v.used)
+            &&(  (!utils.isDefined(v.value))
+               ||(!utils.isDefined(v.value[0]))))
+            return ctx.throwError(ast, "Using a not assigned varialble: ");
+
+        if (v.used) anyUsed=true;
+    }
 
     let rRef;
-    if (a.used || b.used) {
-        if (!a.used) {
-            aRef = instantiateConstant(ctx, a.value);
-            a = ctx.refs[aRef];
-        }
-        if (!b.used) {
-            bRef = instantiateConstant(ctx, b.value);
-            b = ctx.refs[bRef];
+    if (anyUsed) {
+        for (let i=0; i<nOps; i++) {
+            if (!vals[i].used) {
+                valRefs[i] = instantiateConstant(ctx, vals[i].value);
+                vals[i] = ctx.refs[valRefs[i]];
+            }
         }
 
         rRef = newRef(ctx, "BIGINT", "_tmp");
         instantiateRef(ctx, rRef);
         const r = ctx.refs[rRef];
-        ctx.code += `ctx->field->${op}(${r.label},${a.label}, ${b.label});\n`;
+        let c = `ctx->field->${op}(${r.label}`;
+        for (let i=0; i<nOps; i++) {
+            c+=`,${vals[i].label}`;
+        }
+        c += ");\n";
+        ctx.code += c;
     } else {
-        rRef = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](a.value[0], b.value[0]));
+        const params = [];
+        for (let i=0; i<nOps; i++) {
+            params.push(vals[i].value[0]);
+        }
+        rRef = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](...params));
     }
     return rRef;
-}
-
-
-function genSub(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).add(__P__).sub(bigInt(${b})).mod(__P__)`;
-}
-
-function genDiv(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-
-    return `bigInt(${a}).mul( bigInt(${b}).inverse(__P__) ).mod(__P__)`;
-}
-
-function genIDiv(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-
-    return `bigInt(${a}).div( bigInt(${b}))`;
-}
-
-function genExp(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).modPow(bigInt(${b}), __P__)`;
 }
 
 function genBAnd(ctx, ast) {
@@ -1145,20 +1133,6 @@ function genShr(ctx, ast) {
     const b = gen(ctx, ast.values[1]);
     if (ctx.error) return;
     return `bigInt(${b}).greater(bigInt(256)) ? 0 : bigInt(${a}).shr(bigInt(${b})).and(__MASK__)`;
-}
-
-function genMod(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    const b = gen(ctx, ast.values[1]);
-    if (ctx.error) return;
-    return `bigInt(${a}).mod(bigInt(${b}))`;
-}
-
-function genUMinus(ctx, ast) {
-    const a = gen(ctx, ast.values[0]);
-    if (ctx.error) return;
-    return `__P__.sub(bigInt(${a})).mod(__P__)`;
 }
 
 function genTerCon(ctx, ast) {

@@ -92,10 +92,18 @@ function exec(ctx, ast) {
             return execExp(ctx, ast);
         } else if (ast.op == "&") {
             return execBAnd(ctx, ast);
+        } else if (ast.op == "|") {
+            return execBOr(ctx, ast);
+        } else if (ast.op == "^") {
+            return execBXor(ctx, ast);
+        } else if (ast.op == "~") {
+            return execBNot(ctx, ast);
         } else if (ast.op == "&&") {
             return execAnd(ctx, ast);
         } else if (ast.op == "||") {
             return execOr(ctx, ast);
+        } else if (ast.op == "!") {
+            return execLNot(ctx, ast);
         } else if (ast.op == "<<") {
             return execShl(ctx, ast);
         } else if (ast.op == ">>") {
@@ -854,7 +862,6 @@ function execNeq(ctx, ast) {
     };
 }
 
-
 function execBAnd(ctx, ast) {
     const a = exec(ctx, ast.values[0]);
     if (ctx.error) return;
@@ -868,6 +875,51 @@ function execBAnd(ctx, ast) {
         value: a.value.and(b.value).and(__MASK__)
     };
 }
+
+function execBOr(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.or(b.value).and(__MASK__)
+    };
+}
+
+function execBXor(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    const b = exec(ctx, ast.values[1]);
+    if (ctx.error) return;
+    if (b.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value || !b.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: a.value.xor(b.value).and(__MASK__)
+    };
+}
+
+function execBNot(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value) return { type: "NUMBER" };
+
+    const res = lc.negate(a);
+    if (res.type == "ERROR") return error(ctx, ast, res.errStr);
+
+    return {
+        type: "NUMBER",
+        value: a.value.xor(__MASK__).and(__MASK__)
+    };
+}
+
+
 
 function execAnd(ctx, ast) {
     const a = exec(ctx, ast.values[0]);
@@ -896,6 +948,18 @@ function execOr(ctx, ast) {
         value: (a.value.neq(0) || b.value.neq(0)) ? bigInt(1) : bigInt(0)
     };
 }
+
+function execLNot(ctx, ast) {
+    const a = exec(ctx, ast.values[0]);
+    if (ctx.error) return;
+    if (a.type != "NUMBER") return { type: "NUMBER" };
+    if (!a.value) return { type: "NUMBER" };
+    return {
+        type: "NUMBER",
+        value: (a.value.eq(0)) ? bigInt(1) : bigInt(0)
+    };
+}
+
 
 function execShl(ctx, ast) {
     const a = exec(ctx, ast.values[0]);

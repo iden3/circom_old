@@ -202,4 +202,48 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("ops3", async () => {
+        await doTest(
+            "ops3.circom",
+            [
+                [{in: [-2, 2]}, {neg1: 2,neg2: -2, pow: 4}],
+                [{in: [0, 1]}, {neg1: 0, neg2: -1, pow: 0}],
+                [{in: [ 1,-1]}, {neg1: -1, neg2: 1, pow: 1}],
+            ]
+        );
+    });
+    it("Comparation ops", async () => {
+        await doTest(
+            "opscmp.circom",
+            [
+                [{in: [ 8, 9]}, {lt: 1, leq: 1, eq:0, neq:1, geq: 0, gt:0}],
+                [{in: [-2,-2]}, {lt: 0, leq: 1, eq:1, neq:0, geq: 1, gt:0}],
+                [{in: [-1,-2]}, {lt: 0, leq: 0, eq:0, neq:1, geq: 1, gt:1}],
+                [{in: [ 1,-1]}, {lt: 1, leq: 1, eq:0, neq:1, geq: 0, gt:0}],  // In mod, negative values are higher than positive.
+            ]
+        );
+    });
+    it("Bit ops", async () => {
+        const mask = bigInt("14474011154664524427946373126085988481658748083205070504932198000989141204991");
+        const m1m = bigInt("7414231717174750794300032619171286606889616317210963838766006185586667290624");
+        await doTest(
+            "opsbit.circom",
+            [
+                [{in: [ 5, 3]}, {and: 1, or: 7, xor:6, not1:mask.minus(5), shl: 40, shr:0}],
+                [{in: [ 0, 0]}, {and: 0, or: 0, xor:0, not1:mask, shl: 0, shr:0}],
+                [{in: [-1, 1]}, {and: 0, or: m1m.add(bigInt.one), xor:m1m.add(bigInt.one), not1:mask.minus(m1m), shl: m1m.shiftLeft(1).and(mask), shr:__P__.shiftRight(1).and(mask)}],
+            ]
+        );
+    });
+    it("Logical ops", async () => {
+        await doTest(
+            "opslog.circom",
+            [
+                [{in: [ 5, 0]}, {and: 0, or: 1, not1:0}],
+                [{in: [ 0, 1]}, {and: 0, or: 1, not1:1}],
+                [{in: [-1, 9]}, {and: 1, or: 1, not1:0}],
+                [{in: [ 0, 0]}, {and: 0, or: 0, not1:1}],
+            ]
+        );
+    });
 });

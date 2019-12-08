@@ -85,6 +85,7 @@ include                 { return 'include'; }
 \&                      { return '&'; }
 \|                      { return '|'; }
 \!                      { return '!'; }
+\~                      { return '~'; }
 \<                      { return '<'; }
 \>                      { return '>'; }
 \!                      { return '!'; }
