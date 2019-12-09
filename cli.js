@@ -23,6 +23,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const JsonStreamStringify = require('json-stream-stringify');
 
 const compiler = require("./src/compiler");
 
@@ -66,8 +67,14 @@ const fullFileName = path.resolve(process.cwd(), inputFile);
 const outName = argv.output ?  argv.output : "circuit.json";
 
 compiler(fullFileName, {reduceConstraints: !argv.fast, verbose: argv.verbose}).then( (cir) => {
-    fs.writeFileSync(outName, JSON.stringify(cir, null, 1), "utf8");
-    process.exit(0);
+    const stringifyStream = new JsonStreamStringify(cir, null, 1);
+    const writeStream = fs.createWriteStream(outName, {flags: 'w'});
+
+    stringifyStream.pipe(writeStream);
+
+    writeStream.on('close', function () {
+        process.exit(0);
+    });
 }, (err) => {
 //    console.log(err);
     console.log(err.stack);
