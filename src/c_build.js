@@ -150,6 +150,8 @@ function buildCode(ctx) {
             ctx.codeFooter = "// Footer\n";
             ctx.uniqueNames = Object.assign({},ctx.globalNames);
             ctx.refs = [];
+            ctx.fileName = ctx.templates[ctx.components[i].template].fileName;
+            ctx.filePath = ctx.templates[ctx.components[i].template].filePath;
 
             for (let p in ctx.components[i].params) {
                 if (ctx.scopes[0][p]) return ctx.throwError(`Repeated parameter at ${ctx.components[i].template}: ${p}`);
@@ -245,7 +247,7 @@ function buildMapIsInput(ctx) {
             line += (i>31) ? "," : " ";
             line += toHex(acc);
             acc = 0;
-            if ( i % (32*64) == 0) {
+            if ( (i+1) % (32*64) == 0) {
                 arr.push(line);
                 line = "";
             }
@@ -299,9 +301,12 @@ function buildWit2Sig(ctx) {
         code += (i>0) ? ",": " ";
         code += arr[i];
         if ((i>0)&&(i%64 == 0)) {
-            if (code != "") codes.push(code + "\n");
-            codes.push(code);
-            code =0;
+            if (code != "") {
+                codes.push(code + "\n");
+            } else {
+                codes.push(code);
+            }
+            code ="";
         }
     }
     if (code != "") codes.push(code + "\n");
@@ -338,7 +343,6 @@ function addSizes(_sizes) {
     if (name=="sizes") name="sizes_0";
 
     if (this.definedSizes[name]) return this.definedSizes[name];
-    name = "_" + name;
     const labelName = this.getUniqueName(name);
     this.definedSizes[name] = labelName;
 
@@ -371,6 +375,8 @@ function buildFunction(name, paramValues) {
     const oldCodeHeader = ctx.codeHeader;
     const oldCodeFooter = ctx.codeFooter;
     const oldUniqueNames = ctx.uniqueNames;
+    const oldFileName = ctx.fileName;
+    const oldFilePath = ctx.oldFilePath;
 
 
     ctx.scopes = [{}];
@@ -382,6 +388,8 @@ function buildFunction(name, paramValues) {
     ctx.uniqueNames = Object.assign({},ctx.globalNames);
     ctx.returnValue = null;
     ctx.returnSizes = null;
+    ctx.fileName = ctx.functions[name].fileName;
+    ctx.filePath = ctx.functions[name].filePath;
 
     let paramsStr = "";
 
@@ -443,6 +451,8 @@ function buildFunction(name, paramValues) {
     ctx.codeHeader = oldCodeHeader;
     ctx.codeFooter = oldCodeFooter;
     ctx.uniqueNames = oldUniqueNames;
+    ctx.fileName = oldFileName;
+    ctx.filePath = oldFilePath;
 
     ctx.definedFunctions[h] = res;
 

@@ -320,7 +320,9 @@ function execTemplateDef(ctx, ast) {
     };
     ctx.templates[ast.name] = {
         block: ast.block,
-        params: ast.params
+        params: ast.params,
+        fileName: ctx.fileName,
+        filePath: ctx.filePath,
     };
 }
 
@@ -344,7 +346,9 @@ function execFunctionDef(ctx, ast) {
     };
     ctx.functions[ast.name] = {
         block: ast.block,
-        params: ast.params
+        params: ast.params,
+        fileName: ctx.fileName,
+        filePath: ctx.filePath
     };
 }
 
@@ -383,7 +387,7 @@ function execDeclareComponent(ctx, ast) {
     };
 }
 
-function execInstantiateComponet(ctx, vr, fn) {
+function execInstantiateComponet(ctx, vr, fn, sels) {
 
     if (vr.type != "VARIABLE") return error(ctx, fn, "Left hand instatiate component must be a variable");
     if (fn.type != "FUNCTIONCALL") return error(ctx, fn, "Right type of instantiate component must be a function call");
@@ -408,13 +412,16 @@ function execInstantiateComponet(ctx, vr, fn) {
     if (template.params.length != paramValues.length) return error(ctx, fn, "Invalid Number of parameters");
 
 
-    const vComp = getScope(ctx, componentName, vr.selectors);
+    const vComp = getScope(ctx, componentName);
     if (vComp.type != "COMPONENT") return error(ctx, fn, "Assigning to a non component");
     const cIdx = vComp.cIdx;
     if (cIdx == -1) return error(ctx, fn, "Component not defined");
-    let l=1;
-    for (let i=0; i<vComp.sizes.length; i++) l = l*vComp.sizes[i];
-    for (let i=0; i<l; i++) {
+
+
+    const aSizes = utils.accSizes(vComp.sizes);
+    let o=0;
+    for (let i=0; i<sels.length; i++) o += sels[i] * aSizes[i+1];
+    for (let i=o; i<o+aSizes[sels.length]; i++) {
         instantiateComponent(cIdx+i);
     }
 
@@ -762,11 +769,12 @@ function execVarAssignement(ctx, ast) {
     const [num, sels, typ] = getScopeRef(ctx, v.name, v.selectors);
     if (ctx.error) return;
 
+    if (typ == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1], sels);
+
     if ((typeof(num) != "object")||(num == null)) return  error(ctx, ast, "Variable not defined");
 
-    if (typ == "COMPONENT") return execInstantiateComponet(ctx, v, ast.values[1]);
     if (ctx.error) return;
-    if ((typ == "SIGNAL")&&(ast.op == "=")) return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
+    if ((typ == "SIGNAL")&&(ast.op.indexOf("=")>=0)) return error(ctx, ast, "Cannot assign to a signal with `=` use <-- or <== ops");
     if ((["NUMBER", "COMPONENT"].indexOf(typ) >= 0 )&&(ast.op != "=")) return error(ctx, ast, `Cannot assign to a var with ${ast.op}. use = op`);
 
     const res = exec(ctx, ast.values[1]);

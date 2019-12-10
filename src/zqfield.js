@@ -30,7 +30,7 @@ module.exports = class ZqField {
     }
 
     mul(a, b) {
-        return a.mul(b).mod(this.p);
+        return a.times(b).mod(this.p);
     }
 
     lt(a, b) {
@@ -59,7 +59,7 @@ module.exports = class ZqField {
 
     div(a, b) {
         assert(!b.isZero(), "Division by zero");
-        return a.mul(b.modInv(this.p)).mod(this.p);
+        return a.times(b.modInv(this.p)).mod(this.p);
     }
 
     idiv(a, b) {

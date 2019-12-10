@@ -45,6 +45,7 @@ public:
     void shr(PBigInt r, PBigInt a, PBigInt b);
 
     int isTrue(PBigInt a);
+    int toInt(PBigInt a);
 };
 
 #endif // ZQFIELD_H

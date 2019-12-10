@@ -287,4 +287,15 @@ describe("basic cases", function () {
             ]
         );
     });
+    it("Component array ", async () => {
+        await doTest(
+            "componentarray.circom",
+            [
+                [{in: 1}, {out:    1}],
+                [{in: 2}, {out:  256}],
+                [{in: 3}, {out: 6561}],
+                [{in:-1}, {out:    1}],
+            ]
+        );
+    });
 });

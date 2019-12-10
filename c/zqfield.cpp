@@ -189,3 +189,7 @@ void ZqField::shr(PBigInt r, PBigInt a, PBigInt b) {
     }
 }
 
+int ZqField::toInt(PBigInt a) {
+     return mpz_get_si (*a);
+}
+

@@ -38,7 +38,7 @@ function flatArray(a) {
                 fillArray(res, a[i]);
             }
         } else {
-            res.push(a);
+            res.push(bigInt(a));
         }
     }
 }

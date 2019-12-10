@@ -40,6 +40,7 @@ function newRef(ctx, type, name, value, sizes) {
 function instantiateRef(ctx, refId, initValue) {
     const v = ctx.refs[refId];
     if (v.used) return;
+    if (!v.sizes) v.sizes = [1,0];
 
     if (v.type=="BIGINT") {
         ctx.codeHeader += `PBigInt ${v.label} = ctx->allocBigInts(${v.sizes[0]});\n`;
@@ -344,7 +345,7 @@ function genDeclareVariable(ctx, ast) {
 }
 
 function genNumber(ctx, ast) {
-    return newRef(ctx, "BIGINT", "_num", ast.value);
+    return newRef(ctx, "BIGINT", "_num", bigInt(ast.value));
 }
 
 
@@ -391,9 +392,9 @@ function genGetOffset(ctx, refOffset, vSizes, sels) {
 
                 if (rStr != "") rStr += " + ";
                 if (iIdx.used) {
-                    rStr += iIdx.label;
+                    rStr += `ctx->field->toInt(${iIdx.label})`;
                 } else {
-                    rStr += iIdx.value;
+                    rStr += iIdx.value[0].toString();
                 }
                 rStr += "*";
                 if (iSizes.used) {
@@ -741,6 +742,8 @@ function genConstraint(ctx, ast) {
     const b = ctx.refs[bRef];
     if (ctx.error) return;
     const strErr = ast.fileName + ":" + ast.first_line + ":" + ast.first_column;
+    instantiateRef(ctx, aRef);
+    instantiateRef(ctx, bRef);
     ctx.code += `ctx->checkConstraint(${a.label}, ${b.label}, "${strErr}");`;
 }
 
@@ -897,13 +900,18 @@ function genLoop(ctx, ast) {
 
         const cond2 = ctx.refs[condRef2];
 
+        if ((!cond2.used) &&(haveCode(ctx.code))) {
+            instantiateRef(ctx, condRef2, cond2.value);
+        }
+
         if (!inLoop) {
             if (cond2.used) {
                 ctx.code = oldCode + ctx.code;
                 inLoop = true;
                 enterConditionalCode(ctx, ast);
-                condVar = newRef(ctx, "INT", "_cond");
-                instantiateRef(ctx, condVar);
+                condVarRef = newRef(ctx, "INT", "_cond");
+                condVar = ctx.refs[condVarRef];
+                instantiateRef(ctx, condVarRef);
 
                 ctx.code =
                     oldCode +
@@ -928,6 +936,10 @@ function genLoop(ctx, ast) {
         leaveConditionalCode(ctx);
     }
     ctx.scopes.pop();
+
+    function haveCode(c) {
+        return c.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "").trim() != "";
+    }
 }
 
 function genIf(ctx, ast) {
