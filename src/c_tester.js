@@ -10,14 +10,16 @@ const exec = util.promisify(require("child_process").exec);
 
 const stringifyBigInts = require("./utils").stringifyBigInts;
 const unstringifyBigInts = require("./utils").unstringifyBigInts;
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
+const utils = require("./utils");
+const loadR1cs = require("./r1csfile").loadR1cs;
+const ZqField = require("fflib").ZqField;
 
 module.exports = c_tester;
 
 
-async function  c_tester(circomFile, mainComponent, _options) {
+async function  c_tester(circomFile, _options) {
     tmp.setGracefulCleanup();
-    mainComponent = mainComponent || "main";
 
     const dir = await tmp.dir({prefix: "circom_", unsafeCleanup: true });
 
@@ -26,31 +28,34 @@ async function  c_tester(circomFile, mainComponent, _options) {
 
     options.cSourceWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".cpp"));
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
-    options.mainComponent = mainComponent;
+    options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
     await compiler(circomFile, options);
 
     const cdir = path.join(__dirname, "..", "c");
+    await exec("cp" +
+               ` ${path.join(dir.path, baseName + ".cpp")}` +
+               " /tmp/circuit.cpp"
+    );
     await exec("g++" +
-               ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
                ` ${path.join(cdir,  "zqfield.cpp")}` +
+               ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` -o ${path.join(dir.path, baseName)}` +
                ` -I ${cdir}` +
                " -lgmp -std=c++11 -DSANITY_CHECK"
     );
 
     // console.log(dir.path);
-    return new CTester(dir, baseName, mainComponent);
+    return new CTester(dir, baseName);
 }
 
 class CTester {
 
-    constructor(dir, baseName, mainComponent) {
+    constructor(dir, baseName) {
         this.dir=dir;
         this.baseName = baseName;
-        this.mainComponent = mainComponent;
     }
 
     async release() {
@@ -74,7 +79,8 @@ class CTester {
         return res;
     }
 
-    async _loadSymbols() {
+    async loadSymbols() {
+        if (this.symbols) return;
         this.symbols = {};
         const symsStr = await fs.promises.readFile(
             path.join(this.dir.path, this.baseName + ".sym"),
@@ -91,9 +97,18 @@ class CTester {
         }
     }
 
+    async loadConstraints() {
+        const self = this;
+        if (this.constraints) return;
+        const r1cs = await loadR1cs(path.join(this.dir.path, this.baseName + ".r1cs"),true, false);
+        self.field = new ZqField(r1cs.prime);
+        self.nWires = r1cs.nWires;
+        self.constraints = r1cs.constraints;
+    }
+
     async assertOut(actualOut, expectedOut) {
         const self = this;
-        if (!self.symbols) await self._loadSymbols();
+        if (!self.symbols) await self.loadSymbols();
 
         checkObject("main", expectedOut);
 
@@ -115,6 +130,51 @@ class CTester {
                 const be = bigInt(eOut).toString();
                 assert.strictEqual(ba, be, prefix);
             }
+        }
+    }
+
+    async getDecoratedOutput(witness) {
+        const self = this;
+        const lines = [];
+        if (!self.symbols) await self.loadSymbols();
+        for (let n in self.symbols) {
+            let v;
+            if (utils.isDefined(witness[self.symbols[n].idxWit])) {
+                v = witness[self.symbols[n].idxWit].toString();
+            } else {
+                v = "undefined";
+            }
+            lines.push(`${n} --> ${v}`);
+        }
+        return lines.join("\n");
+    }
+
+    async checkConstraints(witness) {
+        const self = this;
+        if (!self.constraints) await self.loadConstraints();
+        for (let i=0; i<self.constraints.length; i++) {
+            checkConstraint(self.constraints[i]);
+        }
+
+        function checkConstraint(constraint) {
+            const F = self.field;
+            const a = evalLC(constraint.a);
+            const b = evalLC(constraint.b);
+            const c = evalLC(constraint.c);
+
+            assert (F.sub(F.mul(a,b), c).isZero(), "Constraint doesn't match");
+        }
+
+        function evalLC(lc) {
+            const F = self.field;
+            let v = F.zero;
+            for (let w in lc) {
+                v = F.add(
+                    v,
+                    F.mul( lc[w], witness[w] )
+                );
+            }
+            return v;
         }
     }
 

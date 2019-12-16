@@ -99,7 +99,7 @@ function unstringifyBigInts(o) {
         }
         return res;
     } else {
-        return o;
+        return bigInt(o);
     }
 }
 

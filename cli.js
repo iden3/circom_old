@@ -67,7 +67,6 @@ if (argv._.length == 0) {
 
 const fullFileName = path.resolve(process.cwd(), inputFile);
 const fileName = path.basename(fullFileName, ".circom");
-const outName = argv.output ?  argv.output : fileName + ".json";
 const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
 const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
 const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
@@ -79,24 +78,15 @@ if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);
 }
 if (argv.r1cs) {
-    options.r1csWriteStream = fs.createWriteStream(r1csName);
+    options.r1csFileName = r1csName;
 }
 if (argv.sym) {
     options.symWriteStream = fs.createWriteStream(symName);
 }
 
 compiler(fullFileName, options).then( () => {
-    let r1csDone = false;
     let cSourceDone = false;
     let symDone = false;
-    if (options.r1csWriteStream) {
-        options.r1csWriteStream.end(() => {
-            r1csDone = true;
-            finishIfDone();
-        });
-    } else {
-        r1csDone = true;
-    }
     if (options.cSourceWriteStream) {
         options.cSourceWriteStream.end(() => {
             cSourceDone = true;
@@ -111,11 +101,13 @@ compiler(fullFileName, options).then( () => {
             finishIfDone();
         });
     } else {
-        cSourceDone = true;
+        symDone = true;
     }
     function finishIfDone() {
-        if ((r1csDone)&&(cSourceDone)&&(symDone)) {
-            process.exit(0);
+        if ((cSourceDone)&&(symDone)) {
+            setTimeout(() => {
+                process.exit(0);
+            }, 300);
         }
     }
 }, (err) => {

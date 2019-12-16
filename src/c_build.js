@@ -377,6 +377,8 @@ function buildFunction(name, paramValues) {
     const oldUniqueNames = ctx.uniqueNames;
     const oldFileName = ctx.fileName;
     const oldFilePath = ctx.oldFilePath;
+    const oldReturnSizes = ctx.returnSizes;
+    const oldReturnValue = ctx.returnValue;
 
 
     ctx.scopes = [{}];
@@ -453,6 +455,8 @@ function buildFunction(name, paramValues) {
     ctx.uniqueNames = oldUniqueNames;
     ctx.fileName = oldFileName;
     ctx.filePath = oldFilePath;
+    ctx.returnSizes = oldReturnSizes;
+    ctx.returnValue = oldReturnValue;
 
     ctx.definedFunctions[h] = res;
 

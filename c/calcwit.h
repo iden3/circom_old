@@ -43,6 +43,8 @@ public:
 
     void checkConstraint(PBigInt value1, PBigInt value2, char const *err);
 
+    void log(PBigInt value);
+
 
 // Public functions
     inline void setInput(int idx, PBigInt val) {

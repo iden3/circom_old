@@ -122,14 +122,29 @@ void Circom_CalcWit::freeBigInts(PBigInt bi, int n) {
 }
 
 void Circom_CalcWit::getSignal(int cIdx, int sIdx, PBigInt value) {
+#ifdef SANITY_CHECK
+    if (signalAssigned[sIdx] == false) {
+        fprintf(stderr, "Accessing a not assigned signal: %d\n", sIdx);
+        assert(false);
+    }
+#endif
     mpz_set(*value, signalValues[sIdx]);
 }
 
 void Circom_CalcWit::setSignal(int cIdx, int sIdx, PBigInt value) {
 #ifdef SANITY_CHECK
-    assert(signalAssigned[sIdx] == false);
+    if (signalAssigned[sIdx] == true) {
+        fprintf(stderr, "Signal assigned twice: %d\n", sIdx);
+        assert(false);
+    }
     signalAssigned[sIdx] = true;
 #endif
+    /*
+    // Log assignement
+    char *valueStr = mpz_get_str(0, 10, *value);
+    printf("%d --> %s\n", sIdx, valueStr);
+    free(valueStr);
+    */
     mpz_set(signalValues[sIdx], *value);
     if ( BITMAP_ISSET(circuit->mapIsInput, sIdx) ) {
         inputSignalsToTrigger[cIdx]--;
@@ -147,7 +162,7 @@ void Circom_CalcWit::checkConstraint(PBigInt value1, PBigInt value2, char const 
         std::string sV2 = std::string(pcV2);
         free(pcV1);
         free(pcV2);
-        throw std::runtime_error(std::string("Constraint does not match,") + err + ". " + sV1 + " != " + sV2 );
+        throw std::runtime_error(std::string("Constraint doesn't match, ") + err + ". " + sV1 + " != " + sV2 );
     }
 #endif
 }
@@ -159,4 +174,11 @@ void Circom_CalcWit::triggerComponent(int newCIdx) {
     (*(circuit->components[newCIdx].fn))(this);
     cIdx = oldCIdx;
 }
+
+void Circom_CalcWit::log(PBigInt value) {
+    char *pcV = mpz_get_str(0, 10, *value);
+    printf("Log: %s\n", pcV);
+    free(pcV);
+}
+
 

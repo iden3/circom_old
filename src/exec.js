@@ -261,7 +261,13 @@ function getScopeRef(ctx, name, selectors) {
     }
 
     for (let i=ctx.scopes.length-1; i>=0; i--) {
-        if (ctx.scopes[i][name]) return select(ctx.scopes[i][name].value, sels, ctx.scopes[i][name].type);
+        if (ctx.scopes[i][name]) {
+            if (ctx.scopes[i][name].type == "COMPONENT") {
+                return [null, sels, "COMPONENT"];
+            } else {
+                return select(ctx.scopes[i][name].value, sels, ctx.scopes[i][name].type);
+            }
+        }
     }
     return [null, [], ""];
 }
@@ -766,6 +772,7 @@ function execVarAssignement(ctx, ast) {
     } else {
         v = ast.values[0];
     }
+
     const [num, sels, typ] = getScopeRef(ctx, v.name, v.selectors);
     if (ctx.error) return;
 
@@ -1265,9 +1272,8 @@ function execConstrain(ctx, ast) {
 
     if (!lc.isZero(res)) {
         ctx.constraints.push(lc.toQEQ(res));
+        if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
     }
-
-    if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
 
     return res;
 }

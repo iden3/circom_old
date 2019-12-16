@@ -188,7 +188,7 @@ module.exports = class Ctx {
                 errStr: errStr,
                 ast: ast,
                 message: errStr,
-                errFile: ast.fileName
+                errFile: this.fileName
             };
         } else {
             return {

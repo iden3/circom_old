@@ -3,6 +3,8 @@ const assert = require("assert");
 
 module.exports = class ZqField {
     constructor(p) {
+        this.one = bigInt.one;
+        this.zero = bigInt.zero;
         this.p = p;
         this.bitLength = p.bitLength();
         this.mask = bigInt.one.shiftLeft(this.bitLength - 1).minus(bigInt.one);
@@ -11,7 +13,7 @@ module.exports = class ZqField {
     add(a, b) {
         let res = a.add(b);
         if (res.geq(this.p)) {
-            res = res.minsu(this.p);
+            res = res.minus(this.p);
         }
         return res;
     }

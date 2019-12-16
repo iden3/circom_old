@@ -470,9 +470,9 @@ function genVariable(ctx, ast) {
                 const resRef = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 const res = ctx.refs[resRef];
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res};\n`;
+                ctx.codeHeader += `PBigInt ${res.label};\n`;
                 ctx.code += `${res.label} = ${v.label} + ${offset.label};\n`;
-                return res;
+                return resRef;
             } else {
                 // return newSubRef(ctx, ast.name, ast.selectors);
                 return newRef(ctx, "BIGINT", "_v", v.value.slice(offset.value[0], offset.value[0] + v.sizes[l]),v.sizes.slice(l));
@@ -574,6 +574,9 @@ function genGetSignalSizes(ctx, cIdxRef, label) {
 
 function genSetSignal(ctx, cIdxRef, sIdxRef, valueRef) {
     const v = ctx.refs[valueRef];
+    if (!utils.isDefined(v)) {
+        console.log("BREAK!!!");
+    }
     if (!v.used) {
         instantiateRef(ctx, valueRef, v.value);
     }
@@ -742,8 +745,8 @@ function genConstraint(ctx, ast) {
     const b = ctx.refs[bRef];
     if (ctx.error) return;
     const strErr = ast.fileName + ":" + ast.first_line + ":" + ast.first_column;
-    instantiateRef(ctx, aRef);
-    instantiateRef(ctx, bRef);
+    instantiateRef(ctx, aRef, a.value);
+    instantiateRef(ctx, bRef, b.value);
     ctx.code += `ctx->checkConstraint(${a.label}, ${b.label}, "${strErr}");`;
 }
 
@@ -792,6 +795,13 @@ function genArray(ctx, ast) {
 
 
 function genFunctionCall(ctx, ast) {
+    if (ast.name == "log") {
+        const vRef = gen(ctx, ast.params[0]);
+        const val = ctx.refs[vRef];
+        instantiateRef(ctx, vRef, val.value);
+        ctx.code+=`ctx->log(${val.label});`;
+        return vRef;
+    }
     const params = [];
     for (let i=0; i<ast.params.length; i++) {
         const pRef = gen(ctx, ast.params[i]);
@@ -913,9 +923,7 @@ function genLoop(ctx, ast) {
                 condVar = ctx.refs[condVarRef];
                 instantiateRef(ctx, condVarRef);
 
-                ctx.code =
-                    oldCode +
-                    ctx.code +
+                ctx.code +=
                     `${condVar.label} = ctx->field->isTrue(${cond2.label});\n` +
                     `while (${condVar.label}) {\n`;
             } else {
@@ -972,6 +980,7 @@ function genIf(ctx, ast) {
         }
 
         ctx.code += "}\n";
+        leaveConditionalCode(ctx);
 
     } else {
         if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
@@ -990,7 +999,7 @@ function genReturn(ctx, ast) {
     const vRef = gen(ctx, ast.value);
     const v= ctx.refs[vRef];
     if (ctx.returnSizes) {
-        if (!utils.sizesEqual(v.sizes, ctx.returnSizes)) return ctx.throwError(ast, "Diferent return sizes");
+        if (!utils.sameSizes(v.sizes, ctx.returnSizes)) return ctx.throwError(ast, "Diferent return sizes");
     } else {
         ctx.returnSizes = v.sizes;
     }
@@ -1127,6 +1136,8 @@ function genTerCon(ctx, ast) {
         if (ctx.error) return;
         const then = ctx.refs[thenRef];
 
+        instantiateRef(ctx, thenRef, then.value);
+
         ctx.code = oldCode + utils.ident(ctx.code);
 
         ctx.code += `${rLabel} = ${then.label};\n`;
@@ -1138,6 +1149,8 @@ function genTerCon(ctx, ast) {
         const elseRef = gen(ctx, ast.values[2]);
         if (ctx.error) return;
         const els = ctx.refs[elseRef];
+
+        instantiateRef(ctx, elseRef, els.value);
 
         ctx.code = oldCode + utils.ident(ctx.code);
 

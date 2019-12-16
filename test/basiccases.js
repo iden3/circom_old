@@ -44,7 +44,7 @@ async function doTest(circuit, testVectors) {
 
 describe("basic cases", function () {
     this.timeout(100000);
-    it("inout", async () => {
+/*    it("inout", async () => {
         await doTest(
             "inout.circom",
             [
@@ -295,6 +295,27 @@ describe("basic cases", function () {
                 [{in: 2}, {out:  256}],
                 [{in: 3}, {out: 6561}],
                 [{in:-1}, {out:    1}],
+            ]
+        );
+    });
+    it("Constant circuit", async () => {
+        await doTest(
+            "constantcircuit.circom",
+            [
+                // 0xbb67ae85
+                [{}, {out: [1,0,1,0,  0,0,0,1, 0,1,1,1, 0,1,0,1, 1,1,1,0, 0,1,1,0, 1,1,0,1,  1,1,0,1]}],
+            ]
+        );
+    }); */
+    it("Constant internal circuit", async () => {
+        await doTest(
+            "constantinternalcircuit.circom",
+            [
+                // 0xbb67ae85
+                [{in: 1}, {out: 5}],
+                [{in: 0}, {out: 4}],
+                [{in: -2}, {out: 2}],
+                [{in: 10}, {out: 14}]
             ]
         );
     });

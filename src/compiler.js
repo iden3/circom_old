@@ -21,7 +21,6 @@ const fs = require("fs");
 const path = require("path");
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-const __MASK__ = new bigInt(2).pow(253).minus(1);
 const sONE = 0;
 const assert = require("assert");
 const buildC = require("./c_build");
@@ -30,6 +29,7 @@ const lc = require("./lcalgebra");
 const Ctx = require("./ctx");
 const ZqField = require("./zqfield");
 const utils = require("./utils");
+const buildR1cs = require("./r1csfile").buildR1cs;
 
 module.exports = compile;
 
@@ -85,6 +85,7 @@ async function compile(srcFile, options) {
         // Repeat while reductions are performed
         let oldNConstrains = -1;
         while (ctx.constraints.length != oldNConstrains) {
+            console.log("Reducing constraints: "+ctx.constraints.length);
             oldNConstrains = ctx.constraints.length;
             reduceConstrains(ctx);
         }
@@ -105,8 +106,8 @@ async function compile(srcFile, options) {
     // const mainCode = gen(ctx,ast);
     if (ctx.error) throw(ctx.error);
 
-    if (options.r1csWriteStream) {
-        buildR1cs(ctx, options.r1csWriteStream);
+    if (options.r1csFileName) {
+        await buildR1cs(ctx, options.r1csFileName);
     }
 
     if (options.symWriteStream) {
@@ -505,63 +506,9 @@ function buildConstraints(ctx) {
     return res;
 }
 
-function buildR1cs(ctx, strm) {
-
-    strm.write(Buffer.from([0x72,0x31,0x63,0x73]));
-    writeU32(1);
-    writeU32(4);
-    writeU32(1 + ctx.totals.output + ctx.totals.pubInput + ctx.totals.prvInput + ctx.totals.internal);
-    writeU32(ctx.totals.output);
-    writeU32(ctx.totals.pubInput);
-    writeU32(ctx.totals.prvInput);
-    writeU32(ctx.constraints.length);
-
-    for (let i=0; i<ctx.constraints.length; i++) {
-        if ((ctx.verbose)&&(i%10000 == 0)) console.log("writing constraint: ", i);
-        writeConstraint(ctx.constraints[i]);
-    }
-
-    function writeU32(v) {
-        const b = Buffer.allocUnsafe(4);
-        b.writeInt32LE(v);
-        strm.write(b);
-    }
-
-    function writeConstraint(c) {
-        writeLC(c.a);
-        writeLC(c.b);
-        writeLC(lc.negate(c.c));
-    }
-
-    function writeLC(lc) {
-        const idxs = Object.keys(lc.values);
-        writeU32(idxs.length);
-        for (let s in lc.values) {
-            let lSignal = ctx.signals[s];
-
-            while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
-
-            writeU32(lSignal.id);
-            writeBigInt(lc.values[s]);
-        }
-    }
-
-    function writeBigInt(n) {
-        const bytes = [];
-        let r = bigInt(n);
-        while (r.greater(bigInt.zero)) {
-            bytes.push(r.and(bigInt("255")).toJSNumber());
-            r = r.shiftRight(8);
-        }
-        assert(bytes.length<=32);
-        assert(bytes.length>0);
-        strm.write( Buffer.from([bytes.length, ...bytes ]));
-    }
-}
-
 function buildSyms(ctx, strm) {
 
-
+    let nSyms;
 
     addSymbolsComponent(ctx.mainComponent + ".", ctx.getComponentIdx(ctx.mainComponent));
 
@@ -581,6 +528,8 @@ function buildSyms(ctx, strm) {
                 let wId = ctx.signals[s].id;
                 if (typeof(wId) == "undefined") wId=-1;
                 strm.write(`${offset},${wId},${prefix}\n`);
+                nSyms ++;
+                if ((ctx.verbose)&&(nSyms%10000 == 0)) console.log("Symbols saved: "+nSyms);
             } else {
                 addSymbolsComponent(prefix+".", offset);
             }

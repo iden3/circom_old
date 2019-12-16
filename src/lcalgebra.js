@@ -61,6 +61,7 @@ QEQ     QEQ     ERR     ERR
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const sONE = 0;
+const utils = require("./utils.js");
 
 exports.add = add;
 exports.mul = mul;
@@ -439,8 +440,8 @@ function canonize(ctx, a) {
         for (let k in a.values) {
             let s = k;
             while (ctx.signals[s].e>=0) s= ctx.signals[s].e;
-            if ((typeof(ctx.signals[s].value) != "undefined")&&(k != sONE)) {
-                const v = res.values[k].times(ctx.signals[s].value).mod(__P__);
+            if (utils.isDefined(ctx.signals[s].v)&&(k != sONE)) {
+                const v = res.values[k].times(ctx.signals[s].v).mod(__P__);
                 if (!res.values[sONE]) {
                     res.values[sONE]=v;
                 } else {
