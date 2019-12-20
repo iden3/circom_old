@@ -4,8 +4,6 @@
 #include "circom.h"
 
 class ZqField {
-    mpz_t tmp;
-
 public:
     BigInt p;
     BigInt one;

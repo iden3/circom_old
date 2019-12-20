@@ -48,7 +48,7 @@ void loadBin(Circom_CalcWit *ctx, std::string filename) {
         p++;
         mpz_import(v,len , -1 , 1, 0, 0, p);
         p+=len;
-        ctx->setSignal(0, _circuit.wit2sig[1 + _circuit.NOutputs + i], &v);
+        ctx->setSignal(0, 0, _circuit.wit2sig[1 + _circuit.NOutputs + i], &v);
     }
 }
 
@@ -88,7 +88,7 @@ void itFunc(Circom_CalcWit *ctx, int o, json val) {
 
     mpz_set_str (v, s.c_str(), 10);
 
-    ctx->setSignal(0, o, &v);
+    ctx->setSignal(0, 0, o, &v);
 }
 
 
@@ -187,6 +187,7 @@ int main(int argc, char *argv[]) {
             handle_error("Invalid input extension (.bin / .json)");
         }
 
+        ctx->join();
 
         std::string outfilename = argv[2];
 

@@ -1,7 +1,6 @@
 #include "zqfield.h"
 
 ZqField::ZqField(PBigInt ap) {
-    mpz_init2(tmp, 1024);
     mpz_init_set(p, *ap);
     mpz_init_set_ui(zero, 0);
     mpz_init_set_ui(one, 1);
@@ -12,7 +11,6 @@ ZqField::ZqField(PBigInt ap) {
 }
 
 ZqField::~ZqField() {
-    mpz_clear(tmp);
     mpz_clear(p);
     mpz_clear(zero);
     mpz_clear(one);
@@ -29,8 +27,8 @@ void ZqField::sub(PBigInt r, PBigInt a, PBigInt b) {
     if (mpz_cmp(*a, *b) >= 0) {
         mpz_sub(*r, *a, *b);
     } else {
-        mpz_sub(tmp, *b, *a);
-        mpz_sub(*r, p, tmp);
+        mpz_sub(*r, *b, *a);
+        mpz_sub(*r, p, *r);
     }
 }
 
@@ -43,14 +41,20 @@ void ZqField::neg(PBigInt r, PBigInt a) {
 }
 
 void ZqField::mul(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_t tmp;
+    mpz_init(tmp);
     mpz_mul(tmp,*a,*b);
     mpz_fdiv_r(*r, tmp, p);
+    mpz_clear(tmp);
 }
 
 void ZqField::div(PBigInt r, PBigInt a, PBigInt b) {
+    mpz_t tmp;
+    mpz_init(tmp);
     mpz_invert(tmp, *b, p);
     mpz_mul(tmp,*a,tmp);
     mpz_fdiv_r(*r, tmp, p);
+    mpz_clear(tmp);
 }
 
 void ZqField::idiv(PBigInt r, PBigInt a, PBigInt b) {

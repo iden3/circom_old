@@ -29,13 +29,14 @@ struct Circom_ComponentEntry {
 };
 typedef Circom_ComponentEntry *Circom_ComponentEntries;
 
-typedef void (*Circom_ComponentFunction)(Circom_CalcWit *ctx);
+typedef void (*Circom_ComponentFunction)(Circom_CalcWit *ctx, int __cIdx);
 
 struct Circom_Component {
     Circom_HashTable hashTable;
     Circom_ComponentEntries entries;
     Circom_ComponentFunction fn;
     int inputSignals;
+    bool newThread;
 };
 
 class Circom_Circuit {

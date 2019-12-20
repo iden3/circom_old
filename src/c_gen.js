@@ -515,7 +515,7 @@ function genGetSubComponentOffset(ctx, cIdxRef, label) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     ctx.code += `${offset.label} = ctx->getSubComponentOffset(${s}, 0x${h}LL /* ${label} */);\n`;
     return refOffset;
@@ -532,7 +532,7 @@ function genGetSubComponentSizes(ctx, cIdxRef, label) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     ctx.code += `${sizes.label} = ctx->getSubComponentSizes(${s}, 0x${h}LL /* ${label} */);\n`;
     return sizesRef;
@@ -549,7 +549,7 @@ function genGetSigalOffset(ctx, cIdxRef, label) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     ctx.code += `${offset.label} = ctx->getSignalOffset(${s}, 0x${h}LL /* ${label} */);\n`;
     return refOffset;
@@ -565,7 +565,7 @@ function genGetSignalSizes(ctx, cIdxRef, label) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     const h = utils.fnvHash(label);
     ctx.code += `${sizes.label} = ctx->getSignalSizes(${s}, 0x${h}LL /* ${label} */);\n`;
@@ -585,10 +585,10 @@ function genSetSignal(ctx, cIdxRef, sIdxRef, valueRef) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     const sIdx = ctx.refs[sIdxRef];
-    ctx.code += `ctx->setSignal(${s}, ${sIdx.label}, ${v.label});\n`;
+    ctx.code += `ctx->setSignal(__cIdx, ${s}, ${sIdx.label}, ${v.label});\n`;
 
     return valueRef;
 }
@@ -602,10 +602,10 @@ function genGetSignal(ctx, cIdxRef, sIdxRef) {
         const cIdx = ctx.refs[cIdxRef];
         s = cIdx.label;
     } else {
-        s = "ctx->cIdx";
+        s = "__cIdx";
     }
     const sIdx = ctx.refs[sIdxRef];
-    ctx.code += `ctx->getSignal(${s}, ${sIdx.label}, ${res.label});\n`;
+    ctx.code += `ctx->getSignal(__cIdx, ${s}, ${sIdx.label}, ${res.label});\n`;
     return resRef;
 }
 
@@ -747,7 +747,7 @@ function genConstraint(ctx, ast) {
     const strErr = ast.fileName + ":" + ast.first_line + ":" + ast.first_column;
     instantiateRef(ctx, aRef, a.value);
     instantiateRef(ctx, bRef, b.value);
-    ctx.code += `ctx->checkConstraint(${a.label}, ${b.label}, "${strErr}");`;
+    ctx.code += `ctx->checkConstraint(__cIdx, ${a.label}, ${b.label}, "${strErr}");`;
 }
 
 

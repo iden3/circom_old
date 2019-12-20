@@ -3,6 +3,10 @@
 
 #include "circom.h"
 #include "zqfield.h"
+#include <mutex>
+#include <condition_variable>
+
+#define NMUTEXES 128
 
 class Circom_CalcWit {
 
@@ -13,7 +17,12 @@ class Circom_CalcWit {
     // componentStatus -> For each component
     // >0 Signals required to trigger
     // == 0 Component triggered
+    // == -1 Component finished
     int *inputSignalsToTrigger;
+    std::mutex *mutexes;
+    std::condition_variable *cvs;
+
+    std::mutex printf_mutex;
 
     BigInt *signalValues;
 
@@ -22,10 +31,11 @@ class Circom_CalcWit {
     void triggerComponent(int newCIdx);
     void calculateWitness(void *input, void *output);
 
+    void syncPrintf(const char *format, ...);
+
 
 public:
     ZqField *field;
-    int cIdx;
 // Functions called by the circuit
     Circom_CalcWit(Circom_Circuit *aCircuit);
     ~Circom_CalcWit();
@@ -38,17 +48,20 @@ public:
     PBigInt allocBigInts(int n);
     void freeBigInts(PBigInt bi, int n);
 
-    void getSignal(int cIdx, int sIdx, PBigInt value);
-    void setSignal(int cIdx, int sIdx, PBigInt value);
+    void getSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value);
+    void setSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value);
 
-    void checkConstraint(PBigInt value1, PBigInt value2, char const *err);
+    void checkConstraint(int currentComponentIdx, PBigInt value1, PBigInt value2, char const *err);
 
     void log(PBigInt value);
+
+    void finished(int cIdx);
+    void join();
 
 
 // Public functions
     inline void setInput(int idx, PBigInt val) {
-        setSignal(0, circuit->wit2sig[idx], val);
+        setSignal(0, 0, circuit->wit2sig[idx], val);
     }
     inline void getWitness(int idx, PBigInt val) {
         mpz_set(*val, signalValues[circuit->wit2sig[idx]]);

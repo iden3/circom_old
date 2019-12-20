@@ -176,10 +176,11 @@ function buildCode(ctx) {
                     "/*\n" +
                     instanceDef +
                     "\n*/\n" +
-                    `void ${fName}(Circom_CalcWit *ctx) {\n` +
+                    `void ${fName}(Circom_CalcWit *ctx, int __cIdx) {\n` +
                         utils.ident(
                             ctx.codeHeader + "\n" +
                             ctx.code + "\n" +
+                            "ctx->finished(__cIdx);\n" +
                             ctx.codeFooter
                         ) +
                     "}\n";
@@ -204,7 +205,7 @@ function buildComponentsArray(ctx) {
     ccodes.push(`Circom_Component _components[${ctx.components.length}] = {\n`);
     for (let i=0; i< ctx.components.length; i++) {
         ccodes.push(i>0 ? "    ," : "     ");
-        ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}}\n`);
+        ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}, true}\n`);
     }
     ccodes.push("};\n");
     const codeComponents = ccodes.join("");
