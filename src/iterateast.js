@@ -61,6 +61,12 @@ function iterateAST(ast, fn, _pfx) {
         iterateAST(ast.value, fn, getPfx());
     } else if (ast.type == "ARRAY") {
         iterate(ast.values);
+    } else if ((ast.type == "TEMPLATEDEF")) {
+        //
+    } else if ((ast.type == "FUNCTIONDEF")) {
+        //
+    } else if ((ast.type == "INCLUDE")) {
+        //
     } else {
         assert(false, "GEN -> Invalid AST iteration: " + ast.type);
     }

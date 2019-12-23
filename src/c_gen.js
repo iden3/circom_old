@@ -87,7 +87,7 @@ function instantiateConstant(ctx, value) {
 function createRefs(ctx, ast) {
     const scopeLabels = [];
     iterateAST(ast, (ast, level) => {
-        while ((scopeLabels.length>0)&&(!scopeLabels[scopeLabels.length-1].startsWith(level))) {
+        while ((scopeLabels.length>0)&&(!level.startsWith(scopeLabels[scopeLabels.length-1]))) {
             ctx.scopes.pop();
             scopeLabels.pop();
         }
@@ -329,7 +329,7 @@ function genDeclareVariable(ctx, ast) {
         }
         sizes = utils.accSizes(sizes);
     } else {
-        sizes = null; // If not sizes, the sized are defined in the first assignement.
+        sizes = [1,0];
     }
 
     if ((!v.sizes)&&(sizes)) {

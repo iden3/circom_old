@@ -1,6 +1,6 @@
 template H(x) {
     signal output out[32];
-    var c = [0x6a09e667,
+    var c[8] = [0x6a09e667,
              0xbb67ae85,
              0x3c6ef372,
              0xa54ff53a,

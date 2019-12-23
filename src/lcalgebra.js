@@ -18,491 +18,555 @@
 */
 /*
 
-    NUMBER: a
+    // Number
+    ///////////////
+    N: a
 
     {
-        type: "NUMBER",
-        value: bigInt(a)
+        t: "N",
+        v: bigInt(a)
     }
 
-    LINEARCOMBINATION:  c1*s1 + c2*s2 + c3*s3
-
+    // Signal
+    ///////////////
     {
-        type: "LINEARCOMBINATION",
-        values: {
+        t: "S",
+        sIdx: sIdx
+    }
+
+    // Linear Convination
+    //////////////////
+    LC:  c1*s1 + c2*s2 + c3*s3
+    {
+        t: "LC",
+        coefs: {
             s1: bigInt(c1),
             s2: bigInt(c2),
             s3: bigInt(c3)
         }
     }
 
-
-    QEQ: a*b + c WHERE a,b,c are LINEARCOMBINATION
+    // Quadratic Expression
+    //////////////////
+    QEX: a*b + c WHERE a,b,c are LC
     {
-        type: "QEQ"
-        a: { type: LINEARCOMBINATION, values: {...} },
-        b: { type: LINEARCOMBINATION, values: {...} },
-        c: { type: LINEARCOMBINATION, values: {...} }
+        t: "QEX"
+        a: { t: "LC", coefs: {...} },
+        b: { t: "LC", coefs: {...} },
+        c: { t: "LC", coefs: {...} }
+    }
+
+    NQ: Non quadratic expression
+    {
+        t: "NQ"
     }
  */
 
 /*
-+       NUM     LC      QEQ
-NUM     NUM     LC      QEQ
-LC      LC      LC      QEQ
-QEQ     QEQ     QEQ     ERR
++       N       LC      QEX     NQ
+N       N       LC      QEX     NQ
+LC      LC      LC      QEX     NQ
+QEX     QEX     QEX     NQ      NQ
+NQ      NQ      NQ      NQ      NQ
 
-*       NUM     LC      QEQ
-NUM     NUM     LC      QEQ
-LC      LC      QEQ     ERR
-QEQ     QEQ     ERR     ERR
+*       N       LC      QEX     NQ
+N       N       LC      QEX     NQ
+LC      LC      QEX     NQ      NQ
+QEX     QEX     NQ      NQ      NQ
+NQ      NQ      NQ      NQ      NQ
 */
 
 const bigInt = require("big-integer");
-const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const utils = require("./utils");
 const sONE = 0;
-const utils = require("./utils.js");
 
-exports.add = add;
-exports.mul = mul;
-exports.evaluate = evaluate;
-exports.negate = negate;
-exports.sub = sub;
-exports.toQEQ = toQEQ;
-exports.isZero = isZero;
-exports.toString = toString;
-exports.canonize = canonize;
-exports.substitute = substitute;
-
-function signal2lc(a) {
-    let lc;
-    if (a.type == "SIGNAL") {
-        lc = {
-            type: "LINEARCOMBINATION",
-            values: {}
-        };
-        lc.values[a.sIdx] = bigInt(1);
-        return lc;
-    } else {
-        return a;
+class LCAlgebra {
+    constructor (aField) {
+        const self = this;
+        this.field= aField;
+        [
+            ["lt",2],
+            ["leq",2],
+            ["eq",2],
+            ["neq",2],
+            ["geq",2],
+            ["gt",2],
+            ["idiv",2],
+            ["mod",2],
+            ["band",2],
+            ["bor",2],
+            ["bxor",2],
+            ["bnot",2],
+            ["land",2],
+            ["lor",2],
+            ["lnot",2],
+            ["shl",2],
+            ["shr",2],
+        ].forEach( (op) => {
+            self._genNQOp(op[0], op[1]);
+        });
     }
-}
 
-function clone(a) {
-    const res = {};
-    res.type = a.type;
-    if (a.type == "NUMBER") {
-        res.value = bigInt(a.value);
-    } else if (a.type == "LINEARCOMBINATION") {
-        res.values = {};
-        for (let k in a.values) {
-            res.values[k] = bigInt(a.values[k]);
-        }
-    } else if (a.type == "QEQ") {
-        res.a = clone(a.a);
-        res.b = clone(a.b);
-        res.c = clone(a.c);
-    } else if (a.type == "ERROR") {
-        res.errStr = a.errStr;
-    } else {
-        res.type = "ERROR";
-        res.errStr = "Invilid type when clonning: "+a.type;
-    }
-    return res;
-}
-
-function add(_a, _b) {
-    const a = signal2lc(_a);
-    const b = signal2lc(_b);
-    if (a.type == "ERROR") return a;
-    if (b.type == "ERROR") return b;
-    if (a.type == "NUMBER") {
-        if (b.type == "NUMBER") {
-            return addNumNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return addLCNum(b,a);
-        } else if (b.type=="QEQ") {
-            return addQEQNum(b,a);
-        } else {
-            return { type: "ERROR", errStr: "LC Add Invalid Type 2: "+b.type };
-        }
-    } else if (a.type=="LINEARCOMBINATION") {
-        if (b.type == "NUMBER") {
-            return addLCNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return addLCLC(a,b);
-        } else if (b.type=="QEQ") {
-            return addQEQLC(b,a);
-        } else {
-            return { type: "ERROR", errStr: "LC Add Invalid Type 2: "+b.type };
-        }
-    } else if (a.type=="QEQ") {
-        if (b.type == "NUMBER") {
-            return addQEQNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return addQEQLC(a,b);
-        } else if (b.type=="QEQ") {
-            return { type: "ERROR", errStr: "QEQ + QEQ" };
-        } else {
-            return { type: "ERROR", errStr: "LC Add Invalid Type 2: "+b.type };
-        }
-    } else {
-        return { type: "ERROR", errStr: "LC Add Invalid Type 1: "+a.type };
-    }
-}
-
-function addNumNum(a,b) {
-    if (!a.value || !b.value) return { type: "NUMBER" };
-    return {
-        type: "NUMBER",
-        value: a.value.add(b.value).mod(__P__)
-    };
-}
-
-function addLCNum(a,b) {
-    let res = clone(a);
-    if (!b.value) {
-        return { type: "ERROR", errStr: "LinearCombination + undefined" };
-    }
-    if (b.value.isZero()) return res;
-    if (!res.values[sONE]) {
-        res.values[sONE]=bigInt(b.value);
-    } else {
-        res.values[sONE]= res.values[sONE].add(b.value).mod(__P__);
-    }
-    return res;
-}
-
-function addLCLC(a,b) {
-    let res = clone(a);
-    for (let k in b.values) {
-        if (!res.values[k]) {
-            res.values[k]=bigInt(b.values[k]);
-        } else {
-            res.values[k]= res.values[k].add(b.values[k]).mod(__P__);
-        }
-    }
-    return res;
-}
-
-function addQEQNum(a,b) {
-    let res = clone(a);
-    res.c = addLCNum(res.c, b);
-    if (res.c.type == "ERROR") return res.c;
-    return res;
-}
-
-function addQEQLC(a,b) {
-    let res = clone(a);
-    res.c = addLCLC(res.c, b);
-    if (res.c.type == "ERROR") return res.c;
-    return res;
-}
-
-function mul(_a, _b) {
-    const a = signal2lc(_a);
-    const b = signal2lc(_b);
-    if (a.type == "ERROR") return a;
-    if (b.type == "ERROR") return b;
-    if (a.type == "NUMBER") {
-        if (b.type == "NUMBER") {
-            return mulNumNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return mulLCNum(b,a);
-        } else if (b.type=="QEQ") {
-            return mulQEQNum(b,a);
-        } else {
-            return { type: "ERROR", errStr: "LC Mul Invalid Type 2: "+b.type };
-        }
-    } else if (a.type=="LINEARCOMBINATION") {
-        if (b.type == "NUMBER") {
-            return mulLCNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return mulLCLC(a,b);
-        } else if (b.type=="QEQ") {
-            return { type: "ERROR", errStr: "LC * QEQ" };
-        } else {
-            return { type: "ERROR", errStr: "LC Mul Invalid Type 2: "+b.type };
-        }
-    } else if (a.type=="QEQ") {
-        if (b.type == "NUMBER") {
-            return mulQEQNum(a,b);
-        } else if (b.type=="LINEARCOMBINATION") {
-            return { type: "ERROR", errStr: "QEC * LC" };
-        } else if (b.type=="QEQ") {
-            return { type: "ERROR", errStr: "QEQ * QEQ" };
-        } else {
-            return { type: "ERROR", errStr: "LC Mul Invalid Type 2: "+b.type };
-        }
-    } else {
-        return { type: "ERROR", errStr: "LC Mul Invalid Type 1: "+a.type };
-    }
-}
-
-
-function mulNumNum(a,b) {
-    if (!a.value || !b.value) return { type: "NUMBER" };
-    return {
-        type: "NUMBER",
-        value: a.value.times(b.value).mod(__P__)
-    };
-}
-
-function mulLCNum(a,b) {
-    let res = clone(a);
-    if (!b.value) {
-        return {type: "ERROR", errStr: "LinearCombination * undefined"};
-    }
-    for (let k in res.values) {
-        res.values[k] = res.values[k].times(b.value).mod(__P__);
-    }
-    return res;
-}
-
-function mulLCLC(a,b) {
-    return {
-        type: "QEQ",
-        a: clone(a),
-        b: clone(b),
-        c: { type: "LINEARCOMBINATION", values: {}}
-    };
-}
-
-function mulQEQNum(a,b) {
-    let res = {
-        type: "QEQ",
-        a: mulLCNum(a.a, b),
-        b: clone(a.b),
-        c: mulLCNum(a.c, b)
-    };
-    if (res.a.type == "ERROR") return res.a;
-    if (res.c.type == "ERROR") return res.a;
-    return res;
-}
-
-function getSignalValue(ctx, sIdx) {
-    const s = ctx.signals[sIdx];
-    if (s.e >= 0) {
-        return getSignalValue(ctx, s.e);
-    } else {
-        const res = {
-            type: "NUMBER"
-        };
-        if (s.v) {
-            res.value = s.v;
-        }
-        return res;
-    }
-}
-
-function evaluate(ctx, n) {
-    if (n.type == "NUMBER") {
-        return n;
-    } else if (n.type == "SIGNAL") {
-        return getSignalValue(ctx, n.sIdx);
-    } else if (n.type == "LINEARCOMBINATION") {
-        const v= {
-            type: "NUMBER",
-            value: bigInt(0)
-        };
-        for (let k in n.values) {
-            const s = getSignalValue(ctx, k);
-            if (s.type != "NUMBER") return {type: "ERROR", errStr: "Invalid signal in linear Combination: " + k};
-            if (!s.value) return { type: "NUMBER" };
-            v.value = v.value.add( n.values[k].times(s.value)).mod(__P__);
-        }
-        return v;
-    } else if (n.type == "QEQ") {
-        const a = evaluate(ctx, n.a);
-        if (a.type == "ERROR") return a;
-        if (!a.value) return { type: "NUMBER" };
-        const b = evaluate(ctx, n.b);
-        if (b.type == "ERROR") return b;
-        if (!b.value) return { type: "NUMBER" };
-        const c = evaluate(ctx, n.c);
-        if (c.type == "ERROR") return c;
-        if (!c.value) return { type: "NUMBER" };
-
-        return {
-            type: "NUMBER",
-            value: (a.value.times(b.value).add(c.value)).mod(__P__)
-        };
-    } else if (n.type == "ERROR") {
-        return n;
-    } else {
-        return {type: "ERROR", errStr: "Invalid type in evaluate: "+n.type};
-    }
-}
-
-function negate(_a) {
-    const a = signal2lc(_a);
-    let res = clone(a);
-    if (res.type == "NUMBER") {
-        res.value = __P__.minus(a.value).mod(__P__);
-    } else if (res.type == "LINEARCOMBINATION") {
-        for (let k in res.values) {
-            res.values[k] = __P__.minus(res.values[k]).mod(__P__);
-        }
-    } else if (res.type == "QEQ") {
-        res.a = negate(res.a);
-        res.c = negate(res.c);
-    } else if (res.type == "ERROR") {
-        return res;
-    } else {
-        res = {type: "ERROR", errStr: "LC Negate invalid Type: "+res.type};
-    }
-    return res;
-}
-
-function sub(a, b) {
-    return add(a, negate(b));
-}
-
-function toQEQ(a) {
-    if (a.type == "NUMBER") {
-        return {
-            type: "QEQ",
-            a: {type: "LINEARCOMBINATION", values: {}},
-            b: {type: "LINEARCOMBINATION", values: {}},
-            c: {type: "LINEARCOMBINATION", values: {sONE: bigInt(a.value)}}
-        };
-    } else if (a.type == "LINEARCOMBINATION") {
-        return {
-            type: "QEQ",
-            a: {type: "LINEARCOMBINATION", values: {}},
-            b: {type: "LINEARCOMBINATION", values: {}},
-            c: clone(a)
-        };
-    } else if (a.type == "QEQ") {
-        return clone(a);
-    } else if (a.type == "ERROR") {
-        return clone(a);
-    } else {
-        return {type: "ERROR", errStr: "toQEQ invalid Type: "+a.type};
-    }
-}
-
-function isZero(a) {
-    if (a.type == "NUMBER") {
-        return a.value.isZero();
-    } else if (a.type == "LINEARCOMBINATION") {
-        for (let k in a.values) {
-            if (!a.values[k].isZero()) return false;
-        }
-        return true;
-    } else if (a.type == "QEQ") {
-        return (isZero(a.a) || isZero(a.b)) && isZero(a.c);
-    } else if (a.type == "ERROR") {
-        return false;
-    } else {
-        return false;
-    }
-}
-
-function toString(a, ctx) {
-    if (a.type == "NUMBER") {
-        return a.value.toString();
-    } else if (a.type == "LINEARCOMBINATION") {
-        let S="";
-        for (let k in a.values) {
-            if (!a.values[k].isZero()) {
-                let c;
-                if (a.values[k].greater(__P__.divide(2))) {
-                    S = S + "-";
-                    c = __P__.minus(a.values[k]);
-                } else {
-                    if (S!="") S=S+" + ";
-                    c = a.values[k];
-                }
-                if (!c.equals(1)) {
-                    S = S + c.toString() + "*";
-                }
-                let sIdx = k;
-                if (ctx) {
-                    while (ctx.signals[sIdx].e>=0) sIdx = ctx.signals[sIdx].e;
-                }
-                S =  S + "[" + sIdx + "]";
+    _genNQOp(op, nOps) {
+        const self=this;
+        self[op] = function() {
+            const operands = [];
+            for (let i=0; i<nOps; i++) {
+                if (typeof(arguments[i]) !== "object") throw new Error("Invalid operand type");
+                if (arguments[i].t !== "N") return {t: "NQ"};
+                operands.push(arguments[i].v);
             }
+            return {
+                t: "N",
+                v: self.field[op](...operands)
+            };
+        };
+    }
+
+    _signal2lc(a) {
+        if (a.t == "S") {
+            const lc = {
+                t: "LC",
+                coefs: {}
+            };
+            lc.coefs[a.sIdx] = bigInt(1);
+            return lc;
+        } else {
+            return a;
         }
-        if (S=="") return "0"; else return S;
-    } else if (a.type == "QEQ") {
-        return "( "+toString(a.a, ctx)+" )  *  ( "+toString(a.b, ctx)+" ) + " + toString(a.c, ctx);
-    } else if (a.type == "ERROR") {
-        return "ERROR: "+a.errStr;
-    } else {
-        return "INVALID";
+    }
+
+
+    _clone(a) {
+        const res = {};
+        res.t = a.t;
+        if (a.t == "N") {
+            res.v = a.v;
+        } else if (a.t == "S") {
+            res.sIdx = a.sIdx;
+        } else if (a.t == "LC") {
+            res.coefs = {};
+            for (let k in a.coefs) {
+                res.coefs[k] = a.coefs[k];
+            }
+        } else if (a.t == "QEX") {
+            res.a = this._clone(a.a);
+            res.b = this._clone(a.b);
+            res.c = this._clone(a.c);
+        }
+        return res;
+    }
+
+    add(_a,_b) {
+        const self = this;
+        const a = self._signal2lc(_a);
+        const b = self._signal2lc(_b);
+        if (a.t == "NQ") return a;
+        if (b.t == "NQ") return b;
+        if (a.t == "N") {
+            if (b.t == "N") {
+                return add_N_N(a,b);
+            } else if (b.t=="LC") {
+                return add_LC_N(b,a);
+            } else if (b.t=="QEX") {
+                return add_QEX_N(b,a);
+            } else {
+                return { type: "NQ" };
+            }
+        } else if (a.t=="LC") {
+            if (b.t == "N") {
+                return add_LC_N(a,b);
+            } else if (b.t=="LC") {
+                return add_LC_LC(a,b);
+            } else if (b.t=="QEX") {
+                return add_QEX_LC(b,a);
+            } else {
+                return { t: "NQ" };
+            }
+        } else if (a.t=="QEX") {
+            if (b.t == "N") {
+                return add_QEX_N(a,b);
+            } else if (b.t=="LC") {
+                return add_QEX_LC(a,b);
+            } else if (b.t=="QEX") {
+                return { t: "NQ" };
+            } else {
+                return { t: "NQ" };
+            }
+        } else {
+            return { t: "NQ" };
+        }
+
+        function add_N_N(a,b) {
+            return {
+                t: "N",
+                v: self.field.add(a.v, b.v)
+            };
+        }
+
+        function add_LC_N(a,b) {
+            let res = self._clone(a);
+            if (b.v.isZero()) return res;
+            if (!utils.isDefined(res.coefs[sONE])) {
+                res.coefs[sONE]= b.v;
+            } else {
+                res.coefs[sONE]= self.field.add(res.coefs[sONE], b.v);
+            }
+            return res;
+        }
+
+        function add_LC_LC(a,b) {
+            let res = self._clone(a);
+            for (let k in b.coefs) {
+                if (!utils.isDefined(res.coefs[k])) {
+                    res.coefs[k]=b.coefs[k];
+                } else {
+                    res.coefs[k]= self.field.add(res.coefs[k], b.coefs[k]);
+                }
+            }
+            return res;
+        }
+
+        function add_QEX_N(a,b) {
+            let res = self._clone(a);
+            res.c = add_LC_N(res.c, b);
+            return res;
+        }
+
+        function add_QEX_LC(a,b) {
+            let res = self._clone(a);
+            res.c = add_LC_LC(res.c, b);
+            return res;
+        }
+    }
+
+    mul(_a,_b) {
+        const self = this;
+        const a = self._signal2lc(_a);
+        const b = self._signal2lc(_b);
+        if (a.t == "NQ") return a;
+        if (b.t == "NQ") return b;
+        if (a.t == "N") {
+            if (b.t == "N") {
+                return mul_N_N(a,b);
+            } else if (b.t=="LC") {
+                return mul_LC_N(b,a);
+            } else if (b.t=="QEX") {
+                return mul_QEX_N(b,a);
+            } else {
+                return { t: "NQ"};
+            }
+        } else if (a.t=="LC") {
+            if (b.t == "N") {
+                return mul_LC_N(a,b);
+            } else if (b.t=="LC") {
+                return mul_LC_LC(a,b);
+            } else if (b.t=="QEX") {
+                return { t: "NQ" };
+            } else {
+                return { t: "NQ" };
+            }
+        } else if (a.t=="QEX") {
+            if (b.t == "N") {
+                return mul_QEX_N(a,b);
+            } else if (b.t=="LC") {
+                return { t: "NQ" };
+            } else if (b.t=="QEX") {
+                return { t: "NQ" };
+            } else {
+                return { t: "NQ" };
+            }
+        } else {
+            return { t: "NQ" };
+        }
+
+        function mul_N_N(a,b) {
+            return {
+                t: "N",
+                v: self.field.mul(a.v, b.v)
+            };
+        }
+
+        function mul_LC_N(a,b) {
+            let res = self._clone(a);
+            for (let k in res.coefs) {
+                res.coefs[k] = self.field.mul(res.coefs[k], b.v);
+            }
+            return res;
+        }
+
+        function mul_LC_LC(a,b) {
+            return {
+                t: "QEX",
+                a: self._clone(a),
+                b: self._clone(b),
+                c: { t: "LC", coefs: {}}
+            };
+        }
+
+        function mul_QEX_N(a,b) {
+            return {
+                t: "QEX",
+                a: mul_LC_N(a.a, b),
+                b: self._clone(a.b),
+                c: mul_LC_N(a.c, b)
+            };
+        }
+    }
+
+    neg(_a) {
+        const a = this._signal2lc(_a);
+        let res = this._clone(a);
+        if (res.t == "N") {
+            res.v = this.field.neg(a.v);
+        } else if (res.t == "LC") {
+            for (let k in res.coefs) {
+                res.coefs[k] = this.field.neg(res.coefs[k]);
+            }
+        } else if (res.t == "QEX") {
+            res.a = this.neg(res.a);
+            res.c = this.neg(res.c);
+        } else {
+            res = {t: "NQ"};
+        }
+        return res;
+    }
+
+    sub(a, b) {
+        return this.add(a, this.neg(b));
+    }
+
+    div(a, b) {
+        if (b.t == "N") {
+            if (b.v.isZero()) throw new Error("Division by zero");
+            const inv = {
+                t: "N",
+                v: this.field.inv(b.v)
+            };
+            return this.mul(a, inv);
+        } else {
+            return {t: "NQ"};
+        }
+    }
+
+    pow(a, b) {
+        if (b.t == "N") {
+            if (b.v.isZero()) {
+                if (this.isZero(a)) {
+                    throw new Error("Zero to the Zero");
+                }
+                return {
+                    t: "N",
+                    v: this.field.one
+                };
+            } else if (b.v.eq(this.field.one)) {
+                return a;
+            } else if (b.v.eq(bigInt(2))) {
+                return this.mul(a,a);
+            } else {
+                if (a.t=="N") {
+                    return {
+                        t: "N",
+                        v: this.field.pow(a.v, b.v)
+                    };
+                } else {
+                    return {t: "NQ"};
+                }
+            }
+        } else {
+            return {t: "NQ"};
+        }
+    }
+
+    substitute(where, signal, equivalence) {
+        if (equivalence.t != "LC") throw new Error("Equivalence must be a Linear Combination");
+        if (where.t == "LC") {
+            if (!utils.isDefined(where.coefs[signal]) || where.coefs[signal].isZero()) return where;
+            const res=this._clone(where);
+            const coef = res.coefs[signal];
+            for (let k in equivalence.coefs) {
+                if (k != signal) {
+                    const v = this.field.mul( coef, equivalence.coefs[k] );
+                    if (!utils.isDefined(res.coefs[k])) {
+                        res.coefs[k]=v;
+                    } else {
+                        res.coefs[k]= this.field.add(res.coefs[k],v);
+                    }
+                    if (res.coefs[k].isZero()) delete res.coefs[k];
+                }
+            }
+            delete res.coefs[signal];
+            return res;
+        } else if (where.t == "QEX") {
+            const res = {
+                t: "QEX",
+                a: this.substitute(where.a, signal, equivalence),
+                b: this.substitute(where.b, signal, equivalence),
+                c: this.substitute(where.c, signal, equivalence)
+            };
+            return res;
+        } else {
+            return where;
+        }
+    }
+
+    toQEX(a) {
+        if (a.t == "N") {
+            const res = {
+                t: "QEX",
+                a: {t: "LC", coefs: {}},
+                b: {t: "LC", coefs: {}},
+                c: {t: "LC", coefs: {}}
+            };
+            res.c[sONE] = a.v;
+            return res;
+        } else if (a.t == "LC") {
+            return {
+                t: "QEX",
+                a: {t: "LC", coefs: {}},
+                b: {t: "LC", coefs: {}},
+                c: this._clone(a)
+            };
+        } else if (a.t == "QEX") {
+            return this._clone(a);
+        } else {
+            throw new Error(`Type ${a.t} can not be converted to QEX`);
+        }
+    }
+
+    isZero(a) {
+        if (a.t == "N") {
+            return a.v.isZero();
+        } else if (a.t == "LC") {
+            for (let k in a.coefs) {
+                if (!a.coefs[k].isZero()) return false;
+            }
+            return true;
+        } else if (a.t == "QEX") {
+            return (this.isZero(a.a) || this.isZero(a.b)) && this.isZero(a.c);
+        } else {
+            return false;
+        }
+    }
+
+    toString(a, ctx) {
+        if (a.t == "N") {
+            return a.v.toString();
+        } else if (a.t == "LC") {
+            let S="";
+            for (let k in a.coefs) {
+                if (!a.coefs[k].isZero()) {
+                    let c;
+                    if (a.coefs[k].greater(this.field.p.divide(2))) {
+                        S = S + "-";
+                        c = this.field.p.minus(a.coefs[k]);
+                    } else {
+                        if (S!="") S=S+" + ";
+                        c = a.coefs[k];
+                    }
+                    if (!c.equals(bigInt.one)) {
+                        S = S + c.toString() + "*";
+                    }
+                    let sIdx = k;
+                    if (ctx) {
+                        while (ctx.signals[sIdx].e>=0) sIdx = ctx.signals[sIdx].e;
+                    }
+                    S =  S + "[" + sIdx + "]";
+                }
+            }
+            if (S=="") return "0"; else return S;
+        } else if (a.t == "QEX") {
+            return "( "+
+                this.toString(a.a, ctx)+" ) * ( "+
+                this.toString(a.b, ctx)+" ) + " +
+                this.toString(a.c, ctx);
+        } else {
+            return "NQ";
+        }
+    }
+
+    evaluate(ctx, n) {
+        if (n.t == "N") {
+            return n.v;
+        } else if (n.t == "SIGNAL") {
+            return getSignalValue(ctx, n.sIdx);
+        } else if (n.t == "LC") {
+            let v= this.field.zero;
+            for (let k in n.coefs) {
+                const s = getSignalValue(ctx, k);
+                if (s === null) return null;
+                v = this.field.add(v, this.field.mul( n.coefs[k], s));
+            }
+            return v;
+        } else if (n.type == "QEX") {
+            const a = this.evaluate(ctx, n.a);
+            if (a === null) return null;
+            const b = this.evaluate(ctx, n.b);
+            if (b === null) return null;
+            const c = this.evaluate(ctx, n.c);
+            if (c === null) return null;
+
+            return this.field.add(this.field.mul(a,b), c);
+        } else {
+            return null;
+        }
+
+
+        function getSignalValue(ctx, sIdx) {
+            let s = ctx.signals[sIdx];
+            while (s.e>=0) s = ctx.signals[s.e];
+            if (utils.isDefined(s.v)) return s.v;
+            return null;
+        }
+
+    }
+
+
+    canonize(ctx, a) {
+        if (a.t == "LC") {
+            const res = this._clone(a);
+            for (let k in a.coefs) {
+                let s = k;
+                while (ctx.signals[s].e>=0) s= ctx.signals[s].e;
+                if (utils.isDefined(ctx.signals[s].v)&&(k != sONE)) {
+                    const v = this.field.mul(res.coefs[k], ctx.signals[s].v);
+                    if (!utils.isDefined(res.coefs[sONE])) {
+                        res.coefs[sONE]=v;
+                    } else {
+                        res.coefs[sONE]= this.field.add(res.coefs[sONE], v);
+                    }
+                    delete res.coefs[k];
+                } else if (s != k) {
+                    if (!utils.isDefined(res.coefs[s])) {
+                        res.coefs[s]=res.coefs[k];
+                    } else {
+                        res.coefs[s]= this.field.add(res.coefs[s], res.coefs[k]);
+                    }
+                    delete res.coefs[k];
+                }
+            }
+            for (let k in res.coefs) {
+                if (res.coefs[k].isZero()) delete res.coefs[k];
+            }
+            return res;
+        } else if (a.t == "QEX") {
+            const res = {
+                t: "QEX",
+                a: this.canonize(ctx, a.a),
+                b: this.canonize(ctx, a.b),
+                c: this.canonize(ctx, a.c)
+            };
+            return res;
+        } else {
+            return a;
+        }
     }
 }
 
-function canonize(ctx, a) {
-    if (a.type == "LINEARCOMBINATION") {
-        const res = clone(a);
-        for (let k in a.values) {
-            let s = k;
-            while (ctx.signals[s].e>=0) s= ctx.signals[s].e;
-            if (utils.isDefined(ctx.signals[s].v)&&(k != sONE)) {
-                const v = res.values[k].times(ctx.signals[s].v).mod(__P__);
-                if (!res.values[sONE]) {
-                    res.values[sONE]=v;
-                } else {
-                    res.values[sONE]= res.values[sONE].add(v).mod(__P__);
-                }
-                delete res.values[k];
-            } else if (s != k) {
-                if (!res.values[s]) {
-                    res.values[s]=bigInt(res.values[k]);
-                } else {
-                    res.values[s]= res.values[s].add(res.values[k]).mod(__P__);
-                }
-                delete res.values[k];
-            }
-        }
-        for (let k in res.values) {
-            if (res.values[k].isZero()) delete res.values[k];
-        }
-        return res;
-    } else if (a.type == "QEQ") {
-        const res = {
-            type: "QEQ",
-            a: canonize(ctx, a.a),
-            b: canonize(ctx, a.b),
-            c: canonize(ctx, a.c)
-        };
-        return res;
-    } else {
-        return a;
-    }
-}
+module.exports = LCAlgebra;
 
-function substitute(where, signal, equivalence) {
-    if (equivalence.type != "LINEARCOMBINATION") throw new Error("Equivalence must be a Linear Combination");
-    if (where.type == "LINEARCOMBINATION") {
-        if (!where.values[signal] || where.values[signal].isZero()) return where;
-        const res=clone(where);
-        const coef = res.values[signal];
-        for (let k in equivalence.values) {
-            if (k != signal) {
-                const v = coef.times(equivalence.values[k]).mod(__P__);
-                if (!res.values[k]) {
-                    res.values[k]=v;
-                } else {
-                    res.values[k]= res.values[k].add(v).mod(__P__);
-                }
-                if (res.values[k].isZero()) delete res.values[k];
-            }
-        }
-        delete res.values[signal];
-        return res;
-    } else if (where.type == "QEQ") {
-        const res = {
-            type: "QEQ",
-            a: substitute(where.a, signal, equivalence),
-            b: substitute(where.b, signal, equivalence),
-            c: substitute(where.c, signal, equivalence)
-        };
-        return res;
-    } else {
-        return where;
-    }
-}
+
+
+
+
 

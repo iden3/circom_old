@@ -1,7 +1,6 @@
 
 const fs = require("fs");
 const assert = require("assert");
-const lc = require("./lcalgebra");
 const bigInt = require("big-integer");
 
 module.exports.buildR1cs = buildR1cs;
@@ -262,19 +261,19 @@ async function buildR1cs(ctx, fileName) {
     async function writeConstraint(c) {
         await writeLC(c.a);
         await writeLC(c.b);
-        await writeLC(lc.negate(c.c));
+        await writeLC(ctx.lc.neg(c.c));
     }
 
     async function writeLC(lc) {
-        const idxs = Object.keys(lc.values);
+        const idxs = Object.keys(lc.coefs);
         await writeU32(idxs.length);
-        for (let s in lc.values) {
+        for (let s in lc.coefs) {
             let lSignal = ctx.signals[s];
 
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
 
             await writeU32(lSignal.id);
-            await writeBigInt(lc.values[s]);
+            await writeBigInt(lc.coefs[s]);
         }
     }
 

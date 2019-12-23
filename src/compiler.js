@@ -17,25 +17,17 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-const fs = require("fs");
-const path = require("path");
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const sONE = 0;
-const assert = require("assert");
 const buildC = require("./c_build");
-const exec = require("./exec");
-const lc = require("./lcalgebra");
+const constructionPhase = require("./construction_phase");
 const Ctx = require("./ctx");
-const ZqField = require("./zqfield");
+const ZqField = require("fflib").ZqField;
 const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
 
 module.exports = compile;
-
-const parser = require("../parser/jaz.js").parser;
-
-const timeout = ms => new Promise(res => setTimeout(res, ms));
 
 async function compile(srcFile, options) {
     options.p = options.p || __P__;
@@ -45,26 +37,15 @@ async function compile(srcFile, options) {
     if (typeof options.reduceConstraints === "undefined") {
         options.reduceConstraints = true;
     }
-    const fullFileName = srcFile;
-    const fullFilePath = path.dirname(fullFileName);
-
-    const src = fs.readFileSync(fullFileName, "utf8");
-    const ast = parser.parse(src);
-
-    assert(ast.type == "BLOCK");
-
     const ctx = new Ctx();
     ctx.field = new ZqField(options.p);
-    ctx.mainComponent = options.mainComponent || "main";
-    ctx.filePath= fullFilePath;
-    ctx.fileName= fullFileName;
-    ctx.includedFiles = {};
-    ctx.includedFiles[fullFileName] = src.split("\n");
-
     ctx.verbose= options.verbose || false;
+    ctx.mainComponent = options.mainComponent || "main";
 
 
-    exec(ctx, ast);
+    constructionPhase(ctx, srcFile);
+
+    console.log("NConstraints Before: "+ctx.constraints.length);
 
     if (ctx.error) {
         throw(ctx.error);
@@ -90,6 +71,8 @@ async function compile(srcFile, options) {
             reduceConstrains(ctx);
         }
     }
+
+    console.log("NConstraints After: "+ctx.constraints.length);
 
     generateWitnessNames(ctx);
 
@@ -235,8 +218,8 @@ function reduceConstants(ctx) {
     const newConstraints = [];
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) console.log("reducing constants: ", i);
-        const c = lc.canonize(ctx, ctx.constraints[i]);
-        if (!lc.isZero(c)) {
+        const c = ctx.lc.canonize(ctx, ctx.constraints[i]);
+        if (!ctx.lc.isZero(c)) {
             newConstraints.push(c);
         }
         delete ctx.constraints[i];
@@ -265,19 +248,19 @@ function reduceConstrains(ctx) {
 
             // Mov to C if possible.
             if (isConstant(c.a)) {
-                const ct = {type: "NUMBER", value: c.a.values[sONE]};
-                c.c = lc.add(lc.mul(c.b, ct), c.c);
-                c.a = { type: "LINEARCOMBINATION", values: {} };
-                c.b = { type: "LINEARCOMBINATION", values: {} };
+                const ct = {t: "N", v: c.a.coefs[sONE]};
+                c.c = ctx.lc.add(ctx.lc.mul(c.b, ct), c.c);
+                c.a = { t: "LC", coefs: {} };
+                c.b = { t: "LC", coefs: {} };
             }
             if (isConstant(c.b)) {
-                const ct = {type: "NUMBER", value: c.b.values[sONE]};
-                c.c = lc.add(lc.mul(c.a, ct), c.c);
-                c.a = { type: "LINEARCOMBINATION", values: {} };
-                c.b = { type: "LINEARCOMBINATION", values: {} };
+                const ct = {t: "N", v: c.b.coefs[sONE]};
+                c.c = ctx.lc.add(ctx.lc.mul(c.a, ct), c.c);
+                c.a = { t: "LC", coefs: {} };
+                c.b = { t: "LC", coefs: {} };
             }
 
-            if (lc.isZero(c.a) || lc.isZero(c.b)) {
+            if (ctx.lc.isZero(c.a) || ctx.lc.isZero(c.b)) {
                 const isolatedSignal = getFirstInternalSignal(ctx, c.c);
                 if (isolatedSignal) {
 
@@ -288,22 +271,22 @@ function reduceConstrains(ctx) {
 
 
                     const isolatedSignalEquivalence = {
-                        type: "LINEARCOMBINATION",
-                        values: {}
+                        t: "LC",
+                        coefs: {}
                     };
-                    const invCoef = c.c.values[isolatedSignal].modInv(__P__);
-                    for (const s in c.c.values) {
+                    const invCoef = c.c.coefs[isolatedSignal].modInv(__P__);
+                    for (const s in c.c.coefs) {
                         if (s != isolatedSignal) {
-                            const v = __P__.minus(c.c.values[s]).times(invCoef).mod(__P__);
+                            const v = __P__.minus(c.c.coefs[s]).times(invCoef).mod(__P__);
                             if (!v.isZero()) {
-                                isolatedSignalEquivalence.values[s] = v;
+                                isolatedSignalEquivalence.coefs[s] = v;
                             }
                         }
                     }
 
                     for (let j in lSignal.inConstraints) {
                         if ((j!=i)&&(ctx.constraints[j])) {
-                            ctx.constraints[j] = lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
+                            ctx.constraints[j] = ctx.lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
                             linkSignalsConstraint(j);
                             if (j<i) {
                                 nextPossibleConstraints[j] = true;
@@ -315,7 +298,7 @@ function reduceConstrains(ctx) {
 
                     lSignal.c = ctx.stDISCARDED;
                 } else {
-                    if (lc.isZero(c.c)) ctx.constraints[i] = null;
+                    if (ctx.lc.isZero(c.c)) ctx.constraints[i] = null;
                 }
             }
         }
@@ -341,9 +324,9 @@ function reduceConstrains(ctx) {
 
     function linkSignalsConstraint(cidx) {
         const ct = ctx.constraints[cidx];
-        for (let k in ct.a.values) linkSignal(k, cidx);
-        for (let k in ct.b.values) linkSignal(k, cidx);
-        for (let k in ct.c.values) linkSignal(k, cidx);
+        for (let k in ct.a.coefs) linkSignal(k, cidx);
+        for (let k in ct.b.coefs) linkSignal(k, cidx);
+        for (let k in ct.c.coefs) linkSignal(k, cidx);
     }
 
     function unindexVariables() {
@@ -378,7 +361,7 @@ function reduceConstrains(ctx) {
     }
 
     function getFirstInternalSignal(ctx, l) {
-        for (let k in l.values) {
+        for (let k in l.coefs) {
             const signal = ctx.signals[k];
             if (signal.c == ctx.stINTERNAL) return k;
         }
@@ -386,10 +369,10 @@ function reduceConstrains(ctx) {
     }
 
     function isConstant(l) {
-        for (let k in l.values) {
-            if ((k != sONE) && (!l.values[k].isZero())) return false;
+        for (let k in l.coefs) {
+            if ((k != sONE) && (!l.coefs[k].isZero())) return false;
         }
-        if (!l.values[sONE] || l.values[sONE].isZero()) return false;
+        if (!l.coefs[sONE] || l.coefs[sONE].isZero()) return false;
         return true;
     }
 
@@ -483,9 +466,9 @@ function buildConstraints(ctx) {
     const res = [];
 
     function fillLC(dst, src) {
-        if (src.type != "LINEARCOMBINATION") throw new Error("Constraint is not a LINEARCOMBINATION");
-        for (let s in src.values) {
-            const v = src.values[s].toString();
+        if (src.t != "LC") throw new Error("Constraint is not a LINEARCOMBINATION");
+        for (let s in src.coefs) {
+            const v = src.coefs[s].toString();
             const id = ctx.signalName2Idx[s];
             dst[id] = v;
         }
@@ -498,7 +481,7 @@ function buildConstraints(ctx) {
 
         fillLC(A, ctx.constraints[i].a);
         fillLC(B, ctx.constraints[i].b);
-        fillLC(C, lc.negate(ctx.constraints[i].c));
+        fillLC(C, ctx.lc.negate(ctx.constraints[i].c));
 
         res.push([A,B,C]);
     }
