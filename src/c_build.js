@@ -204,8 +204,18 @@ function buildComponentsArray(ctx) {
     const ccodes = [];
     ccodes.push(`Circom_Component _components[${ctx.components.length}] = {\n`);
     for (let i=0; i< ctx.components.length; i++) {
+        let newThread;
+        if (ctx.newThreadTemplates) {
+            if (ctx.newThreadTemplates.test(ctx.components[i].template)) {
+                newThread = "true";
+            } else {
+                newThread = "false";
+            }
+        } else {
+            newThread = "false";
+        }
         ccodes.push(i>0 ? "    ," : "     ");
-        ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}, true}\n`);
+        ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}, ${newThread}}\n`);
     }
     ccodes.push("};\n");
     const codeComponents = ccodes.join("");

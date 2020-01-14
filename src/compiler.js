@@ -41,7 +41,7 @@ async function compile(srcFile, options) {
     ctx.field = new ZqField(options.p);
     ctx.verbose= options.verbose || false;
     ctx.mainComponent = options.mainComponent || "main";
-
+    ctx.newThreadTemplates = options.newThreadTemplates;
 
     constructionPhase(ctx, srcFile);
 

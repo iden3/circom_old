@@ -30,6 +30,8 @@
   },
   "dependencies": {
     "big-integer": "^1.6.32",
+    "ejs": "^3.0.1",
+    "fflib": "0.0.2",
     "fnv-plus": "^1.3.1",
     "optimist": "^0.6.1",
     "rimraf-promise": "^2.0.0",

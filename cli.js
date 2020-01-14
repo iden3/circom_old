@@ -35,6 +35,7 @@ const argv = require("yargs")
     .alias("c", "csource")
     .alias("s", "sym")
     .alias("r", "r1cs")
+    .alias("n", "newThreadTemplates")
     .help("h")
     .alias("h", "help")
     .option("verbose", {
@@ -82,6 +83,9 @@ if (argv.r1cs) {
 }
 if (argv.sym) {
     options.symWriteStream = fs.createWriteStream(symName);
+}
+if (argv.newThreadTemplates) {
+    options.newThreadTemplates = new RegExp(argv.newThreadTemplates);
 }
 
 compiler(fullFileName, options).then( () => {

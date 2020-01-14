@@ -1,0 +1,39 @@
+
+;;;;;;;;;;;;;;;;;;;;;;
+; rawCopyS2L
+;;;;;;;;;;;;;;;;;;;;;;
+; Convert a 64 bit integer to a long format field element
+; Params:
+;   rsi <= the integer
+;   rdi <= Pointer to the overwritted element
+;
+; Nidified registers:
+;   rax
+;;;;;;;;;;;;;;;;;;;;;;;
+
+rawCopyS2L:
+        mov     al, 0x80
+        shl     rax, 56
+        mov     [rdi], rax    ; set the result to LONG normal
+
+        cmp     rsi, 0
+        js      u64toLong_adjust_neg
+
+        mov     [rdi + 8], rsi
+        xor     rax, rax
+<% for (let i=1; i<n64; i++) { %>
+        mov     [rdi + <%= 8+i*8 %>], rax
+<% } %>
+        ret
+
+u64toLong_adjust_neg:
+        add    rsi, [q]         ; Set the first digit
+        mov    [rdi + 8], rsi   ;
+
+        mov    rsi, -1          ; all ones
+<% for (let i=1; i<n64; i++) { %>
+        mov    rax, rsi                       ; Add to q
+        adc    rax, [q + <%= i*8 %> ]
+        mov    [rdi + <%= (i+1)*8 %>], rax
+<% } %>
+        ret

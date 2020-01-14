@@ -141,7 +141,7 @@ void Circom_CalcWit::freeBigInts(PBigInt bi, int n) {
 
 void Circom_CalcWit::getSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value) {
     // syncPrintf("getSignal: %d\n", sIdx);
-    if (currentComponentIdx != cIdx) {
+    if ((circuit->components[cIdx].newThread)&&(currentComponentIdx != cIdx)) {
         std::unique_lock<std::mutex> lk(mutexes[cIdx % NMUTEXES]);
         while (inputSignalsToTrigger[cIdx] != -1) {
             cvs[cIdx % NMUTEXES].wait(lk);

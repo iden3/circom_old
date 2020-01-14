@@ -558,7 +558,7 @@ function execFunctionCall(ctx, ast) {
     if (ast.name == "log") {
         const v = exec(ctx, ast.params[0]);
         const ev = val(ctx, v, ast);
-        console.log(ev.toString());
+        console.log(ev.v.toString());
         return;
     }
     if (ast.name == "assert") {
@@ -691,7 +691,7 @@ function execPin(ctx, ast) {
     }
     const sIdx = ctx.components[cIdx].names.getSignalIdx(ast.pin.name, selsP);
 
-    if (sIdx<0) ctx.throwError(ast, "Signal not defined:" + buildFullName() );
+    if (sIdx<0) return ctx.throwError(ast, "Signal not defined:" + buildFullName() );
     return {
         t: "S",
         sIdx: sIdx,

@@ -189,6 +189,8 @@ int main(int argc, char *argv[]) {
 
         ctx->join();
 
+        printf("Finished!\n");
+
         std::string outfilename = argv[2];
 
         if (hasEnding(outfilename, std::string(".bin"))) {
