@@ -39,15 +39,23 @@ void fillMap() {
     addFunction("sub", (FuncAny)Fr_sub, 2);
     addFunction("neg", (FuncAny)Fr_neg, 1);
     addFunction("mul", (FuncAny)Fr_mul, 2);
+    addFunction("square", (FuncAny)Fr_square, 1);
+    addFunction("idiv", (FuncAny)Fr_idiv, 2);
+    addFunction("inv", (FuncAny)Fr_inv, 1);
+    addFunction("div", (FuncAny)Fr_div, 2);
     addFunction("band", (FuncAny)Fr_band, 2);
     addFunction("bor", (FuncAny)Fr_bor, 2);
     addFunction("bxor", (FuncAny)Fr_bxor, 2);
+    addFunction("bnot", (FuncAny)Fr_bnot, 1);
     addFunction("eq", (FuncAny)Fr_eq, 2);
     addFunction("neq", (FuncAny)Fr_neq, 2);
     addFunction("lt", (FuncAny)Fr_lt, 2);
     addFunction("gt", (FuncAny)Fr_gt, 2);
     addFunction("leq", (FuncAny)Fr_leq, 2);
     addFunction("geq", (FuncAny)Fr_geq, 2);
+    addFunction("land", (FuncAny)Fr_land, 2);
+    addFunction("lor", (FuncAny)Fr_lor, 2);
+    addFunction("lnot", (FuncAny)Fr_lnot, 1);
 }
 
 u_int64_t readInt(std::string &s) {

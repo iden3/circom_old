@@ -15,9 +15,10 @@ class ZqBuilder {
         this.bigInt = bigInt;
         this.lastTmp=0;
         this.global = {};
-        this.global.tmpLabel = function() {
+        this.global.tmpLabel = function(label) {
             self.lastTmp++;
-            return "tmp"+self.lastTmp;
+            label = label || "tmp";
+            return label+"_"+self.lastTmp;
         };
     }
 

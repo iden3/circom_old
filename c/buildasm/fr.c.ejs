@@ -15,7 +15,7 @@ void <%=name%>_str2element(P<%=name%>Element pE, char *s) {
 char *<%=name%>_element2str(P<%=name%>Element pE) {
     mpz_t r;
     mpz_t q;
-    if (pE->type == <%=name%>_SHORT) {
+    if (!(pE->type & <%=name%>_LONG)) {
         if (pE->shortVal>=0) {
             char *r = new char[32];
             sprintf(r, "%d", pE->shortVal);
@@ -35,5 +35,72 @@ char *<%=name%>_element2str(P<%=name%>Element pE) {
     char *res = mpz_get_str (0, 10, r);
     mpz_clear(r);
     return res;
+}
+
+void <%=name%>_toMpz(mpz_t r, P<%=name%>Element pE) {
+    mpz_t q;
+    <%=name%>_toNormal(pE);
+    if (!(pE->type & <%=name%>_LONG)) {
+        mpz_set_si(r, pE->shortVal);
+        if (pE->shortVal<0) {
+            mpz_init(q);
+            mpz_import(q, <%=name%>_N64, -1, 8, -1, 0, (const void *)Fr_q.longVal);
+            mpz_add(r, r, q);
+        }
+    } else {
+        mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)pE->longVal);
+    }
+}
+
+void <%=name%>_fromMpz(P<%=name%>Element pE, mpz_t v) {
+    if (mpz_fits_sint_p(v)) {
+        pE->type = <%=name%>_SHORT;
+        pE->shortVal = mpz_get_si(v);
+    } else {
+        pE->type = <%=name%>_LONG;
+        for (int i=0; i<<%=name%>_N64; i++) pE->longVal[i] = 0;
+        mpz_export((void *)(pE->longVal), NULL, -1, 8, -1, 0, v);
+    }
+}
+
+void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+    mpz_t ma;
+    mpz_t mb;
+    mpz_t mr;
+    mpz_init(ma);
+    mpz_init(mb);
+    mpz_init(mr);
+
+    <%=name%>_toMpz(ma, a);
+    // char *s1 = mpz_get_str (0, 10, ma);
+    // printf("s1 %s\n", s1);
+    <%=name%>_toMpz(mb, b);
+    // char *s2 = mpz_get_str (0, 10, mb);
+    // printf("s2 %s\n", s2);
+    mpz_fdiv_q(mr, ma, mb);
+    // char *sr = mpz_get_str (0, 10, mr);
+    // printf("r %s\n", sr);
+    <%=name%>_fromMpz(r, mr);
+}
+
+void <%=name%>_inv(P<%=name%>Element r, P<%=name%>Element a) {
+    mpz_t ma;
+    mpz_t mr;
+    mpz_t q;
+    mpz_init(ma);
+    mpz_init(mr);
+
+    mpz_init(q);
+    mpz_import(q, <%=name%>_N64, -1, 8, -1, 0, (const void *)Fr_q.longVal);
+
+    <%=name%>_toMpz(ma, a);
+    mpz_invert(mr, ma, q);
+    <%=name%>_fromMpz(r, mr);
+}
+
+void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+    <%=name%>Element tmp;
+    <%=name%>_inv(&tmp, b);
+    <%=name%>_mul(r, a, &tmp);
 }
 

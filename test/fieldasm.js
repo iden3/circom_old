@@ -79,7 +79,6 @@ describe("field asm test", function () {
         const tv = buildTestVector2(bn128r, "bor");
         await tester(bn128r, tv);
     });
-
     it("secp256k1q binary or", async () => {
         const tv = buildTestVector2(secp256k1q, "bor");
         await tester(secp256k1q, tv);
@@ -100,6 +99,18 @@ describe("field asm test", function () {
         const tv = buildTestVector2(mnt6753q, "bxor");
         await tester(mnt6753q, tv);
     });
+    it("bn128r binary not", async () => {
+        const tv = buildTestVector1(bn128r, "bnot");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q binary not", async () => {
+        const tv = buildTestVector1(secp256k1q, "bnot");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q binary not", async () => {
+        const tv = buildTestVector1(mnt6753q, "bnot");
+        await tester(mnt6753q, tv);
+    });
     it("bn128r eq", async () => {
         const tv = buildTestVector2(bn128r, "eq");
         await tester(bn128r, tv);
@@ -108,12 +119,10 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "eq");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q eq", async () => {
         const tv = buildTestVector2(mnt6753q, "eq");
         await tester(mnt6753q, tv);
     });
-/*
     it("bn128r neq", async () => {
         const tv = buildTestVector2(bn128r, "neq");
         await tester(bn128r, tv);
@@ -122,12 +131,10 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "neq");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q neq", async () => {
         const tv = buildTestVector2(mnt6753q, "neq");
         await tester(mnt6753q, tv);
     });
-/*
     it("bn128r lt", async () => {
         const tv = buildTestVector2(bn128r, "lt");
         await tester(bn128r, tv);
@@ -136,12 +143,10 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "lt");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q lt", async () => {
         const tv = buildTestVector2(mnt6753q, "lt");
         await tester(mnt6753q, tv);
     });
-/*
     it("bn128r gt", async () => {
         const tv = buildTestVector2(bn128r, "gt");
         await tester(bn128r, tv);
@@ -150,12 +155,10 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "gt");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q gt", async () => {
         const tv = buildTestVector2(mnt6753q, "gt");
         await tester(mnt6753q, tv);
     });
-/*
     it("bn128r leq", async () => {
         const tv = buildTestVector2(bn128r, "leq");
         await tester(bn128r, tv);
@@ -164,12 +167,10 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "leq");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q leq", async () => {
         const tv = buildTestVector2(mnt6753q, "leq");
         await tester(mnt6753q, tv);
     });
-/*
     it("bn128r geq", async () => {
         const tv = buildTestVector2(bn128r, "geq");
         await tester(bn128r, tv);
@@ -178,11 +179,96 @@ describe("field asm test", function () {
         const tv = buildTestVector2(secp256k1q, "geq");
         await tester(secp256k1q, tv);
     });
-*/
     it("mnt6753q geq", async () => {
         const tv = buildTestVector2(mnt6753q, "geq");
         await tester(mnt6753q, tv);
     });
+    it("bn128r logical and", async () => {
+        const tv = buildTestVector2(bn128r, "land");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q logical and", async () => {
+        const tv = buildTestVector2(secp256k1q, "land");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q logical and", async () => {
+        const tv = buildTestVector2(mnt6753q, "land");
+        await tester(mnt6753q, tv);
+    });
+    it("bn128r logical or", async () => {
+        const tv = buildTestVector2(bn128r, "lor");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q logical or", async () => {
+        const tv = buildTestVector2(secp256k1q, "lor");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q logical or", async () => {
+        const tv = buildTestVector2(mnt6753q, "lor");
+        await tester(mnt6753q, tv);
+    });
+    it("bn128r logical not", async () => {
+        const tv = buildTestVector1(bn128r, "lnot");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q logical not", async () => {
+        const tv = buildTestVector1(secp256k1q, "lnot");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q logical not", async () => {
+        const tv = buildTestVector1(mnt6753q, "lnot");
+        await tester(mnt6753q, tv);
+    });
+    it("bn128r idiv", async () => {
+        const tv = buildTestVector2(bn128r, "idiv");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q idiv", async () => {
+        const tv = buildTestVector2(secp256k1q, "idiv");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q idiv", async () => {
+        const tv = buildTestVector2(mnt6753q, "idiv");
+        await tester(mnt6753q, tv);
+    });
+    it("bn128r inv", async () => {
+        const tv = buildTestVector1(bn128r, "inv");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q inv", async () => {
+        const tv = buildTestVector1(secp256k1q, "inv");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q inv", async () => {
+        const tv = buildTestVector1(mnt6753q, "inv");
+        await tester(mnt6753q, tv);
+    });
+    it("bn128r div", async () => {
+        const tv = buildTestVector2(bn128r, "div");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q div", async () => {
+        const tv = buildTestVector2(secp256k1q, "div");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q div", async () => {
+        const tv = buildTestVector2(mnt6753q, "div");
+        await tester(mnt6753q, tv);
+    });
+*/
+    it("bn128r square", async () => {
+        const tv = buildTestVector1(bn128r, "square");
+        await tester(bn128r, tv);
+    });
+    it("secp256k1q square", async () => {
+        const tv = buildTestVector1(secp256k1q, "square");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q square", async () => {
+        const tv = buildTestVector1(mnt6753q, "square");
+        await tester(mnt6753q, tv);
+    });
+
 });
 
 function buildTestVector2(p, op) {
@@ -190,7 +276,7 @@ function buildTestVector2(p, op) {
     const tv = [];
     const nums = getCriticalNumbers(p, 2);
 
-    const excludeZero = ["div", "mod"].indexOf(op) >= 0;
+    const excludeZero = ["div", "mod", "idiv"].indexOf(op) >= 0;
 
     for (let i=0; i<nums.length; i++) {
         for (let j=0; j<nums.length; j++) {

@@ -145,6 +145,47 @@ montgomeryTemplate("rawMontgomeryMul", function(i, r0, r1, r2) {
 %>
 
 ;;;;;;;;;;;;;;;;;;;;;;
+; rawMontgomerySquare
+;;;;;;;;;;;;;;;;;;;;;;
+; Square an element
+; Params:
+;   rsi <= Pointer to the long data of element 1
+;   rdi <= Pointer to the long data of result
+; Modified registers:
+;    r8, r9, 10, r11, rax, rcx
+;;;;;;;;;;;;;;;;;;;;;;
+<%
+montgomeryTemplate("rawMontgomerySquare", function(i, r0, r1, r2) {
+    // Same Digit
+    for (let o1=Math.max(0, i-n64+1); (o1<((i+1)>>1) )&&(o1<n64); o1++) {
+    const o2= i-o1;
+%>
+        mov     rax, [rsi + <%= 8*o1 %>]
+        mul     qword [rsi + <%= 8*o2 %>]
+        add     <%= r0 %>, rax
+        adc     <%= r1 %>, rdx
+        adc     <%= r2 %>, 0x0
+        add     <%= r0 %>, rax
+        adc     <%= r1 %>, rdx
+        adc     <%= r2 %>, 0x0
+<%
+    } // Same digit
+%>
+
+<%  if (i%2 == 0) { %>
+        mov     rax, [rsi + <%= 8*(i/2) %>]
+        mul     rax
+        add     <%= r0 %>, rax
+        adc     <%= r1 %>, rdx
+        adc     <%= r2 %>, 0x0
+<%  } %>
+
+<%
+})
+%>
+
+
+;;;;;;;;;;;;;;;;;;;;;;
 ; rawMontgomeryMul1
 ;;;;;;;;;;;;;;;;;;;;;;
 ; Multiply two elements in montgomery form

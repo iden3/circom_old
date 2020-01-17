@@ -14,18 +14,27 @@ extern "C" void <%=name%>_add(P<%=name%>Element r, P<%=name%>Element a, P<%=name
 extern "C" void <%=name%>_sub(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_neg(P<%=name%>Element r, P<%=name%>Element a);
 extern "C" void <%=name%>_mul(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+extern "C" void <%=name%>_square(P<%=name%>Element r, P<%=name%>Element a);
 extern "C" void <%=name%>_band(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_bor(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_bxor(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+extern "C" void <%=name%>_bnot(P<%=name%>Element r, P<%=name%>Element a);
 extern "C" void <%=name%>_eq(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_neq(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_lt(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_gt(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_leq(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 extern "C" void <%=name%>_geq(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+extern "C" void <%=name%>_land(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+extern "C" void <%=name%>_lor(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+extern "C" void <%=name%>_lnot(P<%=name%>Element r, P<%=name%>Element a);
 extern "C" void <%=name%>_toNormal(P<%=name%>Element pE);
 extern "C" void <%=name%>_toMontgomery(P<%=name%>Element pE);
 void <%=name%>_str2element(P<%=name%>Element pE, char *s);
 char *<%=name%>_element2str(P<%=name%>Element pE);
+void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+void <%=name%>_inv(P<%=name%>Element r, P<%=name%>Element a);
+void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
+
 extern <%=name%>Element <%=name%>_q;
 

@@ -85,7 +85,7 @@
 
 <% function binOp(op) { %>
 ;;;;;;;;;;;;;;;;;;;;;;
-; <%= op %>
+; b<%= op %>
 ;;;;;;;;;;;;;;;;;;;;;;
 ; Adds two elements of any kind
 ; Params:
@@ -174,5 +174,44 @@
 <%= binOp("and") %>
 <%= binOp("or") %>
 <%= binOp("xor") %>
+
+
+;;;;;;;;;;;;;;;;;;;;;;
+; bnot
+;;;;;;;;;;;;;;;;;;;;;;
+; Adds two elements of any kind
+; Params:
+;   rsi <= Pointer to element 1
+;   rdi <= Pointer to result
+; Modified Registers:
+;    r8, r9, 10, r11, rax, rcx
+;;;;;;;;;;;;;;;;;;;;;;
+<%=name%>_bnot:
+        <%=     global.setTypeDest("0x80"); %>
+
+        mov     r8, [rsi]
+        bt      r8, 63          ; Check if is long operand
+        jc      bnot_l1
+bnot_s:
+        <%=     global.toLong_a() %>
+        jmp     bnot_l1n
+
+bnot_l1:
+        bt     r8, 62          ; check if montgomery first
+        jnc    bnot_l1n
+
+bnot_l1m:
+<%=     global.fromMont_a()       %>
+
+bnot_l1n:
+<%   for (let i=0; i<n64; i++) { %>
+        mov    rax, [rsi + <%= i*8 + 8 %>]
+        not    rax
+<%     if (i== n64-1) { %>
+        and    rax, [lboMask]
+<%     }  %>
+        mov    [rdi + <%= i*8 + 8 %>], rax
+<%   } %>
+        ret
 
 

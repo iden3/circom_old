@@ -4,15 +4,20 @@
         global <%=name%>_sub
         global <%=name%>_neg
         global <%=name%>_mul
+        global <%=name%>_square
         global <%=name%>_band
         global <%=name%>_bor
         global <%=name%>_bxor
+        global <%=name%>_bnot
         global <%=name%>_eq
         global <%=name%>_neq
         global <%=name%>_lt
         global <%=name%>_gt
         global <%=name%>_leq
         global <%=name%>_geq
+        global <%=name%>_land
+        global <%=name%>_lor
+        global <%=name%>_lnot
         global <%=name%>_toNormal
         global <%=name%>_toMontgomery
         global <%=name%>_q
@@ -28,6 +33,7 @@
 <%- include('mul.asm.ejs'); %>
 <%- include('binops.asm.ejs'); %>
 <%- include('cmpops.asm.ejs'); %>
+<%- include('logicalops.asm.ejs'); %>
 
         section .data
 <%=name%>_q:
