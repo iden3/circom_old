@@ -36,6 +36,16 @@ extern "C" void Fr_lnot(PFrElement r, PFrElement a);
 extern "C" void Fr_toNormal(PFrElement pE);
 extern "C" void Fr_toLongNormal(PFrElement pE);
 extern "C" void Fr_toMontgomery(PFrElement pE);
+
+extern "C" int Fr_isTrue(PFrElement pE);
+extern "C" int Fr_toInt(PFrElement pE);
+
+extern "C" void Fr_fail();
+
+extern FrElement Fr_q;
+
+// Pending functions to convert
+
 void Fr_str2element(PFrElement pE, char const*s);
 char *Fr_element2str(PFrElement pE);
 void Fr_idiv(PFrElement r, PFrElement a, PFrElement b);
@@ -46,12 +56,9 @@ void Fr_shl(PFrElement r, PFrElement a, PFrElement b);
 void Fr_shr(PFrElement r, PFrElement a, PFrElement b);
 void Fr_pow(PFrElement r, PFrElement a, PFrElement b);
 
-int Fr_isTrue(PFrElement pE);
-int Fr_toInt(PFrElement pE);
 
 void Fr_init();
 
-extern FrElement Fr_q;
 
 
 #endif // __FR_H

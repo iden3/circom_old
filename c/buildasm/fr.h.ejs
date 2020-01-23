@@ -36,6 +36,16 @@ extern "C" void <%=name%>_lnot(P<%=name%>Element r, P<%=name%>Element a);
 extern "C" void <%=name%>_toNormal(P<%=name%>Element pE);
 extern "C" void <%=name%>_toLongNormal(P<%=name%>Element pE);
 extern "C" void <%=name%>_toMontgomery(P<%=name%>Element pE);
+
+extern "C" int <%=name%>_isTrue(P<%=name%>Element pE);
+extern "C" int <%=name%>_toInt(P<%=name%>Element pE);
+
+extern "C" void <%=name%>_fail();
+
+extern <%=name%>Element <%=name%>_q;
+
+// Pending functions to convert
+
 void <%=name%>_str2element(P<%=name%>Element pE, char const*s);
 char *<%=name%>_element2str(P<%=name%>Element pE);
 void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
@@ -46,12 +56,9 @@ void <%=name%>_shl(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
 void <%=name%>_shr(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 void <%=name%>_pow(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b);
 
-int <%=name%>_isTrue(P<%=name%>Element pE);
-int <%=name%>_toInt(P<%=name%>Element pE);
 
 void <%=name%>_init();
 
-extern <%=name%>Element <%=name%>_q;
 
 
 #endif // __<%=name.toUpperCase()%>_H

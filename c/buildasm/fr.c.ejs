@@ -179,32 +179,7 @@ void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     <%=name%>_mul(r, a, &tmp);
 }
 
-int <%=name%>_isTrue(P<%=name%>Element pE) {
-    if (!(pE->type & <%=name%>_LONG)) return pE->shortVal != 0;
-    for (int i=0; i< <%=name%>_N64; i++) {
-        if (pE->longVal[i]) return 1;
-    }
-    return 0;
-}
-
-int <%=name%>_toInt(P<%=name%>Element pE) {
-    Fr_toNormal(pE);
-    if (!(pE->type & <%=name%>_LONG)) {
-        return pE->shortVal;
-    } else {
-        mpz_t ma;
-        mpz_init(ma);
-        <%=name%>_toMpz(ma, pE);
-        if (mpz_fits_sint_p(ma)) {
-            return mpz_get_si(ma);
-        }
-
-        mpz_sub(ma, ma, q);
-        if (mpz_fits_sint_p(ma)) {
-            return mpz_get_si(ma);
-        } else {
-            assert(false);
-        }
-    }
+void <%=name%>_fail() {
+    assert(false);
 }
 

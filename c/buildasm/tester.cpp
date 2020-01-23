@@ -139,6 +139,7 @@ void processLine(std::string &line) {
 
 int main(void)
 {
+    Fr_init();
     fillMap();
     std::string line;
     int i=0;

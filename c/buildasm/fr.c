@@ -179,32 +179,7 @@ void Fr_div(PFrElement r, PFrElement a, PFrElement b) {
     Fr_mul(r, a, &tmp);
 }
 
-int Fr_isTrue(PFrElement pE) {
-    if (!(pE->type & Fr_LONG)) return pE->shortVal != 0;
-    for (int i=0; i< Fr_N64; i++) {
-        if (pE->longVal[i]) return 1;
-    }
-    return 0;
-}
-
-int Fr_toInt(PFrElement pE) {
-    Fr_toNormal(pE);
-    if (!(pE->type & Fr_LONG)) {
-        return pE->shortVal;
-    } else {
-        mpz_t ma;
-        mpz_init(ma);
-        Fr_toMpz(ma, pE);
-        if (mpz_fits_sint_p(ma)) {
-            return mpz_get_si(ma);
-        }
-
-        mpz_sub(ma, ma, q);
-        if (mpz_fits_sint_p(ma)) {
-            return mpz_get_si(ma);
-        } else {
-            assert(false);
-        }
-    }
+void Fr_fail() {
+    assert(false);
 }
 

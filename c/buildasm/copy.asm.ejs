@@ -79,3 +79,55 @@ u64toLong_adjust_neg:
         mov    [rdi + <%= (i+1)*8 %>], rax
 <% } %>
         ret
+
+;;;;;;;;;;;;;;;;;;;;;;
+; toInt
+;;;;;;;;;;;;;;;;;;;;;;
+; Convert a 64 bit integer to a long format field element
+; Params:
+;   rsi <= Pointer to the element
+; Returs:
+;   rax <= The value
+;;;;;;;;;;;;;;;;;;;;;;;
+<%=name%>_toInt:
+        mov     rax, [rdi]
+        bt      rax, 63
+        jc      <%=name%>_long
+        movsx   rax, eax
+        ret
+
+<%=name%>_long:
+        mov     rax, [rdi + 8]
+        mov     rcx, rax
+        shr     rcx, 31
+        jnz     <%=name%>_longNeg
+<% for (let i=1; i< n64; i++) { %>
+        mov     rcx, [rdi + <%= i*8+8 %>]
+        test    rcx, rcx
+        jnz     <%=name%>_longNeg
+<% } %>
+        ret
+
+<%=name%>_longNeg:
+        mov     rax, [rdi + 8]
+        sub     rax, [q]
+        jnc     <%=name%>_longErr
+<% for (let i=1; i<n64; i++) { %>
+        mov     rcx, [rdi + <%= i*8+8 %>]
+        sbb     rcx, [q + <%= i*8 %>]
+        jnc     <%=name%>_longErr
+<% } %>
+        mov     rcx, rax
+        sar     rcx, 31
+        add     rcx, 1
+        jnz     <%=name%>_longErr
+        ret
+
+<%=name%>_longErr:
+        push    rdi
+        mov     rdi, 0
+        call    <%=name%>_fail
+        pop     rdi
+
+
+

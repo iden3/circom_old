@@ -13,7 +13,6 @@ const mnt6753r = new bigInt("418984909679189534023442147912406371281707099199539
 
 describe("field asm test", function () {
     this.timeout(1000000000);
-/*
     it("bn128r add", async () => {
         const tv = buildTestVector2(bn128r, "add");
         await tester(bn128r, tv);
@@ -255,7 +254,6 @@ describe("field asm test", function () {
         const tv = buildTestVector2(mnt6753q, "div");
         await tester(mnt6753q, tv);
     });
-*/
     it("bn128r square", async () => {
         const tv = buildTestVector1(bn128r, "square");
         await tester(bn128r, tv);

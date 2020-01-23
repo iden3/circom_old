@@ -23,7 +23,10 @@
         global Fr_toNormal
         global Fr_toLongNormal
         global Fr_toMontgomery
+        global Fr_toInt
+        global Fr_isTrue
         global Fr_q
+        extern Fr_fail
         DEFAULT REL
 
         section .text
@@ -149,6 +152,74 @@ u64toLong_adjust_neg:
         mov    [rdi + 32], rax
 
         ret
+
+;;;;;;;;;;;;;;;;;;;;;;
+; toInt
+;;;;;;;;;;;;;;;;;;;;;;
+; Convert a 64 bit integer to a long format field element
+; Params:
+;   rsi <= Pointer to the element
+; Returs:
+;   rax <= The value
+;;;;;;;;;;;;;;;;;;;;;;;
+Fr_toInt:
+        mov     rax, [rdi]
+        bt      rax, 63
+        jc      Fr_long
+        movsx   rax, eax
+        ret
+
+Fr_long:
+        mov     rax, [rdi + 8]
+        mov     rcx, rax
+        shr     rcx, 31
+        jnz     Fr_longNeg
+
+        mov     rcx, [rdi + 16]
+        test    rcx, rcx
+        jnz     Fr_longNeg
+
+        mov     rcx, [rdi + 24]
+        test    rcx, rcx
+        jnz     Fr_longNeg
+
+        mov     rcx, [rdi + 32]
+        test    rcx, rcx
+        jnz     Fr_longNeg
+
+        ret
+
+Fr_longNeg:
+        mov     rax, [rdi + 8]
+        sub     rax, [q]
+        jnc     Fr_longErr
+
+        mov     rcx, [rdi + 16]
+        sbb     rcx, [q + 8]
+        jnc     Fr_longErr
+
+        mov     rcx, [rdi + 24]
+        sbb     rcx, [q + 16]
+        jnc     Fr_longErr
+
+        mov     rcx, [rdi + 32]
+        sbb     rcx, [q + 24]
+        jnc     Fr_longErr
+
+        mov     rcx, rax
+        sar     rcx, 31
+        add     rcx, 1
+        jnz     Fr_longErr
+        ret
+
+Fr_longErr:
+        push    rdi
+        mov     rdi, 0
+        call    Fr_fail
+        pop     rdi
+
+
+
 
 
 
@@ -1432,6 +1503,7 @@ toLongNormal_fromShort:
     movsx   rsi, eax
     call    rawCopyS2L
     mov     rsi, r8                     ; recover rsi
+    ret
 
 
 
@@ -5697,6 +5769,62 @@ lnot_retZero:
 lnot_retOne:
         mov qword [rdi], 1
         ret
+
+
+;;;;;;;;;;;;;;;;;;;;;;
+; isTrue
+;;;;;;;;;;;;;;;;;;;;;;
+; Convert a 64 bit integer to a long format field element
+; Params:
+;   rsi <= Pointer to the element
+; Returs:
+;   rax <= 1 if true 0 if false
+;;;;;;;;;;;;;;;;;;;;;;;
+Fr_isTrue:
+        
+
+
+
+
+
+    mov     rax, [rdi]
+    bt      rax, 63
+    jc      tmp_64
+
+    test    eax, eax
+    jz      retZero_66
+    jmp     retOne_65
+
+tmp_64:
+
+    mov     rax, [rdi + 8]
+    test    rax, rax
+    jnz     retOne_65
+
+    mov     rax, [rdi + 16]
+    test    rax, rax
+    jnz     retOne_65
+
+    mov     rax, [rdi + 24]
+    test    rax, rax
+    jnz     retOne_65
+
+    mov     rax, [rdi + 32]
+    test    rax, rax
+    jnz     retOne_65
+
+
+retZero_66:
+    mov     qword rax, 0
+    jmp     done_67
+
+retOne_65:
+    mov     qword rax, 1
+
+done_67:
+
+        ret
+
 
 
 
