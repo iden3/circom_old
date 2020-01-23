@@ -35,6 +35,11 @@ function buildC(ctx) {
     ctx.codes_sizes = [];
     ctx.definedSizes = {};
     ctx.addSizes = addSizes;
+    ctx.constants = [];
+    ctx.constantsMap = {};
+    ctx.addConstant = addConstant;
+    ctx.addConstant(bigInt.zero);
+    ctx.addConstant(bigInt.one);
 
     const entryTables = buildEntryTables(ctx);
     ctx.globalNames = ctx.uniqueNames;
@@ -45,6 +50,7 @@ function buildC(ctx) {
 
     const headder = buildHeader(ctx);
     const sizes = buildSizes(ctx);
+    const constants = buildConstants(ctx);
     const mapIsInput = buildMapIsInput(ctx);
     const wit2Sig = buildWit2Sig(ctx);
     const circuitVar = buildCircuitVar(ctx);
@@ -52,6 +58,7 @@ function buildC(ctx) {
     return "" +
         headder + "\n" +
         sizes + "\n" +
+        constants + "\n" +
         entryTables + "\n" +
         functions + "\n" +
         code + "\n" +
@@ -244,6 +251,69 @@ function buildSizes(ctx) {
             ctx.codes_sizes.join("\n");
 }
 
+function buildConstants(ctx) {
+    const n64 = Math.floor((ctx.field.p.bitLength() - 1) / 64)+1;
+    const R = bigInt.one.shiftLeft(n64*64);
+
+    const lines = [];
+    lines.push("// Constants");
+    lines.push(`FrElement _constants[${ctx.constants.length}] = {`);
+    for (let i=0; i<ctx.constants.length; i++) {
+        lines.push((i>0 ? "," : " ") + "{" + number2Code(ctx.constants[i]) + "}");
+    }
+    lines.push("};");
+
+    return lines.join("\n");
+
+    function number2Code(n) {
+        if (n.lt(bigInt("80000000", 16)) ) {
+            return addShortMontgomeryPositive(n);
+        }
+        if (n.geq(ctx.field.p.minus(bigInt("80000000", 16))) ) {
+            return addShortMontgomeryNegative(n);
+        }
+        return addLongMontgomery(n);
+
+
+        function addShortMontgomeryPositive(a) {
+            return `${a.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
+        }
+
+
+        function addShortMontgomeryNegative(a) {
+            const b = a.minus(ctx.field.p);
+            return `${b.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
+        }
+
+        function addLongMontgomery(a) {
+            return `0, 0xC0000000, { ${getLongString(toMontgomery(a))} }`;
+        }
+
+        function getLongString(a) {
+            let r = bigInt(a);
+            let S = "";
+            let i = 0;
+            while (!r.isZero()) {
+                if (S!= "") S = S+",";
+                S += "0x" + r.and(bigInt("FFFFFFFFFFFFFFFF", 16)).toString(16) + "LL";
+                i++;
+                r = r.shiftRight(64);
+            }
+            while (i<n64) {
+                if (S!= "") S = S+",";
+                S += "0LL";
+                i++;
+            }
+            return S;
+        }
+
+        function toMontgomery(a) {
+            return a.times(R).mod(ctx.field.p);
+        }
+
+    }
+}
+
 
 function buildMapIsInput(ctx) {
     const arr = [];
@@ -338,6 +408,7 @@ function buildCircuitVar() {
         "   _wit2sig,\n"+
         "   _components,\n"+
         "   _mapIsInput,\n"+
+        "   _constants,\n" +
         "   __P__\n" +
         "};\n";
 }
@@ -368,6 +439,16 @@ function addSizes(_sizes) {
     this.codes_sizes.push(code);
 
     return labelName;
+}
+
+function addConstant(c) {
+    c = bigInt(c);
+    const s = c.toString();
+    if (typeof (this.constantsMap[s]) !== "undefined") return this.constantsMap[s];
+    const newId = this.constants.length;
+    this.constants.push(c);
+    this.constantsMap[s] = newId;
+    return newId;
 }
 
 function buildFunction(name, paramValues) {
@@ -409,7 +490,7 @@ function buildFunction(name, paramValues) {
     for (let i=0; i<ctx.functions[name].params.length; i++) {
 
         if (paramValues[i].used) {
-            paramsStr += `,PBigInt ${ctx.functions[name].params[i]}`;
+            paramsStr += `,PFrElement ${ctx.functions[name].params[i]}`;
             const idRef = ctx.refs.length;
             ctx.refs.push({
                 type: "BIGINT",
@@ -444,11 +525,12 @@ function buildFunction(name, paramValues) {
             "/*\n" +
             instanceDef +
             "\n*/\n" +
-            `void ${name}_${h}(Circom_CalcWit *ctx, PBigInt __retValue ${paramsStr}) {`;
+            `void ${name}_${h}(Circom_CalcWit *ctx, PFrElement __retValue ${paramsStr}) {`;
         code += utils.ident(ctx.codeHeader);
         code += utils.ident(ctx.code);
         code += utils.ident("returnFunc:\n");
         code += utils.ident(ctx.codeFooter);
+        code += utils.ident(";\n");
         code += "}\n";
         res.returnSizes = ctx.returnSizes;
         ctx.functionCodes.push(code);

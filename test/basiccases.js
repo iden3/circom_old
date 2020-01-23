@@ -44,7 +44,6 @@ async function doTest(circuit, testVectors) {
 
 describe("basic cases", function () {
     this.timeout(100000);
-/*
     it("inout", async () => {
         await doTest(
             "inout.circom",
@@ -112,6 +111,7 @@ describe("basic cases", function () {
             ]
         );
     });
+
     it("function1", async () => {
         await doTest(
             "function1.circom",
@@ -239,7 +239,7 @@ describe("basic cases", function () {
                 [{in: [ 8, 9]}, {lt: 1, leq: 1, eq:0, neq:1, geq: 0, gt:0}],
                 [{in: [-2,-2]}, {lt: 0, leq: 1, eq:1, neq:0, geq: 1, gt:0}],
                 [{in: [-1,-2]}, {lt: 0, leq: 0, eq:0, neq:1, geq: 1, gt:1}],
-                [{in: [ 1,-1]}, {lt: 1, leq: 1, eq:0, neq:1, geq: 0, gt:0}],  // In mod, negative values are higher than positive.
+                [{in: [ 1,-1]}, {lt: 0, leq: 0, eq:0, neq:1, geq: 1, gt:1}],  // In mod, negative values are higher than positive.
             ]
         );
     });
@@ -299,7 +299,6 @@ describe("basic cases", function () {
             ]
         );
     });
-*/
     it("Component array 2d", async () => {
         await doTest(
             "componentarray2.circom",
@@ -309,7 +308,6 @@ describe("basic cases", function () {
             ]
         );
     });
-/*
     it("Constant circuit", async () => {
         await doTest(
             "constantcircuit.circom",
@@ -339,5 +337,4 @@ describe("basic cases", function () {
             ]
         );
     });
-*/
 });

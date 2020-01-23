@@ -1,3 +1,45 @@
+;;;;;;;;;;;;;;;;;;;;;;
+; copy
+;;;;;;;;;;;;;;;;;;;;;;
+; Copies
+; Params:
+;   rsi <= the src
+;   rdi <= the dest
+;
+; Nidified registers:
+;   rax
+;;;;;;;;;;;;;;;;;;;;;;;
+<%=name%>_copy:
+<% for (let i=0; i<=n64; i++) { %>
+        mov     rax, [rsi + <%= i*8 %>]
+        mov     [rdi + <%= i*8 %>], rax
+<% } %>
+        ret
+
+;;;;;;;;;;;;;;;;;;;;;;
+; copy an array of integers
+;;;;;;;;;;;;;;;;;;;;;;
+; Copies
+; Params:
+;   rsi <= the src
+;   rdi <= the dest
+;   rdx <= number of integers to copy
+;
+; Nidified registers:
+;   rax
+;;;;;;;;;;;;;;;;;;;;;;;
+<%=name%>_copyn:
+<%=name%>_copyn_loop:
+        mov     r8, rsi
+        mov     r9, rdi
+        mov     rax, <%= n64+1 %>
+        mul     rdx
+        mov     rcx, rax
+        cld
+   rep  movsq
+        mov     rsi, r8
+        mov     rdi, r9
+        ret
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ; rawCopyS2L

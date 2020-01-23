@@ -3,13 +3,12 @@
 
 #include <gmp.h>
 #include <stdint.h>
+#include "fr.h"
 
 class Circom_CalcWit;
 typedef unsigned long long u64;
 typedef uint32_t u32;
 typedef uint8_t u8;
-typedef mpz_t BigInt;
-typedef BigInt *PBigInt;
 
 typedef int Circom_Size;
 typedef Circom_Size *Circom_Sizes;
@@ -49,6 +48,7 @@ public:
     int *wit2sig;
     Circom_Component *components;
     u32 *mapIsInput;
+    PFrElement constants;
     const char *P;
 };
 

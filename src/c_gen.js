@@ -43,8 +43,7 @@ function instantiateRef(ctx, refId, initValue) {
     if (!v.sizes) v.sizes = [1,0];
 
     if (v.type=="BIGINT") {
-        ctx.codeHeader += `PBigInt ${v.label} = ctx->allocBigInts(${v.sizes[0]});\n`;
-        ctx.codeFooter += `ctx->freeBigInts(${v.label}, ${v.sizes[0]});\n`;
+        ctx.codeHeader += `FrElement ${v.label}[${v.sizes[0]}];\n`;
     } else if (v.type=="INT") {
         ctx.codeHeader += `int ${v.label};\n`;
     } else if (v.type=="SIZES") {
@@ -55,8 +54,8 @@ function instantiateRef(ctx, refId, initValue) {
         if (v.type == "BIGINT") {
             for (let i=0; i<initValue.length; i++) {
                 if (utils.isDefined(initValue[i])) {
-                    const c = `mpz_set_str(${v.label}[${i}], "${initValue[i].toString(10)}", 10);\n`;
-                    ctx.code += c;
+                    const idConstant = ctx.addConstant(initValue[i]);
+                    ctx.code += `Fr_copy(&(${v.label}[${i}]), ctx->circuit->constants +${idConstant});\n`;
                 }
             }
         }
@@ -67,12 +66,11 @@ function instantiateConstant(ctx, value) {
     const sizes = utils.accSizes(utils.extractSizes(value));
     const flatedValue = utils.flatArray(value);
     const label = ctx.getUniqueName("_const");
-    ctx.codeHeader += `PBigInt ${label};\n`;
-    ctx.codeHeader += `${label} = ctx->allocBigInts(${sizes[0]});\n`;
+    ctx.codeHeader += `FrElement ${label}[${sizes[0]}];\n`;
     for (let i=0; i<flatedValue.length; i++) {
-        ctx.codeHeader += `mpz_set_str(${label}[${i}], "${flatedValue[i].toString(10)}", 10);\n`;
+        const idConstant = ctx.addConstant(flatedValue[i]);
+        ctx.codeHeader += `Fr_copy(&(${label}[${i}]), ctx->circuit->constants +${idConstant});\n`;
     }
-    ctx.codeFooter += `ctx->freeBigInts(${label}, ${sizes[0]});\n`;
     const refId = ctx.refs.length;
     ctx.refs.push({
         type: "BIGINT",
@@ -392,7 +390,7 @@ function genGetOffset(ctx, refOffset, vSizes, sels) {
 
                 if (rStr != "") rStr += " + ";
                 if (iIdx.used) {
-                    rStr += `ctx->field->toInt(${iIdx.label})`;
+                    rStr += `Fr_toInt(${iIdx.label})`;
                 } else {
                     rStr += iIdx.value[0].toString();
                 }
@@ -451,14 +449,14 @@ function genVariable(ctx, ast) {
                 const refRes = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 const res = ctx.refs[refRes];
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label};\n`;
+                ctx.codeHeader += `PFrElement ${res.label};\n`;
                 ctx.code += `${res.label} = ${v.label} + ${offset.label};\n`;
                 return refRes;
             } else if ((offset.value[0])||(l>0)) {
                 const refRes = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 const res = ctx.refs[refRes];
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label};\n`;
+                ctx.codeHeader += `PFrElement ${res.label};\n`;
                 ctx.code += `${res.label} = ${v.label} + ${offset.value[0]};\n`;
                 return refRes;
             } else {
@@ -470,7 +468,7 @@ function genVariable(ctx, ast) {
                 const resRef = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 const res = ctx.refs[resRef];
                 res.used = true;
-                ctx.codeHeader += `PBigInt ${res.label};\n`;
+                ctx.codeHeader += `PFrElement ${res.label};\n`;
                 ctx.code += `${res.label} = ${v.label} + ${offset.label};\n`;
                 return resRef;
             } else {
@@ -685,12 +683,12 @@ function genVarAssignment(ctx, ast, lRef, sels, rRef) {
 
     if (instantiated) {
         if (offset.used) {
-            ctx.code += `ctx->field->copyn(${left.label} + ${offset.label}, ${right.label}, ${right.sizes[0]});\n`;
+            ctx.code += `Fr_copyn(${left.label} + ${offset.label}, ${right.label}, ${right.sizes[0]});\n`;
         } else {
             if (offset.value[0]>0) {
-                ctx.code += `ctx->field->copyn(${left.label} + ${offset.value[0]}, ${right.label}, ${right.sizes[0]});\n`;
+                ctx.code += `Fr_copyn(${left.label} + ${offset.value[0]}, ${right.label}, ${right.sizes[0]});\n`;
             } else {
-                ctx.code += `ctx->field->copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
+                ctx.code += `Fr_copyn(${left.label}, ${right.label}, ${right.sizes[0]});\n`;
             }
         }
     } else {
@@ -783,7 +781,7 @@ function genArray(ctx, ast) {
         for (let i=0; i<ast.values.length; i++) {
             const v = ctx.refs[refs[i]];
             const r = ctx.refs[rRef];
-            ctx.code += `ctx->field->copyn(${r.label}+${i*subSizes[0]}, ${v.label}, ${subSizes[0]});\n`;
+            ctx.code += `Fr_copyn(${r.label}+${i*subSizes[0]}, ${v.label}, ${subSizes[0]});\n`;
         }
         return rRef;
     } else {
@@ -883,7 +881,7 @@ function genLoop(ctx, ast) {
         instantiateRef(ctx, condVarRef);
 
         ctx.code +=
-            `${condVar.label} = ctx->field->isTrue(${cond.label});\n` +
+            `${condVar.label} = Fr_isTrue(${cond.label});\n` +
             `while (${condVar.label}) {\n`;
     } else {
         if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
@@ -924,7 +922,7 @@ function genLoop(ctx, ast) {
                 instantiateRef(ctx, condVarRef);
 
                 ctx.code +=
-                    `${condVar.label} = ctx->field->isTrue(${cond2.label});\n` +
+                    `${condVar.label} = Fr_isTrue(${cond2.label});\n` +
                     `while (${condVar.label}) {\n`;
             } else {
                 ctx.code = oldCode  + ctx.code;
@@ -935,7 +933,7 @@ function genLoop(ctx, ast) {
                 oldCode +
                 utils.ident(
                     ctx.code +
-                    `${condVar.label} = ctx->field->isTrue(${cond2.label});\n`);
+                    `${condVar.label} = Fr_isTrue(${cond2.label});\n`);
             end=true;
         }
     }
@@ -960,7 +958,7 @@ function genIf(ctx, ast) {
     if (cond.used) {
         enterConditionalCode(ctx, ast);
 
-        ctx.code += `if (ctx->field->isTrue(${cond.label})) {\n`;
+        ctx.code += `if (Fr_isTrue(${cond.label})) {\n`;
 
         const oldCode = ctx.code;
         ctx.code = "";
@@ -1007,7 +1005,7 @@ function genReturn(ctx, ast) {
         instantiateRef(ctx, vRef, v.value);
     }
     if (v.used) {
-        ctx.code += `ctx->field->copyn(__retValue, ${v.label}, ${v.sizes[0]});\n`;
+        ctx.code += `Fr_copyn(__retValue, ${v.label}, ${v.sizes[0]});\n`;
     } else {
         if (!utils.isDefined(v.value)) return ctx.throwError(ast, "Returning an unknown value");
         if (!utils.isDefined(ctx.returnValue))  {
@@ -1051,7 +1049,7 @@ function genOpOp(ctx, ast, op, lr) {
     const res = ctx.refs[resRef];
     if (veval.used) {
         instantiateRef(ctx, resRef);
-        ctx.code += `ctx->field->${op}(${res.label}, ${veval.label}, &(ctx->field->one));\n`;
+        ctx.code += `Fr_${op}(${res.label}, ${veval.label}, ctx->circuit->constants + ${ctx.addConstant(bigInt.one)});\n`;
     } else {
         res.value = [ctx.field[op](veval.value[0], bigInt(1))];
     }
@@ -1097,7 +1095,7 @@ function genOp(ctx, ast, op, nOps) {
         rRef = newRef(ctx, "BIGINT", "_tmp");
         instantiateRef(ctx, rRef);
         const r = ctx.refs[rRef];
-        let c = `ctx->field->${op}(${r.label}`;
+        let c = `Fr_${op}(${r.label}`;
         for (let i=0; i<nOps; i++) {
             c+=`,${vals[i].label}`;
         }
@@ -1126,8 +1124,8 @@ function genTerCon(ctx, ast) {
 
         const rLabel = ctx.getUniqueName("_ter");
 
-        ctx.codeHeader += `PBigInt ${rLabel};\n`;
-        ctx.code += `if (ctx->field->isTrue(${cond.label})) {\n`;
+        ctx.codeHeader += `PFrElement ${rLabel};\n`;
+        ctx.code += `if (Fr_isTrue(${cond.label})) {\n`;
 
         oldCode = ctx.code;
         ctx.code = "";

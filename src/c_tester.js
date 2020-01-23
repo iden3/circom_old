@@ -23,6 +23,8 @@ async function  c_tester(circomFile, _options) {
 
     const dir = await tmp.dir({prefix: "circom_", unsafeCleanup: true });
 
+    // console.log(dir.path);
+
     const baseName = path.basename(circomFile, ".circom");
     const options = Object.assign({}, _options);
 
@@ -40,7 +42,8 @@ async function  c_tester(circomFile, _options) {
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
-               ` ${path.join(cdir,  "zqfield.cpp")}` +
+               ` ${path.join(cdir,  "fr.c")}` +
+               ` ${path.join(cdir,  "fr.o")}` +
                ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` -o ${path.join(dir.path, baseName)}` +
                ` -I ${cdir}` +

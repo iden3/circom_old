@@ -298,17 +298,44 @@ toMontgomery_doNothing:
 <%=name%>_toNormal:
     mov     rax, [rdi]
     btc     rax, 62                     ; check if montgomery
-    jnc     fromMontgomery_doNothing
+    jnc     toNormal_doNothing
     bt      rax, 63                     ; if short, it means it's converted
-    jnc      fromMontgomery_doNothing
+    jnc     toNormal_doNothing
 
-fromMontgomeryLong:
+toNormalLong:
     mov     [rdi], rax
     add     rdi, 8
     call    rawFromMontgomery
     sub     rdi, 8
 
-fromMontgomery_doNothing:
+toNormal_doNothing:
     ret
 
+;;;;;;;;;;;;;;;;;;;;;;
+; toLongNormal
+;;;;;;;;;;;;;;;;;;;;;;
+; Convert a number to long normal
+;   rdi <= Pointer element to convert
+; Modified registers:
+;    r8, r9, 10, r11, rax, rcx
+;;;;;;;;;;;;;;;;;;;;
+<%=name%>_toLongNormal:
+    mov     rax, [rdi]
+    bt      rax, 62                     ; check if montgomery
+    jc      toLongNormal_fromMontgomery
+    bt      rax, 63                     ; check if long
+    jnc     toLongNormal_fromShort
+    ret                                 ; It is already long
+
+toLongNormal_fromMontgomery:
+    add     rdi, 8
+    call    rawFromMontgomery
+    sub     rdi, 8
+    ret
+
+toLongNormal_fromShort:
+    mov     r8, rsi                     ; save rsi
+    movsx   rsi, eax
+    call    rawCopyS2L
+    mov     rsi, r8                     ; recover rsi
 

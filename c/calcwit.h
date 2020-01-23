@@ -2,7 +2,7 @@
 #define CIRCOM_CALCWIT_H
 
 #include "circom.h"
-#include "zqfield.h"
+#include "fr.h"
 #include <mutex>
 #include <condition_variable>
 
@@ -24,9 +24,8 @@ class Circom_CalcWit {
 
     std::mutex printf_mutex;
 
-    BigInt *signalValues;
+    FrElement *signalValues;
 
-    Circom_Circuit *circuit;
 
     void triggerComponent(int newCIdx);
     void calculateWitness(void *input, void *output);
@@ -35,7 +34,8 @@ class Circom_CalcWit {
 
 
 public:
-    ZqField *field;
+    Circom_Circuit *circuit;
+
 // Functions called by the circuit
     Circom_CalcWit(Circom_Circuit *aCircuit);
     ~Circom_CalcWit();
@@ -45,26 +45,23 @@ public:
     int getSignalOffset(int cIdx, u64 hash);
     Circom_Sizes getSignalSizes(int cIdx, u64 hash);
 
-    PBigInt allocBigInts(int n);
-    void freeBigInts(PBigInt bi, int n);
+    void getSignal(int currentComponentIdx, int cIdx, int sIdx, PFrElement value);
+    void setSignal(int currentComponentIdx, int cIdx, int sIdx, PFrElement value);
 
-    void getSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value);
-    void setSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value);
+    void checkConstraint(int currentComponentIdx, PFrElement value1, PFrElement value2, char const *err);
 
-    void checkConstraint(int currentComponentIdx, PBigInt value1, PBigInt value2, char const *err);
-
-    void log(PBigInt value);
+    void log(PFrElement value);
 
     void finished(int cIdx);
     void join();
 
 
 // Public functions
-    inline void setInput(int idx, PBigInt val) {
+    inline void setInput(int idx, PFrElement val) {
         setSignal(0, 0, circuit->wit2sig[idx], val);
     }
-    inline void getWitness(int idx, PBigInt val) {
-        mpz_set(*val, signalValues[circuit->wit2sig[idx]]);
+    inline void getWitness(int idx, PFrElement val) {
+        Fr_copy(val, &signalValues[circuit->wit2sig[idx]]);
     }
 
     void reset();

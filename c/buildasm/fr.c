@@ -1,4 +1,4 @@
-#include "<%=name.toLowerCase()+".h"%>"
+#include "fr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <gmp.h>
@@ -11,33 +11,33 @@ mpz_t mask;
 size_t nBits;
 
 
-void <%=name%>_toMpz(mpz_t r, P<%=name%>Element pE) {
-    <%=name%>_toNormal(pE);
-    if (!(pE->type & <%=name%>_LONG)) {
+void Fr_toMpz(mpz_t r, PFrElement pE) {
+    Fr_toNormal(pE);
+    if (!(pE->type & Fr_LONG)) {
         mpz_set_si(r, pE->shortVal);
         if (pE->shortVal<0) {
             mpz_add(r, r, q);
         }
     } else {
-        mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)pE->longVal);
+        mpz_import(r, Fr_N64, -1, 8, -1, 0, (const void *)pE->longVal);
     }
 }
 
-void <%=name%>_fromMpz(P<%=name%>Element pE, mpz_t v) {
+void Fr_fromMpz(PFrElement pE, mpz_t v) {
     if (mpz_fits_sint_p(v)) {
-        pE->type = <%=name%>_SHORT;
+        pE->type = Fr_SHORT;
         pE->shortVal = mpz_get_si(v);
     } else {
-        pE->type = <%=name%>_LONG;
-        for (int i=0; i<<%=name%>_N64; i++) pE->longVal[i] = 0;
+        pE->type = Fr_LONG;
+        for (int i=0; i<Fr_N64; i++) pE->longVal[i] = 0;
         mpz_export((void *)(pE->longVal), NULL, -1, 8, -1, 0, v);
     }
 }
 
 
-void <%=name%>_init() {
+void Fr_init() {
     mpz_init(q);
-    mpz_import(q, <%=name%>_N64, -1, 8, -1, 0, (const void *)Fr_q.longVal);
+    mpz_import(q, Fr_N64, -1, 8, -1, 0, (const void *)Fr_q.longVal);
     mpz_init_set_ui(zero, 0);
     mpz_init_set_ui(one, 1);
     nBits = mpz_sizeinbase (q, 2);
@@ -47,15 +47,15 @@ void <%=name%>_init() {
 
 }
 
-void <%=name%>_str2element(P<%=name%>Element pE, char const *s) {
+void Fr_str2element(PFrElement pE, char const *s) {
     mpz_t mr;
     mpz_init_set_str(mr, s, 10);
-    <%=name%>_fromMpz(pE, mr);
+    Fr_fromMpz(pE, mr);
 }
 
-char *<%=name%>_element2str(P<%=name%>Element pE) {
+char *Fr_element2str(PFrElement pE) {
     mpz_t r;
-    if (!(pE->type & <%=name%>_LONG)) {
+    if (!(pE->type & Fr_LONG)) {
         if (pE->shortVal>=0) {
             char *r = new char[32];
             sprintf(r, "%d", pE->shortVal);
@@ -66,16 +66,16 @@ char *<%=name%>_element2str(P<%=name%>Element pE) {
             mpz_clear(q);
         }
     } else {
-        <%=name%>_toNormal(pE);
+        Fr_toNormal(pE);
         mpz_init(r);
-        mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)pE->longVal);
+        mpz_import(r, Fr_N64, -1, 8, -1, 0, (const void *)pE->longVal);
     }
     char *res = mpz_get_str (0, 10, r);
     mpz_clear(r);
     return res;
 }
 
-void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+void Fr_idiv(PFrElement r, PFrElement a, PFrElement b) {
     mpz_t ma;
     mpz_t mb;
     mpz_t mr;
@@ -83,19 +83,19 @@ void <%=name%>_idiv(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element 
     mpz_init(mb);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
+    Fr_toMpz(ma, a);
     // char *s1 = mpz_get_str (0, 10, ma);
     // printf("s1 %s\n", s1);
-    <%=name%>_toMpz(mb, b);
+    Fr_toMpz(mb, b);
     // char *s2 = mpz_get_str (0, 10, mb);
     // printf("s2 %s\n", s2);
     mpz_fdiv_q(mr, ma, mb);
     // char *sr = mpz_get_str (0, 10, mr);
     // printf("r %s\n", sr);
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
-void <%=name%>_mod(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+void Fr_mod(PFrElement r, PFrElement a, PFrElement b) {
     mpz_t ma;
     mpz_t mb;
     mpz_t mr;
@@ -103,13 +103,13 @@ void <%=name%>_mod(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     mpz_init(mb);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
+    Fr_toMpz(ma, a);
+    Fr_toMpz(mb, b);
     mpz_fdiv_r(mr, ma, mb);
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
-void <%=name%>_shl(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+void Fr_shl(PFrElement r, PFrElement a, PFrElement b) {
     mpz_t ma;
     mpz_t mb;
     mpz_t mr;
@@ -117,18 +117,18 @@ void <%=name%>_shl(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     mpz_init(mb);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
+    Fr_toMpz(ma, a);
+    Fr_toMpz(mb, b);
     if (mpz_cmp_ui(mb, nBits) >= 0) {
         mpz_set(mr, zero);
     } else {
         mpz_mul_2exp(mr, ma, mpz_get_ui(mb));
         mpz_and(mr, mr, mask);
     }
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
-void <%=name%>_shr(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+void Fr_shr(PFrElement r, PFrElement a, PFrElement b) {
     mpz_t ma;
     mpz_t mb;
     mpz_t mr;
@@ -136,19 +136,19 @@ void <%=name%>_shr(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     mpz_init(mb);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
+    Fr_toMpz(ma, a);
+    Fr_toMpz(mb, b);
     if (mpz_cmp_ui(mb, nBits) >= 0) {
         mpz_set(mr, zero);
     } else {
         mpz_tdiv_q_2exp(mr, ma, mpz_get_ui(mb));
         mpz_and(mr, mr, mask);
     }
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
 
-void <%=name%>_pow(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
+void Fr_pow(PFrElement r, PFrElement a, PFrElement b) {
     mpz_t ma;
     mpz_t mb;
     mpz_t mr;
@@ -156,45 +156,45 @@ void <%=name%>_pow(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
     mpz_init(mb);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
-    <%=name%>_toMpz(mb, b);
+    Fr_toMpz(ma, a);
+    Fr_toMpz(mb, b);
     mpz_powm(mr, ma, mb, q);
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
-void <%=name%>_inv(P<%=name%>Element r, P<%=name%>Element a) {
+void Fr_inv(PFrElement r, PFrElement a) {
     mpz_t ma;
     mpz_t mr;
     mpz_init(ma);
     mpz_init(mr);
 
-    <%=name%>_toMpz(ma, a);
+    Fr_toMpz(ma, a);
     mpz_invert(mr, ma, q);
-    <%=name%>_fromMpz(r, mr);
+    Fr_fromMpz(r, mr);
 }
 
-void <%=name%>_div(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b) {
-    <%=name%>Element tmp;
-    <%=name%>_inv(&tmp, b);
-    <%=name%>_mul(r, a, &tmp);
+void Fr_div(PFrElement r, PFrElement a, PFrElement b) {
+    FrElement tmp;
+    Fr_inv(&tmp, b);
+    Fr_mul(r, a, &tmp);
 }
 
-int <%=name%>_isTrue(P<%=name%>Element pE) {
-    if (!(pE->type & <%=name%>_LONG)) return pE->shortVal != 0;
-    for (int i=0; i< <%=name%>_N64; i++) {
+int Fr_isTrue(PFrElement pE) {
+    if (!(pE->type & Fr_LONG)) return pE->shortVal != 0;
+    for (int i=0; i< Fr_N64; i++) {
         if (pE->longVal[i]) return 1;
     }
     return 0;
 }
 
-int <%=name%>_toInt(P<%=name%>Element pE) {
+int Fr_toInt(PFrElement pE) {
     Fr_toNormal(pE);
-    if (!(pE->type & <%=name%>_LONG)) {
+    if (!(pE->type & Fr_LONG)) {
         return pE->shortVal;
     } else {
         mpz_t ma;
         mpz_init(ma);
-        <%=name%>_toMpz(ma, pE);
+        Fr_toMpz(ma, pE);
         if (mpz_fits_sint_p(ma)) {
             return mpz_get_si(ma);
         }

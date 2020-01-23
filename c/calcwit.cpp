@@ -4,7 +4,6 @@
 #include <iostream>
 #include <iomanip>
 #include <stdlib.h>
-#include <gmp.h>
 #include <assert.h>
 #include <thread>
 #include "calcwit.h"
@@ -21,25 +20,16 @@ Circom_CalcWit::Circom_CalcWit(Circom_Circuit *aCircuit) {
     mutexes = new std::mutex[NMUTEXES];
     cvs = new std::condition_variable[NMUTEXES];
     inputSignalsToTrigger = new int[circuit->NComponents];
-    signalValues = new BigInt[circuit->NSignals];
+    signalValues = new FrElement[circuit->NSignals];
 
     // Set one signal
-    mpz_init_set_ui(signalValues[0], 1);
-
-    // Initialize remaining signals
-    for (int i=1; i<circuit->NSignals; i++) mpz_init2(signalValues[i], 256);
-
-    BigInt p;
-    mpz_init_set_str(p, circuit->P, 10);
-    field = new ZqField(&p);
-    mpz_clear(p);
+    Fr_copy(&signalValues[0], circuit->constants + 1);
 
     reset();
 }
 
 
 Circom_CalcWit::~Circom_CalcWit() {
-    delete field;
 
 #ifdef SANITY_CHECK
     delete signalAssigned;
@@ -47,8 +37,6 @@ Circom_CalcWit::~Circom_CalcWit() {
 
     delete[] cvs;
     delete[] mutexes;
-
-    for (int i=0; i<circuit->NSignals; i++) mpz_clear(signalValues[i]);
 
     delete[] signalValues;
     delete[] inputSignalsToTrigger;
@@ -128,18 +116,7 @@ Circom_Sizes Circom_CalcWit::getSignalSizes(int cIdx, u64 hash) {
     return circuit->components[cIdx].entries[entryPos].sizes;
 }
 
-PBigInt Circom_CalcWit::allocBigInts(int n) {
-    PBigInt res = new BigInt[n];
-    for (int i=0; i<n; i++) mpz_init2(res[i], 256);
-    return res;
-}
-
-void Circom_CalcWit::freeBigInts(PBigInt bi, int n) {
-    for (int i=0; i<n; i++) mpz_clear(bi[i]);
-    delete[] bi;
-}
-
-void Circom_CalcWit::getSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value) {
+void Circom_CalcWit::getSignal(int currentComponentIdx, int cIdx, int sIdx, PFrElement value) {
     // syncPrintf("getSignal: %d\n", sIdx);
     if ((circuit->components[cIdx].newThread)&&(currentComponentIdx != cIdx)) {
         std::unique_lock<std::mutex> lk(mutexes[cIdx % NMUTEXES]);
@@ -155,7 +132,7 @@ void Circom_CalcWit::getSignal(int currentComponentIdx, int cIdx, int sIdx, PBig
         assert(false);
     }
 #endif
-    mpz_set(*value, signalValues[sIdx]);
+    Fr_copy(value, signalValues + sIdx);
     /*
     char *valueStr = mpz_get_str(0, 10, *value);
     syncPrintf("%d, Get %d --> %s\n", currentComponentIdx, sIdx, valueStr);
@@ -172,7 +149,7 @@ void Circom_CalcWit::finished(int cIdx) {
     cvs[cIdx % NMUTEXES].notify_all();
 }
 
-void Circom_CalcWit::setSignal(int currentComponentIdx, int cIdx, int sIdx, PBigInt value) {
+void Circom_CalcWit::setSignal(int currentComponentIdx, int cIdx, int sIdx, PFrElement value) {
     // syncPrintf("setSignal: %d\n", sIdx);
 
 #ifdef SANITY_CHECK
@@ -188,7 +165,7 @@ void Circom_CalcWit::setSignal(int currentComponentIdx, int cIdx, int sIdx, PBig
     syncPrintf("%d, Set %d --> %s\n", currentComponentIdx, sIdx, valueStr);
     free(valueStr);
     */
-    mpz_set(signalValues[sIdx], *value);
+    Fr_copy(signalValues + sIdx, value);
     if ( BITMAP_ISSET(circuit->mapIsInput, sIdx) ) {
         if (inputSignalsToTrigger[cIdx]>0) {
             inputSignalsToTrigger[cIdx]--;
@@ -198,11 +175,13 @@ void Circom_CalcWit::setSignal(int currentComponentIdx, int cIdx, int sIdx, PBig
 
 }
 
-void Circom_CalcWit::checkConstraint(int currentComponentIdx, PBigInt value1, PBigInt value2, char const *err) {
+void Circom_CalcWit::checkConstraint(int currentComponentIdx, PFrElement value1, PFrElement value2, char const *err) {
 #ifdef SANITY_CHECK
-    if (mpz_cmp(*value1, *value2) != 0) {
-        char *pcV1 = mpz_get_str(0, 10, *value1);
-        char *pcV2 = mpz_get_str(0, 10, *value2);
+    FrElement tmp;
+    Fr_eq(&tmp, value1, value2);
+    if (!Fr_isTrue(&tmp)) {
+        char *pcV1 = Fr_element2str(value1);
+        char *pcV2 = Fr_element2str(value2);
         // throw std::runtime_error(std::to_string(currentComponentIdx) + std::string(", Constraint doesn't match, ") + err + ". " + sV1 + " != " + sV2 );
         fprintf(stderr, "Constraint doesn't match, %s: %s != %s", err, pcV1, pcV2);
         free(pcV1);
@@ -227,8 +206,8 @@ void Circom_CalcWit::triggerComponent(int newCIdx) {
     // cIdx = oldCIdx;
 }
 
-void Circom_CalcWit::log(PBigInt value) {
-    char *pcV = mpz_get_str(0, 10, *value);
+void Circom_CalcWit::log(PFrElement value) {
+    char *pcV = Fr_element2str(value);
     syncPrintf("Log: %s\n", pcV);
     free(pcV);
 }

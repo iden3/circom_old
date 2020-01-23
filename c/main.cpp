@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <gmp.h>
 #include <unistd.h>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -40,14 +39,14 @@ void loadBin(Circom_CalcWit *ctx, std::string filename) {
 
     close(fd);
 
-    BigInt v;
-    mpz_init2(v, 256);
+    FrElement v;
     u8 *p = in;
     for (int i=0; i<_circuit.NInputs; i++) {
-        int len = *(u8 *)p;
-        p++;
-        mpz_import(v,len , -1 , 1, 0, 0, p);
-        p+=len;
+        v.type = Fr_LONG;
+        for (int j=0; j<Fr_N64; j++) {
+            v.longVal[j] = *(u64 *)p;
+        }
+        p += 8;
         ctx->setSignal(0, 0, _circuit.wit2sig[1 + _circuit.NOutputs + i], &v);
     }
 }
@@ -69,8 +68,7 @@ void iterateArr(Circom_CalcWit *ctx, int o, Circom_Sizes sizes, json jarr, ItFun
 
 void itFunc(Circom_CalcWit *ctx, int o, json val) {
 
-    BigInt v;
-    mpz_init2(v, 256);
+    FrElement v;
 
     std::string s;
 
@@ -86,7 +84,7 @@ void itFunc(Circom_CalcWit *ctx, int o, json val) {
         handle_error("Invalid JSON type");
     }
 
-    mpz_set_str (v, s.c_str(), 10);
+    Fr_str2element (&v, s.c_str());
 
     ctx->setSignal(0, 0, o, &v);
 }
@@ -120,16 +118,14 @@ void writeOutBin(Circom_CalcWit *ctx, std::string filename) {
 
     write_ptr = fopen(filename.c_str(),"wb");
 
-    BigInt v;
-    mpz_init2(v, 256);
+    FrElement v;
 
     u8 buffOut[256];
     for (int i=0;i<_circuit.NVars;i++) {
         size_t  size=256;
         ctx->getWitness(i, &v);
-        mpz_export(buffOut+1, &size,  -1, 1, -1, 0, v);
-        *buffOut = (u8)size;
-        fwrite(buffOut, size+1, 1, write_ptr);
+        Fr_toLongNormal(&v);
+        fwrite(v.longVal, Fr_N64*8, 1, write_ptr);
     }
     fclose(write_ptr);
 
@@ -143,16 +139,14 @@ void writeOutJson(Circom_CalcWit *ctx, std::string filename) {
 
     outFile << "[\n";
 
-    BigInt v;
-    mpz_init2(v, 256);
-
-    char pcV[256];
+    FrElement v;
 
     for (int i=0;i<_circuit.NVars;i++) {
         ctx->getWitness(i, &v);
-        mpz_get_str(pcV, 10, v);
+        char *pcV = Fr_element2str(&v);
         std::string sV = std::string(pcV);
         outFile << (i ? "," : " ") << "\"" << sV << "\"\n";
+        free(pcV);
     }
 
     outFile << "]\n";
@@ -168,6 +162,7 @@ bool hasEnding (std::string const &fullString, std::string const &ending) {
 }
 
 int main(int argc, char *argv[]) {
+    Fr_init();
     if (argc!=3) {
         std::string cl = argv[0];
         std::string base_filename = cl.substr(cl.find_last_of("/\\") + 1);
