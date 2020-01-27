@@ -8,8 +8,8 @@
 #define Fr_LONGMONTGOMERY 0xC0000000
 typedef struct __attribute__((__packed__)) {
     int32_t shortVal;
-    u_int32_t type;
-    u_int64_t longVal[Fr_N64];
+    uint32_t type;
+    uint64_t longVal[Fr_N64];
 } FrElement;
 typedef FrElement *PFrElement;
 extern FrElement Fr_q;

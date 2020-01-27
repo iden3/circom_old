@@ -83,7 +83,8 @@ async function compile(srcFile, options) {
 
     if (options.cSourceWriteStream) {
         const cSrc = buildC(ctx);
-        options.cSourceWriteStream.write(cSrc);
+        cSrc.pipe(options.cSourceWriteStream);
+        await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
 
     // const mainCode = gen(ctx,ast);

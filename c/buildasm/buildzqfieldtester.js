@@ -35,7 +35,7 @@ async function  testField(prime, test) {
                ` ${path.join(dir.path,  "fr.o")}` +
                ` ${path.join(dir.path,  "fr.c")}` +
                ` -o ${path.join(dir.path, "tester")}` +
-               " -lgmp"
+               " -lgmp -g"
     );
 
     const inLines = [];

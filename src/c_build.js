@@ -22,6 +22,7 @@ const bigInt = require("big-integer");
 const utils = require("./utils");
 const gen = require("./c_gen").gen;
 const createRefs = require("./c_gen").createRefs;
+const streamFromMultiArray = require("./stream_from_multiarray");
 
 module.exports =  buildC;
 
@@ -55,17 +56,18 @@ function buildC(ctx) {
     const wit2Sig = buildWit2Sig(ctx);
     const circuitVar = buildCircuitVar(ctx);
 
-    return "" +
-        headder + "\n" +
-        sizes + "\n" +
-        constants + "\n" +
-        entryTables + "\n" +
-        functions + "\n" +
-        code + "\n" +
-        compnentsArray + "\n" +
-        mapIsInput + "\n" +
-        wit2Sig +"\n" +
-        circuitVar;
+    return streamFromMultiArray([
+        headder , "\n" ,
+        sizes , "\n" ,
+        constants , "\n" ,
+        entryTables , "\n" ,
+        functions , "\n" ,
+        code , "\n" ,
+        compnentsArray , "\n" ,
+        mapIsInput , "\n" ,
+        wit2Sig , "\n" ,
+        circuitVar
+    ]);
 }
 
 function buildEntryTables(ctx) {
@@ -96,13 +98,14 @@ function buildEntryTables(ctx) {
     }
 
 
-    return "" +
-        "// HashMaps\n" +
-        codes_hashMaps.join("\n") + "\n" +
-        "\n" +
-        "// Component Entries\n" +
-        codes_componentEntries.join("\n") + "\n" +
-        "\n";
+    return [
+        "// HashMaps\n" ,
+        codes_hashMaps , "\n" ,
+        "\n" ,
+        "// Component Entries\n" ,
+        codes_componentEntries , "\n" ,
+        "\n"
+    ];
 
     function addHashTable(cIdx) {
         const keys = Object.keys(ctx.components[cIdx].names.o);
@@ -198,12 +201,18 @@ function buildCode(ctx) {
         ctx.components[i].fnName = fName;
     }
 
-    return fnComponents.join("\n");
+    return fnComponents;
 }
 
 function buildFuncFunctions(ctx) {
-    return "// Functions\n" +
-        ctx.functionCodes.join("\n");
+    if (ctx.functionCodes) {
+        return ["// Functions\n" ,
+            ctx.functionCodes
+        ];
+    } else {
+        return "";
+    }
+
 }
 
 function buildComponentsArray(ctx) {
@@ -225,12 +234,11 @@ function buildComponentsArray(ctx) {
         ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}, ${newThread}}\n`);
     }
     ccodes.push("};\n");
-    const codeComponents = ccodes.join("");
 
-    return "" +
-        "// Components\n" +
-        codeComponents +
-        "\n";
+    return [
+        "// Components\n" ,
+        ccodes , "\n"
+    ];
 }
 
 
@@ -247,8 +255,10 @@ function buildHeader(ctx) {
 }
 
 function buildSizes(ctx) {
-    return "// Sizes\n" +
-            ctx.codes_sizes.join("\n");
+    return [
+        "// Sizes\n" ,
+        ctx.codes_sizes
+    ];
 }
 
 function buildConstants(ctx) {
@@ -256,14 +266,14 @@ function buildConstants(ctx) {
     const R = bigInt.one.shiftLeft(n64*64);
 
     const lines = [];
-    lines.push("// Constants");
-    lines.push(`FrElement _constants[${ctx.constants.length}] = {`);
+    lines.push("// Constants\n");
+    lines.push(`FrElement _constants[${ctx.constants.length}] = {\n`);
     for (let i=0; i<ctx.constants.length; i++) {
-        lines.push((i>0 ? "," : " ") + "{" + number2Code(ctx.constants[i]) + "}");
+        lines.push((i>0 ? "," : " ") + "{" + number2Code(ctx.constants[i]) + "}\n");
     }
-    lines.push("};");
+    lines.push("};\n");
 
-    return lines.join("\n");
+    return lines;
 
     function number2Code(n) {
         if (n.lt(bigInt("80000000", 16)) ) {
@@ -343,10 +353,11 @@ function buildMapIsInput(ctx) {
         arr.push(line);
     }
 
-    return "// mapIsArray\n" +
-        `u32 _mapIsInput[${Math.floor((ctx.signals.length-1) / 32)+1}] = {\n`+
-        arr.join("\n") + "\n" +
-        "};\n";
+    return ["// mapIsArray\n" ,
+        `u32 _mapIsInput[${Math.floor((ctx.signals.length-1) / 32)+1}] = {\n`,
+        arr, "\n" ,
+        "};\n"
+    ];
 
     function toHex(number) {
         if (number < 0) number = 0xFFFFFFFF + number + 1;
@@ -393,7 +404,7 @@ function buildWit2Sig(ctx) {
     if (code != "") codes.push(code + "\n");
     codes.push("};\n");
 
-    return codes.join("");
+    return codes;
 
 }
 
