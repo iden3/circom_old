@@ -55,7 +55,7 @@ function instantiateRef(ctx, refId, initValue) {
             for (let i=0; i<initValue.length; i++) {
                 if (utils.isDefined(initValue[i])) {
                     const idConstant = ctx.addConstant(initValue[i]);
-                    ctx.code += `Fr_copy(&(${v.label}[${i}]), ctx->circuit->constants +${idConstant});\n`;
+                    ctx.codeHeader += `Fr_copy(&(${v.label}[${i}]), ctx->circuit->constants +${idConstant});\n`;
                 }
             }
         }
@@ -537,6 +537,18 @@ function genGetSubComponentSizes(ctx, cIdxRef, label) {
 }
 
 function genGetSigalOffset(ctx, cIdxRef, label) {
+
+    let constCIdx = null;
+    if (cIdxRef>=0) {
+        const cIdx = ctx.refs[cIdxRef];
+        if (utils.isDefined(cIdx.value)) {
+            constCIdx = cIdx.value.toString()+"_"+label;
+        }
+    } else {
+        constCIdx = "_cIdx_"+label;
+    }
+    if (constCIdx && ctx.getSignalOffsetCache[constCIdx]) return ctx.getSignalOffsetCache[constCIdx];
+
     const refOffset = newRef(ctx, "INT", "_sigIdx");
     const offset = ctx.refs[refOffset];
     instantiateRef(ctx, refOffset);
@@ -549,14 +561,31 @@ function genGetSigalOffset(ctx, cIdxRef, label) {
     } else {
         s = "__cIdx";
     }
-    ctx.code += `${offset.label} = ctx->getSignalOffset(${s}, 0x${h}LL /* ${label} */);\n`;
+    if (constCIdx) {
+        ctx.codeHeader += `${offset.label} = ctx->getSignalOffset(${s}, 0x${h}LL /* ${label} */);\n`;
+        ctx.getSignalOffsetCache[constCIdx] = refOffset;
+    } else {
+        ctx.code += `${offset.label} = ctx->getSignalOffset(${s}, 0x${h}LL /* ${label} */);\n`;
+    }
     return refOffset;
 }
 
 function genGetSignalSizes(ctx, cIdxRef, label) {
-    const sizesRef = newRef(ctx, "SIZES", "_sigSizes");
-    const sizes = ctx.refs[sizesRef];
-    instantiateRef(ctx, sizesRef);
+    let constCIdx = null;
+    if (cIdxRef>=0) {
+        const cIdx = ctx.refs[cIdxRef];
+        if (utils.isDefined(cIdx.value)) {
+            constCIdx = cIdx.value.toString()+"_"+label;
+        }
+    } else {
+        constCIdx = "_cIdx_"+label;
+    }
+    if (constCIdx && ctx.getSignalSizesCache[constCIdx]) return ctx.getSignalSizesCache[constCIdx];
+
+
+    const refSizes = newRef(ctx, "SIZES", "_sigSizes");
+    const sizes = ctx.refs[refSizes];
+    instantiateRef(ctx, refSizes);
 
     let s;
     if (cIdxRef>=0) {
@@ -566,8 +595,13 @@ function genGetSignalSizes(ctx, cIdxRef, label) {
         s = "__cIdx";
     }
     const h = utils.fnvHash(label);
-    ctx.code += `${sizes.label} = ctx->getSignalSizes(${s}, 0x${h}LL /* ${label} */);\n`;
-    return sizesRef;
+    if (constCIdx) {
+        ctx.codeHeader += `${sizes.label} = ctx->getSignalSizes(${s}, 0x${h}LL /* ${label} */);\n`;
+        ctx.getSignalSizesCache[constCIdx] = refSizes;
+    } else {
+        ctx.code += `${sizes.label} = ctx->getSignalSizes(${s}, 0x${h}LL /* ${label} */);\n`;
+    }
+    return refSizes;
 }
 
 function genSetSignal(ctx, cIdxRef, sIdxRef, valueRef) {

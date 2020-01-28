@@ -162,6 +162,8 @@ function buildCode(ctx) {
             ctx.refs = [];
             ctx.fileName = ctx.templates[ctx.components[i].template].fileName;
             ctx.filePath = ctx.templates[ctx.components[i].template].filePath;
+            ctx.getSignalSizesCache = {};
+            ctx.getSignalOffsetCache = {};
 
             for (let p in ctx.components[i].params) {
                 if (ctx.scopes[0][p]) return ctx.throwError(`Repeated parameter at ${ctx.components[i].template}: ${p}`);
