@@ -1,4 +1,5 @@
 const bigInt = require("big-integer");
+const BigArray = require("./bigarray.js");
 
 
 class TableName {
@@ -103,11 +104,11 @@ module.exports = class Ctx {
         this.COUNTED = 0x20;
 
         this.scopes = [{}];
-        this.signals = [];
+        this.signals = new BigArray();
 
         this.currentComponent= -1;
-        this.constraints= [];
-        this.components= [];
+        this.constraints= new BigArray();
+        this.components= new BigArray();
         this.templates= {};
         this.functions= {};
         this.functionParams= {};

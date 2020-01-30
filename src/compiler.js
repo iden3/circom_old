@@ -26,6 +26,7 @@ const Ctx = require("./ctx");
 const ZqField = require("fflib").ZqField;
 const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
+const BigArray = require("./bigarray");
 
 module.exports = compile;
 
@@ -124,7 +125,7 @@ function classifySignals(ctx) {
     }
 
     // First classify the signals
-    for (let s in ctx.signals) {
+    for (let s=0; s<ctx.signals.length; s++) {
         const signal = ctx.signals[s];
         let tAll = ctx.stINTERNAL;
         let lSignal = signal;
@@ -216,7 +217,7 @@ function generateWitnessNames(ctx) {
 }
 
 function reduceConstants(ctx) {
-    const newConstraints = [];
+    const newConstraints = new BigArray();
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) console.log("reducing constants: ", i);
         const c = ctx.lc.canonize(ctx, ctx.constraints[i]);
@@ -230,11 +231,11 @@ function reduceConstants(ctx) {
 
 function reduceConstrains(ctx) {
     indexVariables();
-    let possibleConstraints = Object.keys(ctx.constraints);
+    let possibleConstraints = ctx.constraints;
     let ii=0;
     while (possibleConstraints.length>0) {
-        let nextPossibleConstraints = {};
-        for (let i in possibleConstraints) {
+        let nextPossibleConstraints = new BigArray();
+        for (let i=0; i<possibleConstraints.length; i++) {
             ii++;
             if ((ctx.verbose)&&(ii%10000 == 0)) console.log("reducing constraints: ", i);
             if (!ctx.constraints[i]) continue;
@@ -290,7 +291,7 @@ function reduceConstrains(ctx) {
                             ctx.constraints[j] = ctx.lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
                             linkSignalsConstraint(j);
                             if (j<i) {
-                                nextPossibleConstraints[j] = true;
+                                nextPossibleConstraints.push(j);
                             }
                         }
                     }
@@ -303,7 +304,7 @@ function reduceConstrains(ctx) {
                 }
             }
         }
-        possibleConstraints = Object.keys(nextPossibleConstraints);
+        possibleConstraints = nextPossibleConstraints;
     }
     unindexVariables();
 
@@ -331,7 +332,7 @@ function reduceConstrains(ctx) {
     }
 
     function unindexVariables() {
-        for (let s in ctx.signals) {
+        for (let s=0; s<ctx.signals.length; s++) {
             let lSignal = ctx.signals[s];
             while (lSignal.e>=0) {
                 lSignal = ctx.signals[lSignal.e];
@@ -462,7 +463,7 @@ is converted to
            A                            B                  C
 
 */
-
+/*
 function buildConstraints(ctx) {
     const res = [];
 
@@ -489,7 +490,7 @@ function buildConstraints(ctx) {
 
     return res;
 }
-
+*/
 function buildSyms(ctx, strm) {
 
     let nSyms;
