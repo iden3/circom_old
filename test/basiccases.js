@@ -44,6 +44,7 @@ async function doTest(circuit, testVectors) {
 
 describe("basic cases", function () {
     this.timeout(100000);
+
     it("inout", async () => {
         await doTest(
             "inout.circom",
@@ -111,7 +112,6 @@ describe("basic cases", function () {
             ]
         );
     });
-
     it("function1", async () => {
         await doTest(
             "function1.circom",
@@ -266,6 +266,7 @@ describe("basic cases", function () {
             ]
         );
     });
+
     it("Conditional Ternary operator", async () => {
         await doTest(
             "condternary.circom",
@@ -277,6 +278,7 @@ describe("basic cases", function () {
             ]
         );
     });
+
     it("Compute block", async () => {
         await doTest(
             "compute.circom",
@@ -337,4 +339,5 @@ describe("basic cases", function () {
             ]
         );
     });
+
 });

@@ -20,66 +20,62 @@
 const assert = require("assert");
 const bigInt = require("big-integer");
 const utils = require("./utils");
-const gen = require("./c_gen").gen;
-const createRefs = require("./c_gen").createRefs;
-const streamFromMultiArray = require("./stream_from_multiarray");
+const gen = require("./gencode").gen;
+const createRefs = require("./gencode").createRefs;
 
-module.exports =  buildC;
+module.exports =  build;
 
 
-function buildC(ctx) {
+function build(ctx) {
     ctx.definedFunctions = {};
     ctx.functionCodes = [];
     ctx.buildFunction = buildFunction;
-    ctx.code = "";
     ctx.conditionalCodeHeader = "";
     ctx.codes_sizes = [];
     ctx.definedSizes = {};
     ctx.addSizes = addSizes;
-    ctx.constants = [];
     ctx.constantsMap = {};
     ctx.addConstant = addConstant;
     ctx.addConstant(bigInt.zero);
     ctx.addConstant(bigInt.one);
 
-    const entryTables = buildEntryTables(ctx);
+    buildHeader(ctx);
+    buildEntryTables(ctx);
     ctx.globalNames = ctx.uniqueNames;
 
-    const code = buildCode(ctx);
-    const functions = buildFuncFunctions(ctx);
-    const compnentsArray = buildComponentsArray(ctx);
+    buildCode(ctx);
 
-    const headder = buildHeader(ctx);
-    const sizes = buildSizes(ctx);
-    const constants = buildConstants(ctx);
-    const mapIsInput = buildMapIsInput(ctx);
-    const wit2Sig = buildWit2Sig(ctx);
-    const circuitVar = buildCircuitVar(ctx);
+    buildComponentsArray(ctx);
 
-    return streamFromMultiArray([
-        headder , "\n" ,
-        sizes , "\n" ,
-        constants , "\n" ,
-        entryTables , "\n" ,
-        functions , "\n" ,
-        code , "\n" ,
-        compnentsArray , "\n" ,
-        mapIsInput , "\n" ,
-        wit2Sig , "\n" ,
-        circuitVar
-    ]);
+    buildMapIsInput(ctx);
+    buildWit2Sig(ctx);
+
 }
 
 function buildEntryTables(ctx) {
 
     const codes_hashMaps = [];
     const codes_componentEntries = [];
-    const definedHashTables = {};
+    const definedHashMaps = {};
     for (let i=0; i<ctx.components.length; i++) {
         const {htName, htMap} = addHashTable(i);
 
         let code = "";
         const componentEntriesTableName = ctx.getUniqueName("_entryTable" + ctx.components[i].template);
+
+        const componentEntriesTable = [];
+        for (let j=0; j<htMap.length; j++) {
+            const entry = ctx.components[i].names.o[htMap[j]];
+            const sizeName = ctx.addSizes(entry.sizes);
+            componentEntriesTable.push({
+                offset: entry.offset,
+                sizeName: sizeName,
+                type: entry.type
+            });
+        }
+
+        ctx.builder.addComponentEntriesTable(componentEntriesTableName, componentEntriesTable);
+
 
         code += `Circom_ComponentEntry ${componentEntriesTableName}[${htMap.length}] = {\n`;
         for (let j=0; j<htMap.length; j++) {
@@ -112,33 +108,22 @@ function buildEntryTables(ctx) {
         assert(keys.length<128);
         keys.sort((a,b) => ((a>b) ? 1 : -1));
         const h = utils.fnvHash(keys.join(","));
-        if (definedHashTables[h]) return definedHashTables[h];
-        definedHashTables[h] = {};
-        definedHashTables[h].htName = ctx.getUniqueName("_ht"+ctx.components[cIdx].template);
-        definedHashTables[h].htMap = [];
+        if (definedHashMaps[h]) return definedHashMaps[h];
+        definedHashMaps[h] = {};
+        definedHashMaps[h].htName = ctx.getUniqueName("_ht"+ctx.components[cIdx].template);
+        definedHashMaps[h].htMap = [];
         const t = [];
         for (let i=0; i<keys.length; i++) {
-            definedHashTables[h].htMap[i] = keys[i];
+            definedHashMaps[h].htMap[i] = keys[i];
 
             const h2 = utils.fnvHash(keys[i]);
             let pos = parseInt(h2.slice(-2), 16);
             while (t[pos]) pos = (pos + 1) % 256;
-            t[pos] = [h2, i];
+            t[pos] = [h2, i, keys[i]];
         }
-        let code = `Circom_HashEntry ${definedHashTables[h].htName}[256] = {`;
-        for (let i=0; i<256; i++) {
-            code += i>0 ? "," : "";
-            if (t[i]) {
-                code += `{0x${t[i][0]}LL, ${t[i][1]}} /* ${keys[t[i][1]]} */`;
-            } else {
-                code += "{0,0}";
-            }
-        }
-        code += "};\n";
+        ctx.builder.addHashMap(definedHashMaps[h].htName, t);
 
-        codes_hashMaps.push(code);
-
-        return definedHashTables[h];
+        return definedHashMaps[h];
     }
 }
 
@@ -155,9 +140,8 @@ function buildCode(ctx) {
 
             ctx.scopes = [{}];
             ctx.conditionalCode = false;
-            ctx.code = "";
-            ctx.codeHeader = "// Header\n";
-            ctx.codeFooter = "// Footer\n";
+            ctx.fnBuilder = ctx.builder.newComponentFunctionBuilder(fName, instanceDef);
+            ctx.codeBuilder = ctx.fnBuilder.newCodeBuilder();
             ctx.uniqueNames = Object.assign({},ctx.globalNames);
             ctx.refs = [];
             ctx.fileName = ctx.templates[ctx.components[i].template].fileName;
@@ -184,20 +168,10 @@ function buildCode(ctx) {
             gen(ctx, ctx.templates[ctx.components[i].template].block);
             if (ctx.error) return;
 
-            const S =
-                    "/*\n" +
-                    instanceDef +
-                    "\n*/\n" +
-                    `void ${fName}(Circom_CalcWit *ctx, int __cIdx) {\n` +
-                        utils.ident(
-                            ctx.codeHeader + "\n" +
-                            ctx.code + "\n" +
-                            "ctx->finished(__cIdx);\n" +
-                            ctx.codeFooter
-                        ) +
-                    "}\n";
+            ctx.fnBuilder.setBody(ctx.codeBuilder);
 
-            fnComponents.push(S);
+            ctx.builder.addFunction(ctx.fnBuilder);
+
             fDefined[fName] = true;
         }
         ctx.components[i].fnName = fName;
@@ -206,172 +180,63 @@ function buildCode(ctx) {
     return fnComponents;
 }
 
-function buildFuncFunctions(ctx) {
-    if (ctx.functionCodes) {
-        return ["// Functions\n" ,
-            ctx.functionCodes
-        ];
-    } else {
-        return "";
-    }
-
-}
-
 function buildComponentsArray(ctx) {
-
-    const ccodes = [];
-    ccodes.push(`Circom_Component _components[${ctx.components.length}] = {\n`);
     for (let i=0; i< ctx.components.length; i++) {
         let newThread;
         if (ctx.newThreadTemplates) {
             if (ctx.newThreadTemplates.test(ctx.components[i].template)) {
-                newThread = "true";
+                newThread = true;
             } else {
-                newThread = "false";
+                newThread = false;
             }
         } else {
-            newThread = "false";
+            newThread = false;
         }
-        ccodes.push(i>0 ? "    ," : "     ");
-        ccodes.push(`{${ctx.components[i].htName},${ctx.components[i].etName},${ctx.components[i].fnName}, ${ctx.components[i].nInSignals}, ${newThread}}\n`);
+        ctx.builder.addComponent({
+            hashMapName: ctx.components[i].htName,
+            entryTableName: ctx.components[i].etName,
+            functionName: ctx.components[i].fnName,
+            nInSignals: ctx.components[i].nInSignals,
+            newThread: newThread
+        });
     }
-    ccodes.push("};\n");
-
-    return [
-        "// Components\n" ,
-        ccodes , "\n"
-    ];
 }
 
 
 function buildHeader(ctx) {
-    return "#include \"circom.h\"\n" +
-           "#include \"calcwit.h\"\n" +
-           `#define NSignals ${ctx.signals.length}\n` +
-           `#define NComponents ${ctx.components.length}\n` +
-           `#define NInputs ${ctx.components[ ctx.getComponentIdx("main") ].nInSignals}\n`+
-           `#define NOutputs ${ctx.totals[ ctx.stOUTPUT ]}\n`+
-           `#define NVars ${ctx.totals[ctx.stONE] + ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT] + ctx.totals[ctx.stPRVINPUT] + ctx.totals[ctx.stINTERNAL]}\n` +
-           `#define __P__ "${ctx.field.p.toString()}"\n` +
-           "\n";
+    ctx.builder.setHeader({
+        NSignals: ctx.signals.length,
+        NComponents: ctx.components.length,
+        NInputs: ctx.components[ ctx.getComponentIdx("main") ].nInSignals,
+        NOutputs: ctx.totals[ ctx.stOUTPUT ],
+        NVars: ctx.totals[ctx.stONE] + ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT] + ctx.totals[ctx.stPRVINPUT] + ctx.totals[ctx.stINTERNAL],
+        P: ctx.field.p
+    });
 }
-
-function buildSizes(ctx) {
-    return [
-        "// Sizes\n" ,
-        ctx.codes_sizes
-    ];
-}
-
-function buildConstants(ctx) {
-    const n64 = Math.floor((ctx.field.p.bitLength() - 1) / 64)+1;
-    const R = bigInt.one.shiftLeft(n64*64);
-
-    const lines = [];
-    lines.push("// Constants\n");
-    lines.push(`FrElement _constants[${ctx.constants.length}] = {\n`);
-    for (let i=0; i<ctx.constants.length; i++) {
-        lines.push((i>0 ? "," : " ") + "{" + number2Code(ctx.constants[i]) + "}\n");
-    }
-    lines.push("};\n");
-
-    return lines;
-
-    function number2Code(n) {
-        if (n.lt(bigInt("80000000", 16)) ) {
-            return addShortMontgomeryPositive(n);
-        }
-        if (n.geq(ctx.field.p.minus(bigInt("80000000", 16))) ) {
-            return addShortMontgomeryNegative(n);
-        }
-        return addLongMontgomery(n);
-
-
-        function addShortMontgomeryPositive(a) {
-            return `${a.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
-        }
-
-
-        function addShortMontgomeryNegative(a) {
-            const b = a.minus(ctx.field.p);
-            return `${b.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
-        }
-
-        function addLongMontgomery(a) {
-            return `0, 0xC0000000, { ${getLongString(toMontgomery(a))} }`;
-        }
-
-        function getLongString(a) {
-            let r = bigInt(a);
-            let S = "";
-            let i = 0;
-            while (!r.isZero()) {
-                if (S!= "") S = S+",";
-                S += "0x" + r.and(bigInt("FFFFFFFFFFFFFFFF", 16)).toString(16) + "LL";
-                i++;
-                r = r.shiftRight(64);
-            }
-            while (i<n64) {
-                if (S!= "") S = S+",";
-                S += "0LL";
-                i++;
-            }
-            return S;
-        }
-
-        function toMontgomery(a) {
-            return a.times(R).mod(ctx.field.p);
-        }
-
-    }
-}
-
 
 function buildMapIsInput(ctx) {
-    const arr = [];
-    let line = "";
-    let acc = 0;
     let i;
+    let map = [];
+    let acc = 0;
     for (i=0; i<ctx.signals.length; i++) {
         if (ctx.signals[i].o & ctx.IN) {
             acc = acc | (1 << (i%32) );
         }
         if ((i+1)%32==0) {
-            line += (i>31) ? "," : " ";
-            line += toHex(acc);
+            map.push(acc);
             acc = 0;
-            if ( (i+1) % (32*64) == 0) {
-                arr.push(line);
-                line = "";
-            }
         }
     }
-
     if ((i%32) != 0) {
-        line += (i>31) ? "," : " ";
-        line += toHex(acc);
-    }
-    if (line != "") {
-        arr.push(line);
+        map.push(acc);
     }
 
-    return ["// mapIsArray\n" ,
-        `u32 _mapIsInput[${Math.floor((ctx.signals.length-1) / 32)+1}] = {\n`,
-        arr, "\n" ,
-        "};\n"
-    ];
-
-    function toHex(number) {
-        if (number < 0) number = 0xFFFFFFFF + number + 1;
-        let S=number.toString(16).toUpperCase();
-        while (S.length<8) S = "0" + S;
-        return "0x"+S;
-    }
+    ctx.builder.setMapIsInput(map);
 }
 
 
+
 function buildWit2Sig(ctx) {
-    const codes = [];
     const NVars =
         ctx.totals[ctx.stONE] +
         ctx.totals[ctx.stOUTPUT] +
@@ -388,44 +253,9 @@ function buildWit2Sig(ctx) {
             arr[outIdx] = i;
         }
     }
-    codes.push("// Signal Table\n");
-    codes.push(`int _wit2sig[${NVars}] = {\n`);
-    let code = "";
-    for (let i=0; i<NVars; i++) {
-        code += (i>0) ? ",": " ";
-        code += arr[i];
-        if ((i>0)&&(i%64 == 0)) {
-            if (code != "") {
-                codes.push(code + "\n");
-            } else {
-                codes.push(code);
-            }
-            code ="";
-        }
-    }
-    if (code != "") codes.push(code + "\n");
-    codes.push("};\n");
 
-    return codes;
-
+    ctx.builder.setWit2Sig(arr);
 }
-
-
-function buildCircuitVar() {
-    return "Circom_Circuit _circuit = {\n" +
-        "   NSignals,\n"+
-        "   NComponents,\n"+
-        "   NInputs,\n"+
-        "   NOutputs,\n"+
-        "   NVars,\n"+
-        "   _wit2sig,\n"+
-        "   _components,\n"+
-        "   _mapIsInput,\n"+
-        "   _constants,\n" +
-        "   __P__\n" +
-        "};\n";
-}
-
 
 
 
@@ -443,6 +273,8 @@ function addSizes(_sizes) {
 
     const accSizes = utils.accSizes(sizes);
 
+    this.builder.addSizes(labelName, accSizes);
+
     let code = `Circom_Size ${labelName}[${accSizes.length}] = {`;
     for (let i=0; i<accSizes.length; i++) {
         if (i>0) code += ",";
@@ -458,10 +290,9 @@ function addConstant(c) {
     c = bigInt(c);
     const s = c.toString();
     if (typeof (this.constantsMap[s]) !== "undefined") return this.constantsMap[s];
-    const newId = this.constants.length;
-    this.constants.push(c);
-    this.constantsMap[s] = newId;
-    return newId;
+    const cIdx = this.builder.addConstant(c);
+    this.constantsMap[s] = cIdx;
+    return cIdx;
 }
 
 function buildFunction(name, paramValues) {
@@ -476,9 +307,9 @@ function buildFunction(name, paramValues) {
 
     const oldRefs = ctx.refs;
     const oldConditionalCode = ctx.conditionalCode;
-    const oldCode = ctx.code;
-    const oldCodeHeader = ctx.codeHeader;
-    const oldCodeFooter = ctx.codeFooter;
+    const oldCodeBuilder = ctx.codeBuilder;
+    const oldFnBuilder = ctx.fnBuilder;
+
     const oldUniqueNames = ctx.uniqueNames;
     const oldFileName = ctx.fileName;
     const oldFilePath = ctx.oldFilePath;
@@ -489,21 +320,20 @@ function buildFunction(name, paramValues) {
     ctx.scopes = [{}];
     ctx.refs = [];
     ctx.conditionalCode = false;
-    ctx.code = "";
-    ctx.codeHeader = "// Header\n";
-    ctx.codeFooter = "// Footer\n";
+    ctx.fnBuilder = ctx.builder.newFunctionBuilder(`${name}_${h}`, instanceDef);
+    ctx.codeBuilder = ctx.fnBuilder.newCodeBuilder();
     ctx.uniqueNames = Object.assign({},ctx.globalNames);
     ctx.returnValue = null;
     ctx.returnSizes = null;
     ctx.fileName = ctx.functions[name].fileName;
     ctx.filePath = ctx.functions[name].filePath;
 
-    let paramsStr = "";
+    let paramLabels = [];
 
     for (let i=0; i<ctx.functions[name].params.length; i++) {
 
         if (paramValues[i].used) {
-            paramsStr += `,PFrElement ${ctx.functions[name].params[i]}`;
+            paramLabels.push(ctx.functions[name].params[i]);
             const idRef = ctx.refs.length;
             ctx.refs.push({
                 type: "BIGINT",
@@ -525,6 +355,8 @@ function buildFunction(name, paramValues) {
         }
     }
 
+    ctx.fnBuilder.setParams(paramLabels);
+
     createRefs(ctx, ctx.functions[name].block);
     if (ctx.error) return;
 
@@ -533,20 +365,12 @@ function buildFunction(name, paramValues) {
 
     if (ctx.returnValue == null) {
         if (ctx.returnSizes ==  null) assert(false, `Funciont ${name} does not return any value`);
+
+        ctx.fnBuilder.setBody(ctx.codeBuilder);
+        ctx.builder.addFunction(ctx.fnBuilder);
+
         res.type = "VARVAL_CONSTSIZE";
-        let code =
-            "/*\n" +
-            instanceDef +
-            "\n*/\n" +
-            `void ${name}_${h}(Circom_CalcWit *ctx, PFrElement __retValue ${paramsStr}) {`;
-        code += utils.ident(ctx.codeHeader);
-        code += utils.ident(ctx.code);
-        code += utils.ident("returnFunc:\n");
-        code += utils.ident(ctx.codeFooter);
-        code += utils.ident(";\n");
-        code += "}\n";
         res.returnSizes = ctx.returnSizes;
-        ctx.functionCodes.push(code);
     } else {
         res.type = "CONSTVAL";
         res.returnValue = ctx.returnValue;
@@ -555,9 +379,8 @@ function buildFunction(name, paramValues) {
 
     ctx.refs = oldRefs;
     ctx.conditionalCode = oldConditionalCode;
-    ctx.code = oldCode;
-    ctx.codeHeader = oldCodeHeader;
-    ctx.codeFooter = oldCodeFooter;
+    ctx.codeBuilder = oldCodeBuilder;
+    ctx.fnBuilder = oldFnBuilder;
     ctx.uniqueNames = oldUniqueNames;
     ctx.fileName = oldFileName;
     ctx.filePath = oldFilePath;
@@ -568,7 +391,6 @@ function buildFunction(name, paramValues) {
 
     return res;
 }
-
 
 
 function hashComponentCall(ctx, cIdx) {

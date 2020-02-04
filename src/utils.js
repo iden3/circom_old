@@ -15,11 +15,18 @@ module.exports.isDefined = isDefined;
 module.exports.accSizes2Str = accSizes2Str;
 
 function ident(text) {
-    let lines = text.split("\n");
-    for (let i=0; i<lines.length; i++) {
-        if (lines[i]) lines[i] = "    "+lines[i];
+    if (typeof text === "string") {
+        let lines = text.split("\n");
+        for (let i=0; i<lines.length; i++) {
+            if (lines[i]) lines[i] = "    "+lines[i];
+        }
+        return lines.join("\n");
+    } else if (Array.isArray(text)) {
+        for (let i=0; i<text.length; i++ ) {
+            text[i] = ident(text[i]);
+        }
+        return text;
     }
-    return lines.join("\n");
 }
 
 function extractSizes (o) {

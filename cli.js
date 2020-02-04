@@ -33,6 +33,7 @@ const argv = require("yargs")
     .usage("circom [input source circuit file] -o [output definition circuit file] -c [output c file]")
     .alias("o", "output")
     .alias("c", "csource")
+    .alias("w", "wasm")
     .alias("s", "sym")
     .alias("r", "r1cs")
     .alias("n", "newThreadTemplates")
@@ -69,6 +70,7 @@ if (argv._.length == 0) {
 const fullFileName = path.resolve(process.cwd(), inputFile);
 const fileName = path.basename(fullFileName, ".circom");
 const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
+const wasmName = typeof(argv.wasm) === "string" ?  argv.wasm : fileName + ".wasm";
 const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
 const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 
@@ -77,6 +79,9 @@ options.reduceConstraints = !argv.fast;
 options.verbose = argv.verbose || false;
 if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);
+}
+if (argv.wasm) {
+    options.wasmWriteStream = fs.createWriteStream(wasmName);
 }
 if (argv.r1cs) {
     options.r1csFileName = r1csName;
@@ -90,17 +95,26 @@ if (argv.newThreadTemplates) {
 
 compiler(fullFileName, options).then( () => {
     let cSourceDone = false;
+    let wasmDone = false;
     let symDone = false;
     if (options.cSourceWriteStream) {
-        options.cSourceWriteStream.end(() => {
+        options.cSourceWriteStream.on("finish", () => {
             cSourceDone = true;
             finishIfDone();
         });
     } else {
         cSourceDone = true;
     }
+    if (options.wasmWriteStream) {
+        options.wasmWriteStream.on("finish", () => {
+            wasmDone = true;
+            finishIfDone();
+        });
+    } else {
+        wasmDone = true;
+    }
     if (options.symWriteStream) {
-        options.symWriteStream.end(() => {
+        options.symWriteStream.on("finish", () => {
             symDone = true;
             finishIfDone();
         });
@@ -108,7 +122,7 @@ compiler(fullFileName, options).then( () => {
         symDone = true;
     }
     function finishIfDone() {
-        if ((cSourceDone)&&(symDone)) {
+        if ((cSourceDone)&&(symDone)&&(wasmDone)) {
             setTimeout(() => {
                 process.exit(0);
             }, 300);

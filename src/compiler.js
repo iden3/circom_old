@@ -20,7 +20,9 @@
 const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const sONE = 0;
-const buildC = require("./c_build");
+const build = require("./build");
+const BuilderC = require("./builder_c");
+const BuilderWasm = require("./builder_wasm");
 const constructionPhase = require("./construction_phase");
 const Ctx = require("./ctx");
 const ZqField = require("fflib").ZqField;
@@ -81,11 +83,22 @@ async function compile(srcFile, options) {
         throw(ctx.error);
     }
 
-
     if (options.cSourceWriteStream) {
-        const cSrc = buildC(ctx);
-        cSrc.pipe(options.cSourceWriteStream);
-        await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
+        ctx.builder = new BuilderC();
+        build(ctx);
+        const rdStream = ctx.builder.build();
+        rdStream.pipe(options.cSourceWriteStream);
+
+        // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
+    }
+
+    if (options.wasmWriteStream) {
+        ctx.builder = new BuilderWasm();
+        build(ctx);
+        const rdStream = ctx.builder.build();
+        rdStream.pipe(options.wasmWriteStream);
+
+        // await new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill));
     }
 
     // const mainCode = gen(ctx,ast);

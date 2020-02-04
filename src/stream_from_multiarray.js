@@ -8,11 +8,13 @@ module.exports = function streamFromMultiarray(ma) {
 
     rs._read = function() {
         let res;
-        do {
-            res = objFromIdx(ma, curIndex);
-            curIndex = nextIdx(curIndex);
-        } while (res==="");
-        rs.push(res);
+        res = objFromIdx(ma, curIndex);
+        curIndex = nextIdx(curIndex);
+        if (res!=null) {
+            rs.push(res + "\n");
+        } else {
+            rs.push(null);
+        }
     };
 
 
