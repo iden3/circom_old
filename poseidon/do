@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+clean() {
+    rm -rf circuit.json proving_key.json verification_key.json witness.json proof.json public.json 
+}
+
+compile() {
+    circom poseidon.circom
+}
+
+setup() {
+    snarkjs setup --protocol "$@"
+}
+
+witness() {
+    snarkjs calculatewitness 
+}
+
+proof() {
+    snarkjs proof
+}
+
+verify() {
+    snarkjs verify
+}
+
+err() {
+    echo "Possible commands: build, unbuild, clean, compile, setup, witness, generate, verify, move, batch"
+}
+
+main() {
+    local cmd; cmd=$1; shift
+    [ -z "$cmd" ] && err && return 1
+    [ $cmd != clean ] \
+        && [ $cmd != compile ] \
+        && [ $cmd != setup ] \
+        && [ $cmd != witness ] \
+        && [ $cmd != proof ] \
+        && [ $cmd != verify ] \
+        && err && return 1
+    $cmd "$@"
+}
+
+main "$@"
