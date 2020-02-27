@@ -118,6 +118,18 @@ void writeOutBin(Circom_CalcWit *ctx, std::string filename) {
 
     write_ptr = fopen(filename.c_str(),"wb");
 
+    // Add header
+    // 4 bytes --> total number of constraints
+    uint32_t witnessLength = _circuit.NVars;
+    // 4 bytes --> witness element size (measured in number of 32bit words)
+    uint32_t witnessSize = 8; // witness size = 8*32 = 256 bits
+    // 8bytes --> empty
+    uint64_t otherField = 0;
+
+    fwrite(&witnessLength, 4, 1, write_ptr);
+    fwrite(&witnessSize, 4, 1, write_ptr);
+    fwrite(&otherField, 8, 1, write_ptr);
+
     FrElement v;
 
     u8 buffOut[256];
