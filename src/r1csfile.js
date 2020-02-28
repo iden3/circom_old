@@ -31,7 +31,7 @@ async function loadR1cs(fileName, loadConstraints, loadMap) {
     let mapSize;
     for (let i=0; i<nSections; i++) {
         let ht = await readU32();
-        let hl = await readU32();
+        let hl = await readDouble64();
         if (ht == 1) {
             if (typeof pHeader != "undefined") assert(false, "File has two headder sections");
             pHeader = p;
@@ -114,6 +114,15 @@ async function loadR1cs(fileName, loadConstraints, loadMap) {
         return b.readInt32LE(0);
     }
 
+    async function readDouble64() {
+        const b = Buffer.allocUnsafe(8);
+        await fd.read(b, 0, 8, p);
+
+        p+=8;
+
+        return b.readDoubleLE(0);
+    }
+
     async function readBigInt() {
         const bl = Buffer.allocUnsafe(1);
         await fd.read(bl, 0, 1, p);
@@ -171,7 +180,7 @@ async function buildR1cs(ctx, fileName) {
     ///////////
     await writeU32(1); // Header type
     const pHeaderSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeDouble64(0); // Temporally set to 0 length
 
 
     // Field Def
@@ -198,13 +207,13 @@ async function buildR1cs(ctx, fileName) {
     await writeU32(ctx.signals.length);
     await writeU32(ctx.constraints.length);
 
-    const headerSize = p - pHeaderSize - 4;
+    const headerSize = p - pHeaderSize - 8;
 
     // Write constraints
     ///////////
     await writeU32(2); // Constraints type
     const pConstraintsSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeDouble64(0); // Temporally set to 0 length
 
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) {
@@ -214,13 +223,13 @@ async function buildR1cs(ctx, fileName) {
         await writeConstraint(ctx.constraints[i]);
     }
 
-    const constraintsSize = p - pConstraintsSize - 4;
+    const constraintsSize = p - pConstraintsSize - 8;
 
     // Write map
     ///////////
     await writeU32(3); // wires2label type
     const pMapSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeDouble64(0); // Temporally set to 0 length
 
 
     const arr = new Array(NWires);
@@ -238,13 +247,13 @@ async function buildR1cs(ctx, fileName) {
         if ((ctx.verbose)&&(i%100000)) console.log("writing label2wire map: ", i);
     }
 
-    const mapSize = p - pMapSize -4;
+    const mapSize = p - pMapSize - 8;
 
     // Write sizes
-    await writeU32(headerSize, pHeaderSize);
+    await writeDouble64(headerSize, pHeaderSize);
     await writeU32(fieldDefSize, pFieldDefSize);
-    await writeU32(constraintsSize, pConstraintsSize);
-    await writeU32(mapSize, pMapSize);
+    await writeDouble64(constraintsSize, pConstraintsSize);
+    await writeDouble64(mapSize, pMapSize);
 
     await fd.sync();
     await fd.close();
@@ -256,6 +265,15 @@ async function buildR1cs(ctx, fileName) {
         await fd.write(b, 0, 4, pos);
 
         if (typeof(pos) == "undefined") p += 4;
+    }
+
+    async function writeDouble64(v, pos) {
+        const b = Buffer.allocUnsafe(8);
+        b.writeDoubleLE(v);
+
+        await fd.write(b, 0, 8, pos);
+
+        if (typeof(pos) == "undefined") p += 8;
     }
 
     async function writeConstraint(c) {
