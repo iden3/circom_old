@@ -97,6 +97,12 @@ u64toLong_adjust_neg:
         ret
 
 <%=name%>_long:
+        bt      rax, 62
+        jnc     <%=name%>_longNormal
+<%=name%>_longMontgomery:
+        call    <%=name%>_toLongNormal
+
+<%=name%>_longNormal:
         mov     rax, [rdi + 8]
         mov     rcx, rax
         shr     rcx, 31

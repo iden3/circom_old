@@ -63,7 +63,6 @@ char *Fr_element2str(PFrElement pE) {
         } else {
             mpz_init_set_si(r, pE->shortVal);
             mpz_add(r, r, q);
-            mpz_clear(q);
         }
     } else {
         Fr_toNormal(pE);

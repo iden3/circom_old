@@ -21,14 +21,15 @@ const bigInt = require("big-integer");
 const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const sONE = 0;
 const build = require("./build");
-const BuilderC = require("./builder_c");
-const BuilderWasm = require("./builder_wasm");
+const BuilderC = require("../ports/c/builder.js");
+const BuilderWasm = require("../ports/wasm/builder.js");
 const constructionPhase = require("./construction_phase");
 const Ctx = require("./ctx");
 const ZqField = require("fflib").ZqField;
 const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
 const BigArray = require("./bigarray");
+const buildSyms = require("./buildsyms");
 
 module.exports = compile;
 
@@ -92,11 +93,17 @@ async function compile(srcFile, options) {
         // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
 
-    if (options.wasmWriteStream) {
+    if ((options.wasmWriteStream)||(options.watWriteStream)) {
         ctx.builder = new BuilderWasm();
         build(ctx);
-        const rdStream = ctx.builder.build();
-        rdStream.pipe(options.wasmWriteStream);
+        if (options.wasmWriteStream) {
+            const rdStream = ctx.builder.build("wasm");
+            rdStream.pipe(options.wasmWriteStream);
+        }
+        if (options.watWriteStream) {
+            const rdStream = ctx.builder.build("wat");
+            rdStream.pipe(options.watWriteStream);
+        }
 
         // await new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill));
     }
@@ -109,7 +116,10 @@ async function compile(srcFile, options) {
     }
 
     if (options.symWriteStream) {
-        buildSyms(ctx, options.symWriteStream);
+        const rdStream = buildSyms(ctx);
+        rdStream.pipe(options.symWriteStream);
+
+        // await new Promise(fulfill => options.symWriteStream.on("finish", fulfill));
     }
 
 //    const def = buildCircuitDef(ctx, mainCode);
@@ -504,6 +514,8 @@ function buildConstraints(ctx) {
     return res;
 }
 */
+
+/*
 function buildSyms(ctx, strm) {
 
     let nSyms;
@@ -543,5 +555,5 @@ function buildSyms(ctx, strm) {
 
 }
 
-
+*/
 

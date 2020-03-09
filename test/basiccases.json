@@ -1,0 +1,307 @@
+[
+    {
+        "name": "inout",
+        "circuit": "inout.circom",
+        "tv": [
+            [{
+                "in1": 1,
+                "in2": [2,3],
+                "in3" : [[4,5], [6,7], [8,9]]
+            }, {
+                "out1": 1,
+                "out2": [2,3],
+                "out3": [[4,5], [6,7],[8,9]]
+            }]
+        ]
+    },
+    {
+        "name": "add",
+        "circuit": "add.circom",
+        "tv": [
+            [{"in": [0,0]}, {"out": 0}],
+            [{"in": [0 ,1]}, {"out": 1}],
+            [{"in": [1 ,2]}, {"out": 3}],
+            [{"in": [-1,1]}, {"out": 0}]
+        ]
+    },
+    {
+        "name": "add constant",
+        "circuit": "addconst1.circom",
+        "tv": [
+            [{"in":  0}, {"out": 15}],
+            [{"in": 10}, {"out": 25}],
+            [{"in": -2}, {"out": 13}]
+        ]
+    },
+    {
+        "name": "for unrolled",
+        "circuit": "forunrolled.circom",
+        "tv": [
+            [{"in":  0}, {"out": [ 0,  1,  2]}],
+            [{"in": 10}, {"out": [10, 11, 12]}],
+            [{"in": -2}, {"out": [-2, -1,  0]}]
+        ]
+    },
+    {
+        "name": "for rolled",
+        "circuit": "forrolled.circom",
+        "tv": [
+            [{"in":  0}, {"out":  0}],
+            [{"in": 10}, {"out": 10}]
+        ]
+    },
+    {
+        "name": "while unrolled",
+        "circuit": "whileunrolled.circom",
+        "tv": [
+            [{"in":  0}, {"out": [ 0,  1,  2]}],
+            [{"in": 10}, {"out": [10, 11, 12]}],
+            [{"in": -2}, {"out": [-2, -1,  0]}]
+        ]
+    },
+    {
+        "name": "while rolled",
+        "circuit": "whilerolled.circom",
+        "tv": [
+            [{"in":  0}, {"out":  0}],
+            [{"in": 10}, {"out": 10}]
+        ]
+    },
+    {
+        "name": "function1",
+        "circuit": "function1.circom",
+        "tv": [
+            [{"in":  0}, {"out": 3}],
+            [{"in": 10}, {"out": 13}],
+            [{"in": -2}, {"out": 1}]
+        ]
+    },
+    {
+        "name": "function2",
+        "circuit": "function2.circom",
+        "tv": [
+            [{"in": 0 }, {"out": 3}],
+            [{"in": 10}, {"out": 13}],
+            [{"in": -2}, {"out": 1}]
+        ]
+    },
+    {
+        "name": "constants1",
+        "circuit": "constants1.circom",
+        "tv": [
+            [{"in":  0}, {"out": 42}],
+            [{"in": 10}, {"out": 52}],
+            [{"in": -2}, {"out": 40}]
+        ]
+    },
+    {
+        "name": "arrays",
+        "circuit": "arrays.circom",
+        "tv": [
+            [{"in":  0}, {"out": [ 1,  8,  51]}],
+            [{"in": 10}, {"out": [11, 28, 111]}],
+            [{"in": -2}, {"out": [-1,  4,  39]}]
+        ]
+    },
+    {
+        "name": "if unrolled",
+        "circuit": "ifunrolled.circom",
+        "tv": [
+            [{"in":  0}, {"out": [ 1,  3,  6]}],
+            [{"in": 10}, {"out": [11, 13, 16]}],
+            [{"in": -2}, {"out": [-1,  1,  4]}]
+        ]
+    },
+    {
+        "name": "if rolled",
+        "circuit": "ifrolled.circom",
+        "tv": [
+            [{"in":  0}, {"out": [1, 0, 0]}],
+            [{"in":  1}, {"out": [0, 1, 0]}],
+            [{"in":  2}, {"out": [0, 0, 1]}],
+            [{"in":  3}, {"out": [0, 0, 0]}],
+            [{"in": -2}, {"out": [0, 0, 0]}]
+        ]
+    },
+    {
+        "name": "inc",
+        "circuit": "inc.circom",
+        "tv": [
+            [{"in":  0}, {"out": [5, 2]}],
+            [{"in":  1}, {"out": [6, 4]}],
+            [{"in":  2}, {"out": [7, 6]}],
+            [{"in":  3}, {"out": [8, 8]}],
+            [{"in": -2}, {"out": [3,-2]}]
+        ]
+    },
+    {
+        "name": "dec",
+        "circuit": "dec.circom",
+        "tv": [
+            [{"in":  0}, {"out": [ 1, -2]}],
+            [{"in":  1}, {"out": [ 2,  0]}],
+            [{"in":  2}, {"out": [ 3,  2]}],
+            [{"in":  3}, {"out": [ 4,  4]}],
+            [{"in": -2}, {"out": [-1, -6]}]
+        ]
+    },
+    {
+        "name": "ops",
+        "circuit": "ops.circom",
+        "tv": [
+            [{"in": [-2, 2]}, {"add":  0, "sub": -4, "mul": -4}],
+            [{"in": [-1, 1]}, {"add":  0, "sub": -2, "mul": -1}],
+            [{"in": [ 0, 0]}, {"add":  0, "sub":  0, "mul":  0}],
+            [{"in": [ 1,-1]}, {"add":  0, "sub":  2, "mul": -1}],
+            [{"in": [ 2,-2]}, {"add":  0, "sub":  4, "mul": -4}],
+            [{"in": [-2,-3]}, {"add": -5, "sub":  1, "mul":  6}],
+            [{"in": [ 2, 3]}, {"add":  5, "sub": -1, "mul":  6}]
+        ]
+    },
+    {
+        "name": "ops2",
+        "circuit": "ops2.circom",
+        "tv": [
+            [{"in": [-2, 2]}, {"div": -1, "idiv": "10944121435919637611123202872628637544274182200208017171849102093287904247807", "mod": 1}],
+            [{"in": [-1, 1]}, {"div": -1, "idiv": -1, "mod": 0}],
+            [{"in": [ 1,-1]}, {"div": -1, "idiv":  0, "mod": 1}]
+        ]
+    },
+    {
+        "name": "ops3",
+        "circuit": "ops3.circom",
+        "tv": [
+            [{"in": [-2, 2]}, {"neg1":  2, "neg2": -2, "pow": 4}],
+            [{"in": [ 0, 1]}, {"neg1":  0, "neg2": -1, "pow": 0}],
+            [{"in": [ 1,-1]}, {"neg1": -1, "neg2":  1, "pow": 1}]
+        ]
+    },
+    {
+        "name": "Comparation ops",
+        "circuit": "opscmp.circom",
+        "tv": [
+            [{"in": [ 8, 9]}, {"lt": 1, "leq": 1, "eq":0, "neq":1, "geq": 0, "gt":0}],
+            [{"in": [-2,-2]}, {"lt": 0, "leq": 1, "eq":1, "neq":0, "geq": 1, "gt":0}],
+            [{"in": [-1,-2]}, {"lt": 0, "leq": 0, "eq":0, "neq":1, "geq": 1, "gt":1}],
+            [{"in": [ 1,-1]}, {"lt": 0, "leq": 0, "eq":0, "neq":1, "geq": 1, "gt":1}]
+        ]
+    },
+    {
+        "name": "Bit ops",
+        "circuit": "opsbit.circom",
+        "tv": [
+            [
+                {
+                    "in": [ 5, 3]
+                },
+                {
+                    "and": 1,
+                    "or": 7,
+                    "xor":6,
+                    "not1": "14474011154664524427946373126085988481658748083205070504932198000989141204986",
+                    "shl": 40,
+                    "shr":0
+                }
+            ],
+            [
+                {
+                    "in": [ 0, 0]
+                },
+                {
+                    "and": 0,
+                    "or": 0,
+                    "xor":0,
+                    "not1":"14474011154664524427946373126085988481658748083205070504932198000989141204991",
+                    "shl": 0,
+                    "shr":0
+                }
+            ],
+            [
+                {
+                    "in": [-1, 1]
+                },
+                {
+                    "and": 0,
+                    "or": "7414231717174750794300032619171286606889616317210963838766006185586667290625",
+                    "xor":"7414231717174750794300032619171286606889616317210963838766006185586667290625",
+                    "not1": "7059779437489773633646340506914701874769131765994106666166191815402473914367",
+                    "shl": "354452279684977160653692112256584732120484551216857172599814370184193376256",
+                    "shr": "10944121435919637611123202872628637544274182200208017171849102093287904247808"
+                }
+            ]
+        ]
+    },
+    {
+        "name": "Logical ops",
+        "circuit": "opslog.circom",
+        "tv": [
+            [{"in": [ 5, 0]}, {"and": 0, "or": 1, "not1":0}],
+            [{"in": [ 0, 1]}, {"and": 0, "or": 1, "not1":1}],
+            [{"in": [-1, 9]}, {"and": 1, "or": 1, "not1":0}],
+            [{"in": [ 0, 0]}, {"and": 0, "or": 0, "not1":1}]
+        ]
+    },
+    {
+        "name": "Conditional Ternary operator",
+        "circuit": "condternary.circom",
+        "tv": [
+            [{"in": 0}, {"out": 21}],
+            [{"in": 1}, {"out":  1}],
+            [{"in": 2}, {"out": 23}],
+            [{"in":-1}, {"out": 20}]
+        ]
+    },
+    {
+        "name": "Compute block",
+        "circuit": "compute.circom",
+        "tv": [
+            [{"x": 1}, {"y":  7}],
+            [{"x": 2}, {"y":  7}],
+            [{"x": 3}, {"y": 11}],
+            [{"x":-1}, {"y": -5}]
+        ]
+    },
+    {
+        "name": "Component array",
+        "circuit": "componentarray.circom",
+        "tv": [
+            [{"in": 1}, {"out":    1}],
+            [{"in": 2}, {"out":  256}],
+            [{"in": 3}, {"out": 6561}],
+            [{"in":-1}, {"out":    1}]
+        ]
+    },
+    {
+        "name": "Component array 2d",
+        "circuit": "componentarray2.circom",
+        "tv": [
+            [{"in": [1,2]}, {"out": [1, 256]}],
+            [{"in": [0,3]}, {"out": [0, 6561]}]
+        ]
+    },
+    {
+        "name": "Constant circuit",
+        "circuit": "constantcircuit.circom",
+        "tv": [
+            [{}, {"out": [1,0,1,0,  0,0,0,1, 0,1,1,1, 0,1,0,1, 1,1,1,0, 0,1,1,0, 1,1,0,1,  1,1,0,1]}]
+        ]
+    },
+    {
+        "name": "Constant internal circuit",
+        "circuit": "constantinternalcircuit.circom",
+        "tv": [
+            [{"in":  1}, {"out":  5}],
+            [{"in":  0}, {"out":  4}],
+            [{"in": -2}, {"out":  2}],
+            [{"in": 10}, {"out": 14}]
+        ]
+    },
+    {
+        "name": "include",
+        "circuit": "include.circom",
+        "tv": [
+            [{"in": 3}, {"out":  6}],
+            [{"in": 6}, {"out": 15}]
+        ]
+    }
+]

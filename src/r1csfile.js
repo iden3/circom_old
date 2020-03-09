@@ -235,7 +235,7 @@ async function buildR1cs(ctx, fileName) {
     }
     for (let i=0; i<arr.length; i++) {
         await writeU32(arr[i]);
-        if ((ctx.verbose)&&(i%100000)) console.log("writing label2wire map: ", i);
+        if ((ctx.verbose)&&(i%100000)) console.log("writing wire2label map: ", i);
     }
 
     const mapSize = p - pMapSize -4;

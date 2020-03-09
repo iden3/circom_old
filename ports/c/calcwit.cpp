@@ -63,6 +63,8 @@ void Circom_CalcWit::reset() {
 
     for (int i=0; i<circuit->NComponents; i++) {
         inputSignalsToTrigger[i] = circuit->components[i].inputSignals;
+    }
+    for (int i=0; i<circuit->NComponents; i++) {
         if (inputSignalsToTrigger[i] == 0) triggerComponent(i);
     }
 }
@@ -171,6 +173,9 @@ void Circom_CalcWit::setSignal(int currentComponentIdx, int cIdx, int sIdx, PFrE
         if (inputSignalsToTrigger[cIdx]>0) {
             inputSignalsToTrigger[cIdx]--;
             if (inputSignalsToTrigger[cIdx] == 0) triggerComponent(cIdx);
+        } else {
+            fprintf(stderr, "Input signals does not match with map: %d\n", sIdx);
+            assert(false);
         }
     }
 

@@ -1,7 +1,7 @@
 
 const Readable = require("stream").Readable;
 
-module.exports = function streamFromMultiarray(ma) {
+module.exports = function streamFromArrayTxt(ma) {
     const  rs = Readable();
 
     let curIndex = getFirstIdx(ma);
@@ -10,7 +10,7 @@ module.exports = function streamFromMultiarray(ma) {
         let res;
         res = objFromIdx(ma, curIndex);
         curIndex = nextIdx(curIndex);
-        if (res!=null) {
+        if (res!==null) {
             rs.push(res + "\n");
         } else {
             rs.push(null);

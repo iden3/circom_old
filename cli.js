@@ -34,6 +34,7 @@ const argv = require("yargs")
     .alias("o", "output")
     .alias("c", "csource")
     .alias("w", "wasm")
+    .alias("t", "wat")
     .alias("s", "sym")
     .alias("r", "r1cs")
     .alias("n", "newThreadTemplates")
@@ -71,6 +72,7 @@ const fullFileName = path.resolve(process.cwd(), inputFile);
 const fileName = path.basename(fullFileName, ".circom");
 const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
 const wasmName = typeof(argv.wasm) === "string" ?  argv.wasm : fileName + ".wasm";
+const watName = typeof(argv.wat) === "string" ?  argv.wat : fileName + ".wat";
 const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
 const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 
@@ -82,6 +84,9 @@ if (argv.csource) {
 }
 if (argv.wasm) {
     options.wasmWriteStream = fs.createWriteStream(wasmName);
+}
+if (argv.wat) {
+    options.watWriteStream = fs.createWriteStream(watName);
 }
 if (argv.r1cs) {
     options.r1csFileName = r1csName;
@@ -97,6 +102,7 @@ compiler(fullFileName, options).then( () => {
     let cSourceDone = false;
     let wasmDone = false;
     let symDone = false;
+    let watDone = false;
     if (options.cSourceWriteStream) {
         options.cSourceWriteStream.on("finish", () => {
             cSourceDone = true;
@@ -113,6 +119,14 @@ compiler(fullFileName, options).then( () => {
     } else {
         wasmDone = true;
     }
+    if (options.watWriteStream) {
+        options.watWriteStream.on("finish", () => {
+            watDone = true;
+            finishIfDone();
+        });
+    } else {
+        watDone = true;
+    }
     if (options.symWriteStream) {
         options.symWriteStream.on("finish", () => {
             symDone = true;
@@ -122,7 +136,7 @@ compiler(fullFileName, options).then( () => {
         symDone = true;
     }
     function finishIfDone() {
-        if ((cSourceDone)&&(symDone)&&(wasmDone)) {
+        if ((cSourceDone)&&(symDone)&&(wasmDone)&&(watDone)) {
             setTimeout(() => {
                 process.exit(0);
             }, 300);

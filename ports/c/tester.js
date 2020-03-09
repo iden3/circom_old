@@ -4,15 +4,15 @@ const assert = chai.assert;
 const fs = require("fs");
 var tmp = require("tmp-promise");
 const path = require("path");
-const compiler = require("./compiler");
+const compiler = require("../../src/compiler");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const stringifyBigInts = require("./utils").stringifyBigInts;
-const unstringifyBigInts = require("./utils").unstringifyBigInts;
+const stringifyBigInts = require("../../src/utils").stringifyBigInts;
+const unstringifyBigInts = require("../../src/utils").unstringifyBigInts;
 const bigInt = require("big-integer");
-const utils = require("./utils");
-const loadR1cs = require("./r1csfile").loadR1cs;
+const utils = require("../../src/utils");
+const loadR1cs = require("../../src/r1csfile").loadR1cs;
 const ZqField = require("fflib").ZqField;
 
 module.exports = c_tester;

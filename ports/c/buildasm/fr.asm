@@ -46,7 +46,6 @@
 
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;
 ; copy
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -170,6 +169,12 @@ Fr_toInt:
         ret
 
 Fr_long:
+        bt      rax, 62
+        jnc     Fr_longNormal
+Fr_longMontgomery:
+        call    Fr_toLongNormal
+
+Fr_longNormal:
         mov     rax, [rdi + 8]
         mov     rcx, rax
         shr     rcx, 31
@@ -4713,787 +4718,469 @@ bnot_l1n:
 
 
 
-
-
-
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;
-; eq
+; rgt - Raw Greater Than
 ;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
+; returns in ax 1 id *rsi > *rdx
 ; Params:
 ;   rsi <= Pointer to element 1
 ;   rdx <= Pointer to element 2
-;   rdi <= Pointer to result can be zero or one.
+;   rax <= Return 1 or 0
 ; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
+;    r8, r9, rax
 ;;;;;;;;;;;;;;;;;;;;;;
-Fr_eq:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      eq_longCmp
-
-eq_shortCmp:
-    cmp     eax, 0
-    je      eq_s_eq
-    js      eq_s_lt
-eq_s_gt:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-eq_s_lt:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-eq_s_eq:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-eq_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz eq_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz eq_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz eq_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz eq_neq
-
-eq_eq:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-eq_neq:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-; neq
-;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
-; Params:
-;   rsi <= Pointer to element 1
-;   rdx <= Pointer to element 2
-;   rdi <= Pointer to result can be zero or one.
-; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
-;;;;;;;;;;;;;;;;;;;;;;
-Fr_neq:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      neq_longCmp
-
-neq_shortCmp:
-    cmp     eax, 0
-    je      neq_s_eq
-    js      neq_s_lt
-neq_s_gt:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-neq_s_lt:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-neq_s_eq:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-neq_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz neq_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz neq_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz neq_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz neq_neq
-
-neq_eq:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-neq_neq:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-; lt
-;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
-; Params:
-;   rsi <= Pointer to element 1
-;   rdx <= Pointer to element 2
-;   rdi <= Pointer to result can be zero or one.
-; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
-;;;;;;;;;;;;;;;;;;;;;;
-Fr_lt:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      lt_longCmp
-
-lt_shortCmp:
-    cmp     eax, 0
-    je      lt_s_eq
-    js      lt_s_lt
-lt_s_gt:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-lt_s_lt:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-lt_s_eq:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-lt_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz lt_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz lt_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz lt_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz lt_neq
-
-lt_eq:
-
-
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
+Fr_rgt:
+        mov    r8, [rsi]
+        mov    r9, [rdx]
+        bt     r8, 63          ; Check if is short first operand
+        jc     rgt_l1
+        bt     r9, 63          ; Check if is short second operand
+        jc     rgt_s1l2
+
+rgt_s1s2:                       ; Both operands are short
+        cmp    r8d, r9d
+        jg     rgt_ret1
+        jmp    rgt_ret0
+
+
+rgt_l1:
+        bt     r9, 63          ; Check if is short second operand
+        jc     rgt_l1l2
+
+;;;;;;;;
+rgt_l1s2:
+        bt     r8, 62          ; check if montgomery first
+        jc     rgt_l1ms2
+rgt_l1ns2:
+        push  rdi
+        push   rsi
+        mov   rdi, rdx
+        movsx rsi, r9d
+        call  rawCopyS2L
+        mov   rdx, rdi
+        pop   rsi
+        pop   rdi
+        jmp rgtL1L2
+
+rgt_l1ms2:
+        push  rdi
+        push   rsi
+        mov   rdi, rdx
+        movsx rsi, r9d
+        call  rawCopyS2L
+        mov   rdx, rdi
+        pop   rsi
+        pop   rdi
+        push rdi
+        mov  rdi, rsi
+        mov  rsi, rdx
+        call Fr_toNormal
+        mov  rdx, rsi
+        mov  rsi, rdi
+        pop  rdi
+        jmp rgtL1L2
+
+
+;;;;;;;;
+rgt_s1l2:
+        bt     r9, 62          ; check if montgomery second
+        jc     rgt_s1l2m
+rgt_s1l2n:
+        push  rdi
+        push  rdx
+        mov   rdi, rsi
+        movsx rsi, r8d
+        call  rawCopyS2L
+        mov   rsi, rdi
+        pop   rdx
+        pop   rdi
+        jmp rgtL1L2
+
+rgt_s1l2m:
+        push  rdi
+        push  rdx
+        mov   rdi, rsi
+        movsx rsi, r8d
+        call  rawCopyS2L
+        mov   rsi, rdi
+        pop   rdx
+        pop   rdi
+        push rdi
+        mov  rdi, rdx
+        call Fr_toNormal
+        mov  rdx, rdi
+        pop  rdi
+        jmp rgtL1L2
+
+;;;;
+rgt_l1l2:
+        bt     r8, 62          ; check if montgomery first
+        jc     rgt_l1ml2
+rgt_l1nl2:
+        bt     r9, 62          ; check if montgomery second
+        jc     rgt_l1nl2m
+rgt_l1nl2n:
+        jmp rgtL1L2
+
+rgt_l1nl2m:
+        push rdi
+        mov  rdi, rdx
+        call Fr_toNormal
+        mov  rdx, rdi
+        pop  rdi
+        jmp rgtL1L2
+
+rgt_l1ml2:
+        bt     r9, 62          ; check if montgomery second
+        jc     rgt_l1ml2m
+rgt_l1ml2n:
+        push rdi
+        mov  rdi, rsi
+        mov  rsi, rdx
+        call Fr_toNormal
+        mov  rdx, rsi
+        mov  rsi, rdi
+        pop  rdi
+        jmp rgtL1L2
+
+rgt_l1ml2m:
+        push rdi
+        mov  rdi, rsi
+        mov  rsi, rdx
+        call Fr_toNormal
+        mov  rdx, rsi
+        mov  rsi, rdi
+        pop  rdi
+        push rdi
+        mov  rdi, rdx
+        call Fr_toNormal
+        mov  rdx, rdi
+        pop  rdi
+        jmp rgtL1L2
+
+
+;;;;;;
+; rgtL1L2
+;;;;;;
+
+rgtL1L2:
+
+
+        mov     rax, [rsi + 32]
         cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_29                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_28                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgtl1l2_n1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 24]
+        jnz rgtl1l2_p1                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 24]
         cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_29                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_28                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgtl1l2_n1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 16]
+        jnz rgtl1l2_p1                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 16]
         cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_29                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_28                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgtl1l2_n1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 8]
+        jnz rgtl1l2_p1                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 8]
         cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_29                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_28                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgtl1l2_n1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_28:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-tmp_29:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-lt_neq:
+        jmp rgtl1l2_p1
 
 
 
+rgtl1l2_p1:
 
 
-
-
-
-        mov     rax, [rsp + 32]
+        mov     rax, [rdx + 32]
         cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_31                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_30                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgt_ret1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 24]
+        jnz rgtRawL1L2                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 24]
         cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_31                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_30                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgt_ret1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 16]
+        jnz rgtRawL1L2                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 16]
         cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_31                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_30                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgt_ret1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-        mov     rax, [rsp + 8]
+        jnz rgtRawL1L2                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 8]
         cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_31                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_30                       ; half>rax => e1 -e2 is pos => e1 > e2
+        jc rgt_ret1                           ; half<rax => e1-e2 is neg => e1 < e2
 
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_30:
+        jmp rgtRawL1L2
 
-        mov qword [rdi], 0
-        add rsp, 40
+
+
+
+rgtl1l2_n1:
+
+
+        mov     rax, [rdx + 32]
+        cmp     [half + 24], rax     ; comare with (q-1)/2
+        jc rgtRawL1L2                           ; half<rax => e1-e2 is neg => e1 < e2
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 24]
+        cmp     [half + 16], rax     ; comare with (q-1)/2
+        jc rgtRawL1L2                           ; half<rax => e1-e2 is neg => e1 < e2
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 16]
+        cmp     [half + 8], rax     ; comare with (q-1)/2
+        jc rgtRawL1L2                           ; half<rax => e1-e2 is neg => e1 < e2
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rdx + 8]
+        cmp     [half + 0], rax     ; comare with (q-1)/2
+        jc rgtRawL1L2                           ; half<rax => e1-e2 is neg => e1 < e2
+
+        jmp rgt_ret0
+
+
+
+
+
+rgtRawL1L2:
+
+        mov     rax, [rsi + 32]
+        cmp     [rdx + 32], rax     ; comare with (q-1)/2
+        jc rgt_ret1                      ; rsi<rdi => 1st > 2nd
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 24]
+        cmp     [rdx + 24], rax     ; comare with (q-1)/2
+        jc rgt_ret1                      ; rsi<rdi => 1st > 2nd
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 16]
+        cmp     [rdx + 16], rax     ; comare with (q-1)/2
+        jc rgt_ret1                      ; rsi<rdi => 1st > 2nd
+
+        jnz rgt_ret0                       ; half>rax => e1 -e2 is pos => e1 > e2
+
+
+        mov     rax, [rsi + 8]
+        cmp     [rdx + 8], rax     ; comare with (q-1)/2
+        jc rgt_ret1                      ; rsi<rdi => 1st > 2nd
+
+
+
+rgt_ret0:
+        xor    rax, rax
+        ret
+rgt_ret1:
+        mov    rax, 1
         ret
 
-tmp_31:
 
-        mov qword [rdi], 1
-        add rsp, 40
+
+;;;;;;;;;;;;;;;;;;;;;;
+; req - Raw Eq
+;;;;;;;;;;;;;;;;;;;;;;
+; returns in ax 1 id *rsi == *rdx
+; Params:
+;   rsi <= Pointer to element 1
+;   rdx <= Pointer to element 2
+;   rax <= Return 1 or 0
+; Modified Registers:
+;    r8, r9, rax
+;;;;;;;;;;;;;;;;;;;;;;
+Fr_req:
+        mov    r8, [rsi]
+        mov    r9, [rdx]
+        bt     r8, 63          ; Check if is short first operand
+        jc     req_l1
+        bt     r9, 63          ; Check if is short second operand
+        jc     req_s1l2
+
+req_s1s2:                       ; Both operands are short
+        cmp    r8d, r9d
+        je     req_ret1
+        jmp    req_ret0
+
+
+req_l1:
+        bt     r9, 63          ; Check if is short second operand
+        jc     req_l1l2
+
+;;;;;;;;
+req_l1s2:
+        bt     r8, 62          ; check if montgomery first
+        jc     req_l1ms2
+req_l1ns2:
+        push  rdi
+        push   rsi
+        mov   rdi, rdx
+        movsx rsi, r9d
+        call  rawCopyS2L
+        mov   rdx, rdi
+        pop   rsi
+        pop   rdi
+        jmp reqL1L2
+
+req_l1ms2:
+        push rdi
+        mov  rdi, rdx
+        call Fr_toMontgomery
+        mov  rdx, rdi
+        pop  rdi
+        jmp reqL1L2
+
+
+;;;;;;;;
+req_s1l2:
+        bt     r9, 62          ; check if montgomery second
+        jc     req_s1l2m
+req_s1l2n:
+        push  rdi
+        push  rdx
+        mov   rdi, rsi
+        movsx rsi, r8d
+        call  rawCopyS2L
+        mov   rsi, rdi
+        pop   rdx
+        pop   rdi
+        jmp reqL1L2
+
+req_s1l2m:
+        push rdi
+        mov  rdi, rsi
+        mov  rsi, rdx
+        call Fr_toMontgomery
+        mov  rdx, rsi
+        mov  rsi, rdi
+        pop  rdi
+        jmp reqL1L2
+
+;;;;
+req_l1l2:
+        bt     r8, 62          ; check if montgomery first
+        jc     req_l1ml2
+req_l1nl2:
+        bt     r9, 62          ; check if montgomery second
+        jc     req_l1nl2m
+req_l1nl2n:
+        jmp reqL1L2
+
+req_l1nl2m:
+        push rdi
+        mov  rdi, rsi
+        mov  rsi, rdx
+        call Fr_toMontgomery
+        mov  rdx, rsi
+        mov  rsi, rdi
+        pop  rdi
+        jmp reqL1L2
+
+req_l1ml2:
+        bt     r9, 62          ; check if montgomery second
+        jc     req_l1ml2m
+req_l1ml2n:
+        push rdi
+        mov  rdi, rdx
+        call Fr_toMontgomery
+        mov  rdx, rdi
+        pop  rdi
+        jmp reqL1L2
+
+req_l1ml2m:
+        jmp reqL1L2
+
+
+;;;;;;
+; eqL1L2
+;;;;;;
+
+reqL1L2:
+
+        mov     rax, [rsi + 8]
+        cmp     [rdx + 8], rax
+        jne     req_ret0                      ; rsi<rdi => 1st > 2nd
+
+        mov     rax, [rsi + 16]
+        cmp     [rdx + 16], rax
+        jne     req_ret0                      ; rsi<rdi => 1st > 2nd
+
+        mov     rax, [rsi + 24]
+        cmp     [rdx + 24], rax
+        jne     req_ret0                      ; rsi<rdi => 1st > 2nd
+
+        mov     rax, [rsi + 32]
+        cmp     [rdx + 32], rax
+        jne     req_ret0                      ; rsi<rdi => 1st > 2nd
+
+
+req_ret1:
+        mov    rax, 1
         ret
 
-
-
-
+req_ret0:
+        xor    rax, rax
+        ret
 
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ; gt
 ;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
+; Compares two elements of any kind
 ; Params:
 ;   rsi <= Pointer to element 1
 ;   rdx <= Pointer to element 2
 ;   rdi <= Pointer to result can be zero or one.
 ; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
+;    rax, rcx
 ;;;;;;;;;;;;;;;;;;;;;;
 Fr_gt:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      gt_longCmp
-
-gt_shortCmp:
-    cmp     eax, 0
-    je      gt_s_eq
-    js      gt_s_lt
-gt_s_gt:
-
-        mov qword [rdi], 1
-        add rsp, 40
+        call Fr_rgt
+        mov [rdi], rax
         ret
-
-gt_s_lt:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-gt_s_eq:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-gt_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz gt_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz gt_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz gt_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz gt_neq
-
-gt_eq:
-
-
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_33                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_32                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_33                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_32                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_33                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_32                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_33                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_32                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_32:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-tmp_33:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-gt_neq:
-
-
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_35                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_34                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_35                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_34                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_35                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_34                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_35                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_34                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_34:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-tmp_35:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;
-; leq
+; eq
 ;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
+; Compares two elements of any kind
 ; Params:
 ;   rsi <= Pointer to element 1
 ;   rdx <= Pointer to element 2
 ;   rdi <= Pointer to result can be zero or one.
 ; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
+;    rax, rcx
 ;;;;;;;;;;;;;;;;;;;;;;
-Fr_leq:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      leq_longCmp
-
-leq_shortCmp:
-    cmp     eax, 0
-    je      leq_s_eq
-    js      leq_s_lt
-leq_s_gt:
-
-        mov qword [rdi], 0
-        add rsp, 40
+Fr_eq:
+        call Fr_req
+        mov [rdi], rax
         ret
 
-leq_s_lt:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-leq_s_eq:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-leq_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz leq_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz leq_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz leq_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz leq_neq
-
-leq_eq:
-
-
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_37                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_36                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_37                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_36                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_37                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_36                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_37                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_36                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_36:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-tmp_37:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-leq_neq:
-
-
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_39                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_38                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_39                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_38                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_39                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_38                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_39                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_38                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_38:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-tmp_39:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-; geq
-;;;;;;;;;;;;;;;;;;;;;;
-; Adds two elements of any kind
-; Params:
-;   rsi <= Pointer to element 1
-;   rdx <= Pointer to element 2
-;   rdi <= Pointer to result can be zero or one.
-; Modified Registers:
-;    r8, r9, 10, r11, rax, rcx
-;;;;;;;;;;;;;;;;;;;;;;
 Fr_geq:
-    sub     rsp, 40  ; Save space for the result of the substraction
-    push    rdi                    ; Save rdi
-    lea     rdi, [rsp+8]           ; We pushed rdi so we need to add 8
-    call    Fr_sub          ; Do a substraction
-    call    Fr_toNormal     ; Convert it to normal
-    pop     rdi
-
-    mov     rax, [rsp]             ; We already poped do no need to add 8
-    bt      rax, 63                ; check is result is long
-    jc      geq_longCmp
-
-geq_shortCmp:
-    cmp     eax, 0
-    je      geq_s_eq
-    js      geq_s_lt
-geq_s_gt:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-geq_s_lt:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-geq_s_eq:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-geq_longCmp:
-
-
-    cmp     qword [rsp + 32], 0
-    jnz geq_neq
-
-    cmp     qword [rsp + 24], 0
-    jnz geq_neq
-
-    cmp     qword [rsp + 16], 0
-    jnz geq_neq
-
-    cmp     qword [rsp + 8], 0
-    jnz geq_neq
-
-geq_eq:
-
-
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_41                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_40                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_41                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_40                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_41                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_40                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_41                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_40                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_40:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-tmp_41:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-geq_neq:
-
-
-
-
-
-
-
-
-        mov     rax, [rsp + 32]
-        cmp     [half + 24], rax     ; comare with (q-1)/2
-        jc tmp_43                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_42                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 24]
-        cmp     [half + 16], rax     ; comare with (q-1)/2
-        jc tmp_43                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_42                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 16]
-        cmp     [half + 8], rax     ; comare with (q-1)/2
-        jc tmp_43                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_42                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-        mov     rax, [rsp + 8]
-        cmp     [half + 0], rax     ; comare with (q-1)/2
-        jc tmp_43                           ; half<rax => e1-e2 is neg => e1 < e2
-        jnz tmp_42                       ; half>rax => e1 -e2 is pos => e1 > e2
-
-                                                ; half == rax => e1-e2 is pos => e1 > e2
-tmp_42:
-
-        mov qword [rdi], 1
-        add rsp, 40
-        ret
-
-tmp_43:
-
-        mov qword [rdi], 0
-        add rsp, 40
-        ret
-
-
-
-
-
-
+Fr_leq:
+Fr_lt:
+Fr_neq:
 
 
 
@@ -5517,6 +5204,207 @@ tmp_43:
 ;    rax, rcx, r8
 ;;;;;;;;;;;;;;;;;;;;;;
 Fr_land:
+
+
+
+
+
+
+    mov     rax, [rsi]
+    bt      rax, 63
+    jc      tmp_28
+
+    test    eax, eax
+    jz      retZero_30
+    jmp     retOne_29
+
+tmp_28:
+
+    mov     rax, [rsi + 8]
+    test    rax, rax
+    jnz     retOne_29
+
+    mov     rax, [rsi + 16]
+    test    rax, rax
+    jnz     retOne_29
+
+    mov     rax, [rsi + 24]
+    test    rax, rax
+    jnz     retOne_29
+
+    mov     rax, [rsi + 32]
+    test    rax, rax
+    jnz     retOne_29
+
+
+retZero_30:
+    mov     qword r8, 0
+    jmp     done_31
+
+retOne_29:
+    mov     qword r8, 1
+
+done_31:
+
+
+
+
+
+
+
+    mov     rax, [rdx]
+    bt      rax, 63
+    jc      tmp_32
+
+    test    eax, eax
+    jz      retZero_34
+    jmp     retOne_33
+
+tmp_32:
+
+    mov     rax, [rdx + 8]
+    test    rax, rax
+    jnz     retOne_33
+
+    mov     rax, [rdx + 16]
+    test    rax, rax
+    jnz     retOne_33
+
+    mov     rax, [rdx + 24]
+    test    rax, rax
+    jnz     retOne_33
+
+    mov     rax, [rdx + 32]
+    test    rax, rax
+    jnz     retOne_33
+
+
+retZero_34:
+    mov     qword rcx, 0
+    jmp     done_35
+
+retOne_33:
+    mov     qword rcx, 1
+
+done_35:
+
+        and rcx, r8
+        mov [rdi], rcx
+        ret
+
+
+;;;;;;;;;;;;;;;;;;;;;;
+; lor
+;;;;;;;;;;;;;;;;;;;;;;
+; Logical or between two elements
+; Params:
+;   rsi <= Pointer to element 1
+;   rdx <= Pointer to element 2
+;   rdi <= Pointer to result zero or one
+; Modified Registers:
+;    rax, rcx, r8
+;;;;;;;;;;;;;;;;;;;;;;
+Fr_lor:
+
+
+
+
+
+
+    mov     rax, [rsi]
+    bt      rax, 63
+    jc      tmp_36
+
+    test    eax, eax
+    jz      retZero_38
+    jmp     retOne_37
+
+tmp_36:
+
+    mov     rax, [rsi + 8]
+    test    rax, rax
+    jnz     retOne_37
+
+    mov     rax, [rsi + 16]
+    test    rax, rax
+    jnz     retOne_37
+
+    mov     rax, [rsi + 24]
+    test    rax, rax
+    jnz     retOne_37
+
+    mov     rax, [rsi + 32]
+    test    rax, rax
+    jnz     retOne_37
+
+
+retZero_38:
+    mov     qword r8, 0
+    jmp     done_39
+
+retOne_37:
+    mov     qword r8, 1
+
+done_39:
+
+
+
+
+
+
+
+    mov     rax, [rdx]
+    bt      rax, 63
+    jc      tmp_40
+
+    test    eax, eax
+    jz      retZero_42
+    jmp     retOne_41
+
+tmp_40:
+
+    mov     rax, [rdx + 8]
+    test    rax, rax
+    jnz     retOne_41
+
+    mov     rax, [rdx + 16]
+    test    rax, rax
+    jnz     retOne_41
+
+    mov     rax, [rdx + 24]
+    test    rax, rax
+    jnz     retOne_41
+
+    mov     rax, [rdx + 32]
+    test    rax, rax
+    jnz     retOne_41
+
+
+retZero_42:
+    mov     qword rcx, 0
+    jmp     done_43
+
+retOne_41:
+    mov     qword rcx, 1
+
+done_43:
+
+        or rcx, r8
+        mov [rdi], rcx
+        ret
+
+
+;;;;;;;;;;;;;;;;;;;;;;
+; lnot
+;;;;;;;;;;;;;;;;;;;;;;
+; Do the logical not of an element
+; Params:
+;   rsi <= Pointer to element to be tested
+;   rdi <= Pointer to result one if element1 is zero and zero otherwise
+; Modified Registers:
+;    rax, rax, r8
+;;;;;;;;;;;;;;;;;;;;;;
+Fr_lnot:
 
 
 
@@ -5551,214 +5439,13 @@ tmp_44:
 
 
 retZero_46:
-    mov     qword r8, 0
+    mov     qword rcx, 0
     jmp     done_47
 
 retOne_45:
-    mov     qword r8, 1
+    mov     qword rcx, 1
 
 done_47:
-
-
-
-
-
-
-
-    mov     rax, [rdx]
-    bt      rax, 63
-    jc      tmp_48
-
-    test    eax, eax
-    jz      retZero_50
-    jmp     retOne_49
-
-tmp_48:
-
-    mov     rax, [rdx + 8]
-    test    rax, rax
-    jnz     retOne_49
-
-    mov     rax, [rdx + 16]
-    test    rax, rax
-    jnz     retOne_49
-
-    mov     rax, [rdx + 24]
-    test    rax, rax
-    jnz     retOne_49
-
-    mov     rax, [rdx + 32]
-    test    rax, rax
-    jnz     retOne_49
-
-
-retZero_50:
-    mov     qword rcx, 0
-    jmp     done_51
-
-retOne_49:
-    mov     qword rcx, 1
-
-done_51:
-
-        and rcx, r8
-        mov [rdi], rcx
-        ret
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-; lor
-;;;;;;;;;;;;;;;;;;;;;;
-; Logical or between two elements
-; Params:
-;   rsi <= Pointer to element 1
-;   rdx <= Pointer to element 2
-;   rdi <= Pointer to result zero or one
-; Modified Registers:
-;    rax, rcx, r8
-;;;;;;;;;;;;;;;;;;;;;;
-Fr_lor:
-
-
-
-
-
-
-    mov     rax, [rsi]
-    bt      rax, 63
-    jc      tmp_52
-
-    test    eax, eax
-    jz      retZero_54
-    jmp     retOne_53
-
-tmp_52:
-
-    mov     rax, [rsi + 8]
-    test    rax, rax
-    jnz     retOne_53
-
-    mov     rax, [rsi + 16]
-    test    rax, rax
-    jnz     retOne_53
-
-    mov     rax, [rsi + 24]
-    test    rax, rax
-    jnz     retOne_53
-
-    mov     rax, [rsi + 32]
-    test    rax, rax
-    jnz     retOne_53
-
-
-retZero_54:
-    mov     qword r8, 0
-    jmp     done_55
-
-retOne_53:
-    mov     qword r8, 1
-
-done_55:
-
-
-
-
-
-
-
-    mov     rax, [rdx]
-    bt      rax, 63
-    jc      tmp_56
-
-    test    eax, eax
-    jz      retZero_58
-    jmp     retOne_57
-
-tmp_56:
-
-    mov     rax, [rdx + 8]
-    test    rax, rax
-    jnz     retOne_57
-
-    mov     rax, [rdx + 16]
-    test    rax, rax
-    jnz     retOne_57
-
-    mov     rax, [rdx + 24]
-    test    rax, rax
-    jnz     retOne_57
-
-    mov     rax, [rdx + 32]
-    test    rax, rax
-    jnz     retOne_57
-
-
-retZero_58:
-    mov     qword rcx, 0
-    jmp     done_59
-
-retOne_57:
-    mov     qword rcx, 1
-
-done_59:
-
-        or rcx, r8
-        mov [rdi], rcx
-        ret
-
-
-;;;;;;;;;;;;;;;;;;;;;;
-; lnot
-;;;;;;;;;;;;;;;;;;;;;;
-; Do the logical not of an element
-; Params:
-;   rsi <= Pointer to element to be tested
-;   rdi <= Pointer to result one if element1 is zero and zero otherwise
-; Modified Registers:
-;    rax, rax, r8
-;;;;;;;;;;;;;;;;;;;;;;
-Fr_lnot:
-
-
-
-
-
-
-    mov     rax, [rsi]
-    bt      rax, 63
-    jc      tmp_60
-
-    test    eax, eax
-    jz      retZero_62
-    jmp     retOne_61
-
-tmp_60:
-
-    mov     rax, [rsi + 8]
-    test    rax, rax
-    jnz     retOne_61
-
-    mov     rax, [rsi + 16]
-    test    rax, rax
-    jnz     retOne_61
-
-    mov     rax, [rsi + 24]
-    test    rax, rax
-    jnz     retOne_61
-
-    mov     rax, [rsi + 32]
-    test    rax, rax
-    jnz     retOne_61
-
-
-retZero_62:
-    mov     qword rcx, 0
-    jmp     done_63
-
-retOne_61:
-    mov     qword rcx, 1
-
-done_63:
 
         test rcx, rcx
 
@@ -5789,39 +5476,39 @@ Fr_isTrue:
 
     mov     rax, [rdi]
     bt      rax, 63
-    jc      tmp_64
+    jc      tmp_48
 
     test    eax, eax
-    jz      retZero_66
-    jmp     retOne_65
+    jz      retZero_50
+    jmp     retOne_49
 
-tmp_64:
+tmp_48:
 
     mov     rax, [rdi + 8]
     test    rax, rax
-    jnz     retOne_65
+    jnz     retOne_49
 
     mov     rax, [rdi + 16]
     test    rax, rax
-    jnz     retOne_65
+    jnz     retOne_49
 
     mov     rax, [rdi + 24]
     test    rax, rax
-    jnz     retOne_65
+    jnz     retOne_49
 
     mov     rax, [rdi + 32]
     test    rax, rax
-    jnz     retOne_65
+    jnz     retOne_49
 
 
-retZero_66:
+retZero_50:
     mov     qword rax, 0
-    jmp     done_67
+    jmp     done_51
 
-retOne_65:
+retOne_49:
     mov     qword rax, 1
 
-done_67:
+done_51:
 
         ret
 

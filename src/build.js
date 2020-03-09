@@ -34,7 +34,6 @@ function build(ctx) {
     ctx.codes_sizes = [];
     ctx.definedSizes = {};
     ctx.addSizes = addSizes;
-    ctx.constantsMap = {};
     ctx.addConstant = addConstant;
     ctx.addConstant(bigInt.zero);
     ctx.addConstant(bigInt.one);
@@ -287,12 +286,7 @@ function addSizes(_sizes) {
 }
 
 function addConstant(c) {
-    c = bigInt(c);
-    const s = c.toString();
-    if (typeof (this.constantsMap[s]) !== "undefined") return this.constantsMap[s];
-    const cIdx = this.builder.addConstant(c);
-    this.constantsMap[s] = cIdx;
-    return cIdx;
+    return this.builder.addConstant(c);
 }
 
 function buildFunction(name, paramValues) {
@@ -320,7 +314,7 @@ function buildFunction(name, paramValues) {
     ctx.scopes = [{}];
     ctx.refs = [];
     ctx.conditionalCode = false;
-    ctx.fnBuilder = ctx.builder.newFunctionBuilder(`${name}_${h}`, instanceDef);
+    ctx.fnBuilder = ctx.builder.newFunctionBuilder(`${name}_${h}`, instanceDef, ctx.functions[name].params);
     ctx.codeBuilder = ctx.fnBuilder.newCodeBuilder();
     ctx.uniqueNames = Object.assign({},ctx.globalNames);
     ctx.returnValue = null;

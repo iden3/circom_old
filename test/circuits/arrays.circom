@@ -31,9 +31,11 @@ template Main() {
     out[0] === in+c[0];
 
     out[1] <-- d[1]+c[1];
+    // out[1] === (in+in)+3+c[1];
     out[1] === 2*in+3+c[1];
 
     out[2] <-- d[2]+c[2];
+    // out[2] === (in+in+in+in+in+in)+12+c[2];
     out[2] === 6*in+12+c[2];
 }
 

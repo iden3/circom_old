@@ -754,7 +754,13 @@ function toRefA_Int1(ctx, ast, aRef) {
     const a = ctx.refs[aRef];
     if (a.sizes[0] != 1) return ctx.throwError(ast, "Expected only one element");
     if (a.used) {
-        return ["R", a.label];
+        if (a.type == "INT") {
+            return ["RI", a.label];
+        } else if (a.type == "BIGINT") {
+            return ["R", a.label];
+        } else {
+            assert(false);
+        }
     } else {
         return ["V", a.value[0]];
     }
@@ -818,9 +824,7 @@ function genArray(ctx, ast) {
 function genFunctionCall(ctx, ast) {
     if (ast.name == "log") {
         const vRef = gen(ctx, ast.params[0]);
-        const val = ctx.refs[vRef];
-        instantiateRef(ctx, vRef, val.value);
-        ctx.code+=`ctx->log(${val.label});`;
+        ctx.codeBuilder.log(toRefA_Fr1(ctx, ast.params[0], vRef));
         return vRef;
     }
     const params = [];

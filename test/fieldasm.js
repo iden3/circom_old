@@ -1,4 +1,4 @@
-const tester = require("../c/buildasm/buildzqfieldtester.js");
+const tester = require("../ports/c/buildasm/buildzqfieldtester.js");
 
 const ZqField = require("fflib").ZqField;
 
@@ -17,7 +17,6 @@ describe("field asm test", function () {
         const tv = buildTestVector2(bn128r, "add");
         await tester(bn128r, tv);
     });
-
     it("secp256k1q add", async () => {
         const tv = buildTestVector2(secp256k1q, "add");
         await tester(secp256k1q, tv);
@@ -267,7 +266,6 @@ describe("field asm test", function () {
         const tv = buildTestVector1(mnt6753q, "square");
         await tester(mnt6753q, tv);
     });
-
 });
 
 function buildTestVector2(p, op) {

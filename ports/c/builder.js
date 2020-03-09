@@ -1,10 +1,10 @@
-const streamFromMultiArray = require("./stream_from_multiarray");
+const streamFromMultiArray = require("../../src/streamfromarray_txt.js");
 const bigInt = require("big-integer");
-const utils = require("./utils");
+const utils = require("../../src/utils");
 const assert = require("assert");
 
 function ref2src(c) {
-    if (c[0] == "R") {
+    if ((c[0] == "R")||(c[0] == "RI")) {
         return c[1];
     } else if (c[0] == "V") {
         return c[1].toString();
@@ -94,6 +94,9 @@ class CodeBuilderC {
         this.ops.push({op: "CHECKCONSTRAINT", a, b, strErr});
     }
 
+    log(val) {
+        this.ops.push({op: "LOG", val});
+    }
 
     concat(cb) {
         this.ops.push(...cb.ops);
@@ -211,6 +214,8 @@ class CodeBuilderC {
                 code.push(`${o.fnName}(ctx, ${o.retLabel}, ${o.params.join(",")});`);
             } else if (o.op == "CHECKCONSTRAINT") {
                 code.push(`ctx->checkConstraint(__cIdx, ${ref2src(o.a)}, ${ref2src(o.b)}, "${o.strErr}");`);
+            } else if (o.op == "LOG") {
+                code.push(`ctx->log(${ref2src(o.val)});`);
             }
         });
     }
@@ -342,6 +347,8 @@ class BuilderC {
         this.constants = [];
         this.functions = [];
         this.components = [];
+        this.usedConstants = {};
+
     }
 
     setHeader(header) {
@@ -362,7 +369,11 @@ class BuilderC {
     }
 
     addConstant(c) {
+        c = bigInt(c);
+        const cS = c.toString();
+        if (this.usedConstants[cS]) return this.usedConstants[cS];
         this.constants.push(c);
+        this.usedConstants[cS] = this.constants.length - 1;
         return this.constants.length - 1;
     }
 
