@@ -26,9 +26,15 @@ async function  testField(prime, test) {
 
     await exec(`cp  ${path.join(__dirname,  "tester.cpp")} ${dir.path}`);
 
-    await exec("nasm -fmacho64 --prefix _ " +
-               ` ${path.join(dir.path,  "fr.asm")}`
-    );
+    if (process.platform === "darwin") 
+        await exec("nasm -fmacho64 --prefix _ " +
+                ` ${path.join(dir.path,  "fr.asm")}`
+        );
+    else if (process.platform === "linux") 
+        await exec("nasm -felf64 " +
+                ` ${path.join(dir.path,  "fr.asm")}`
+        );
+    else throw("Unsupported platform");
 
     await exec("g++" +
                ` ${path.join(dir.path,  "tester.cpp")}` +
