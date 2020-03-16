@@ -33,6 +33,7 @@ async function  wasm_tester(circomFile, _options) {
     options.wasmWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".wasm"));
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
+    options.sanityCheck = true;
 
     const promisesArr = [];
     promisesArr.push(new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill)));

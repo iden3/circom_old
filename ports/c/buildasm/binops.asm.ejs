@@ -1,3 +1,24 @@
+<% function binOpSubQIfBigger() { %>
+        <% const subQ = global.tmpLabel() %>
+        <% const done = global.tmpLabel() %>
+
+        ; Compare with q
+<% for (let i=0; i<n64; i++) { %>
+        mov rax, [rdi + <%= (n64-i)*8 %>]
+        cmp rax, [q + <%= (n64-i-1)*8 %>]
+        jc <%=done%>        ; q is bigget so done.
+        jnz <%=subQ%>         ; q is lower
+<% } %>
+        ; If equal substract q
+<%=subQ%>:
+<% for (let i=0; i<n64; i++) { %>
+        mov rax, [q + <%=i*8%>]
+        <%= i==0 ? "sub" : "sbb" %> [rdi + <%=i*8 + 8 %>], rax
+<% } %>
+<%=done%>:
+<% } %>
+
+
 <% function binOpS1S2(op) { %>
         cmp    r8d, 0
         <% const s1s2_solveNeg = global.tmpLabel() %>
@@ -35,6 +56,7 @@
 <%     }  %>
         mov    [rdi + <%= (i*8)+8 %> ], rax
 <%   } %>
+<%      binOpSubQIfBigger() %>
         ret
 
 <%=s1l2_solveNeg%>:
@@ -59,6 +81,7 @@
 <%     }  %>
         mov    [rdi + <%= (i*8)+8 %> ], rax;
 <%   } %>
+<%      binOpSubQIfBigger() %>
         ret
 
 <%=l1s2_solveNeg%>:
@@ -77,10 +100,9 @@
 <%     }  %>
         mov    [rdi + <%= (i*8)+8 %> ], rax
 <%   } %>
+<%      binOpSubQIfBigger() %>
         ret
 <% } %>
-
-
 
 
 <% function binOp(op) { %>
@@ -212,6 +234,7 @@ bnot_l1n:
 <%     }  %>
         mov    [rdi + <%= i*8 + 8 %>], rax
 <%   } %>
+<%      binOpSubQIfBigger() %>
         ret
 
 

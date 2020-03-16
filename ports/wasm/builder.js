@@ -104,12 +104,17 @@ class CodeBuilderWasm {
         this.ops.push(...cb.ops);
     }
 
+    log(val) {
+        this.ops.push({op: "LOG", val});
+    }
+
     hasCode() {
         for (let i=0; i<this.ops.length; i++) {
             if (this.ops[i].op != "COMMENT") return true;
         }
         return false;
     }
+
 
     _buildOffset(c, offsets) {
         let rN=0;
@@ -671,7 +676,7 @@ class FunctionBuilderWasm {
 }
 
 class BuilderWasm {
-    constructor() {
+    constructor(sanityCheck) {
         this.hashMaps={};
         this.componentEntriesTables={};
         this.sizes ={};
@@ -679,6 +684,7 @@ class BuilderWasm {
         this.usedConstants = {};
         this.functions = [];
         this.components = [];
+        this.sanityCheck = sanityCheck;
 
         this.TYPE_SIGNAL = 1;
         this.TYPE_COMPONENT = 2;
@@ -989,6 +995,8 @@ class BuilderWasm {
         this._buildMapIsInput(module);
         this._buildWit2Sig(module);
         this._buildCircuitVar(module);
+
+        module.setMemory(2000);
         if (outType == "wasm") {
             return streamFromArrayBin(module.build());
         } else if (outType == "wat") {

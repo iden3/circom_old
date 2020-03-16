@@ -17,33 +17,55 @@ module.exports.fromBuffer = async function(code) {
     const memory = new WebAssembly.Memory({initial:20000});
     const wasmModule = await WebAssembly.compile(code);
 
+    let wc;
+
     const instance = await WebAssembly.instantiate(wasmModule, {
         env: {
             "memory": memory
         },
         runtime: {
             err: function(code, pstr) {
-                console.log("ERROR", code, p2str(pstr));
+                const errStr=p2str(pstr);
+                console.log("ERROR: ", code, errStr);
+                throw new Error(errStr);
             },
             err1: function(code, pstr, a) {
-                console.log("ERROR: ", code, p2str(pstr), a);
+                const errStr=p2str(pstr)+ " " + a;
+                console.log("ERROR: ", code, errStr);
+                throw new Error(errStr);
             },
             err2: function(code, pstr, a, b) {
-                console.log("ERROR: ", code, p2str(pstr), a, b);
+                const errStr=p2str(pstr)+ " " + a + " " + b;
+                console.log("ERROR: ", code, errStr);
+                throw new Error(errStr);
             },
             err3: function(code, pstr, a, b, c) {
-                console.log("ERROR: ", code, p2str(pstr), a, b, c);
+                const errStr=p2str(pstr)+ " " + a + " " + b + " " + c;
+                console.log("ERROR: ", code, errStr);
+                throw new Error(errStr);
             },
             err4: function(code, pstr, a,b,c,d) {
-                console.log("ERROR: ", code, p2str(pstr), a, b, c, d);
+                const errStr=p2str(pstr) + " " + wc.getFr(b).toString() + " != " + wc.getFr(c).toString() + " " +p2str(d);
+                console.log("ERROR: ", code, errStr);
+                throw new Error(errStr);
+            },
+            log: function(a) {
+                console.log(wc.getFr(a).toString());
             },
         }
     });
 
-    return new WitnessCalculator(memory, instance);
+    wc = new WitnessCalculator(memory, instance);
+    return wc;
 
     function p2str(p) {
-        return "TODO"+p;
+        const i8 = new Uint8Array(memory.buffer);
+
+        const bytes = [];
+
+        for (let i=0; i8[p+i]>0; i++)  bytes.push(i8[p+i]);
+
+        return String.fromCharCode.apply(null, bytes);
     }
 };
 
@@ -120,30 +142,31 @@ class WitnessCalculator {
     }
 
     getFr(p) {
+        const self = this;
         const idx = (p>>2);
 
-        if (this.i32[idx + 1] & 0x80000000) {
+        if (self.i32[idx + 1] & 0x80000000) {
             let res= bigInt(0);
-            for (let i=this.n32-1; i>=0; i--) {
+            for (let i=self.n32-1; i>=0; i--) {
                 res = res.shiftLeft(32);
-                res = res.add(bigInt(this.i32[idx+2+i]));
+                res = res.add(bigInt(self.i32[idx+2+i]));
             }
-            if (this.i32[idx + 1] & 0x40000000) {
+            if (self.i32[idx + 1] & 0x40000000) {
                 return fromMontgomery(res);
             } else {
                 return res;
             }
 
         } else {
-            if (this.i32[idx] & 0x80000000) {
-                return this.prime.add( bigInt(this.i32[idx]).minus(bigInt(0x100000000)) );
+            if (self.i32[idx] & 0x80000000) {
+                return self.prime.add( bigInt(self.i32[idx]).minus(bigInt(0x100000000)) );
             } else {
-                return bigInt(this.i32[idx]);
+                return bigInt(self.i32[idx]);
             }
         }
 
         function fromMontgomery(n) {
-            return n.times(this.RInv).mod(this.prime);
+            return n.times(self.RInv).mod(self.prime);
         }
 
     }

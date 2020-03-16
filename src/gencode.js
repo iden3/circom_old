@@ -423,13 +423,21 @@ function genVariable(ctx, ast) {
     } else if (v.type == "BIGINT") {
         const refOffset = genGetOffset(ctx, 0, v.sizes, ast.selectors );
         const offset = ctx.refs[refOffset];
+        let ot;
+        if (offset.type == "BIGINT") {
+            ot = "R";
+        } else if (offset.type == "INT") {
+            ot= "RI";
+        } else {
+            assert(false);
+        }
         if (v.used) {
             if (offset.used) {
                 const refRes = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
                 const res = ctx.refs[refRes];
                 res.used = true;
                 ctx.fnBuilder.definePFrElement(res.label);
-                ctx.codeBuilder.assign(res.label, ["R", v.label], ["R", offset.label]);
+                ctx.codeBuilder.assign(res.label, ["R", v.label], [ot, offset.label]);
                 return refRes;
             } else if ((offset.value[0]>0)||(l>0)) {
                 const refRes = newRef(ctx, "BIGINT", "_v", null, v.sizes.slice(l));
@@ -448,7 +456,7 @@ function genVariable(ctx, ast) {
                 const res = ctx.refs[resRef];
                 res.used = true;
                 ctx.fnBuilder.definePFrElement(res.label);
-                ctx.codeBuilder.assign(res.label, ["R", v.label], ["R", offset.label]);
+                ctx.codeBuilder.assign(res.label, ["R", v.label], [ot, offset.label]);
                 return resRef;
             } else {
                 // return newSubRef(ctx, ast.name, ast.selectors);
@@ -499,7 +507,13 @@ function genGetSubComponentOffset(ctx, cIdxRef, label) {
     if (cIdxRef>=0) {
         const cIdx = ctx.refs[cIdxRef];
         if (cIdx.used) {
-            c = ["R", cIdx.label];
+            if (cIdx.type == "BIGINT") {
+                c = ["R", cIdx.label];
+            } else if (cIdx.type == "INT") {
+                c = ["RI", cIdx.label];
+            } else {
+                assert(false);
+            }
         } else {
             c = ["V", cIdx.value[0]];
         }
@@ -520,7 +534,13 @@ function genGetSubComponentSizes(ctx, cIdxRef, label) {
     if (cIdxRef>=0) {
         const cIdx = ctx.refs[cIdxRef];
         if (cIdx.used) {
-            c = ["R", cIdx.label];
+            if (cIdx.type == "BIGINT") {
+                c = ["R", cIdx.label];
+            } else if (cIdx.type == "INT") {
+                c = ["RI", cIdx.label];
+            } else {
+                assert(false);
+            }
         } else {
             c = ["V", cIdx.value[0]];
         }
@@ -553,7 +573,13 @@ function genGetSignalOffset(ctx, cIdxRef, label) {
     if (cIdxRef>=0) {
         const cIdx = ctx.refs[cIdxRef];
         if (cIdx.used) {
-            c = ["R", cIdx.label];
+            if (cIdx.type == "BIGINT") {
+                c = ["R", cIdx.label];
+            } else if (cIdx.type == "INT") {
+                c = ["RI", cIdx.label];
+            } else {
+                assert(false);
+            }
         } else {
             c = ["V", cIdx.value[0]];
         }
@@ -590,7 +616,13 @@ function genGetSignalSizes(ctx, cIdxRef, label) {
     if (cIdxRef>=0) {
         const cIdx = ctx.refs[cIdxRef];
         if (cIdx.used) {
-            c = ["R", cIdx.label];
+            if (cIdx.type == "BIGINT") {
+                c = ["R", cIdx.label];
+            } else if (cIdx.type == "INT") {
+                c = ["RI", cIdx.label];
+            } else {
+                assert(false);
+            }
         } else {
             c = ["V", cIdx.value[0]];
         }
@@ -743,7 +775,11 @@ function toRefA_Fr1(ctx, ast, aRef) {
     const a = ctx.refs[aRef];
     if (a.sizes[0] != 1) return ctx.throwError(ast, "Expected only one element");
     if (a.used) {
-        return ["R", a.label];
+        if (a.type == "BIGINT") {
+            return ["R", a.label];
+        } else {
+            assert(false);
+        }
     } else {
         return ["C", ctx.addConstant(a.value[0])];
     }

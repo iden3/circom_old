@@ -116,14 +116,14 @@ add_l1ms2m:
 
 ;;;;;;;;
 add_s1l2:
-        bt     rcx, 62          ; check if montgomery first
+        bt     rcx, 62          ; check if montgomery second
         jc     add_s1l2m
 add_s1l2n:
 <%=     global.setTypeDest("0x80"); %>
 <%=     addS1L2(); %>
 
 add_s1l2m:
-        bt     rax, 62          ; check if montgomery second
+        bt     rax, 62          ; check if montgomery first
         jc     add_s1ml2m
 add_s1nl2m:
 <%=     global.setTypeDest("0xC0"); %>

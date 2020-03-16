@@ -19,6 +19,7 @@ void <%=name%>_toMpz(mpz_t r, P<%=name%>Element pE) {
             mpz_add(r, r, q);
         }
     } else {
+        <%=name%>_toNormal(pE);
         mpz_import(r, <%=name%>_N64, -1, 8, -1, 0, (const void *)pE->longVal);
     }
 }
@@ -42,7 +43,7 @@ void <%=name%>_init() {
     mpz_init_set_ui(one, 1);
     nBits = mpz_sizeinbase (q, 2);
     mpz_init(mask);
-    mpz_mul_2exp(mask, one, nBits-1);
+    mpz_mul_2exp(mask, one, nBits);
     mpz_sub(mask, mask, one);
 
 }
@@ -118,11 +119,19 @@ void <%=name%>_shl(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
 
     <%=name%>_toMpz(ma, a);
     <%=name%>_toMpz(mb, b);
-    if (mpz_cmp_ui(mb, nBits) >= 0) {
-        mpz_set(mr, zero);
-    } else {
+    if (mpz_cmp_ui(mb, nBits) < 0) {
         mpz_mul_2exp(mr, ma, mpz_get_ui(mb));
         mpz_and(mr, mr, mask);
+        if (mpz_cmp(mr, q) >= 0) {
+            mpz_sub(mr, mr, q);
+        }
+    } else {
+        mpz_sub(mb, q, mb);
+        if (mpz_cmp_ui(mb, nBits) < 0) {
+            mpz_tdiv_q_2exp(mr, ma, mpz_get_ui(mb));
+        } else {
+            mpz_set(mr, zero);
+        }
     }
     <%=name%>_fromMpz(r, mr);
 }
@@ -137,11 +146,19 @@ void <%=name%>_shr(P<%=name%>Element r, P<%=name%>Element a, P<%=name%>Element b
 
     <%=name%>_toMpz(ma, a);
     <%=name%>_toMpz(mb, b);
-    if (mpz_cmp_ui(mb, nBits) >= 0) {
-        mpz_set(mr, zero);
-    } else {
+    if (mpz_cmp_ui(mb, nBits) < 0) {
         mpz_tdiv_q_2exp(mr, ma, mpz_get_ui(mb));
-        mpz_and(mr, mr, mask);
+    } else {
+        mpz_sub(mb, q, mb);
+        if (mpz_cmp_ui(mb, nBits) < 0) {
+            mpz_mul_2exp(mr, ma, mpz_get_ui(mb));
+            mpz_and(mr, mr, mask);
+            if (mpz_cmp(mr, q) >= 0) {
+                mpz_sub(mr, mr, q);
+            }
+        } else {
+            mpz_set(mr, zero);
+        }
     }
     <%=name%>_fromMpz(r, mr);
 }

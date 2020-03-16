@@ -558,7 +558,11 @@ function execFunctionCall(ctx, ast) {
     if (ast.name == "log") {
         const v = exec(ctx, ast.params[0]);
         const ev = val(ctx, v, ast);
-        console.log(ev.v.toString());
+        if (ev.v) {
+            console.log(ev.v.toString());
+        } else {
+            console.log(JSON.stringify(ev));
+        }
         return;
     }
     if (ast.name == "assert") {

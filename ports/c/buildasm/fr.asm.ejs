@@ -49,5 +49,5 @@ q       dq      <%= constantElement(q) %>
 half    dq      <%= constantElement(q.shiftRight(1)) %>
 R2      dq      <%= constantElement(bigInt.one.shiftLeft(n64*64*2).mod(q)) %>
 R3      dq      <%= constantElement(bigInt.one.shiftLeft(n64*64*3).mod(q)) %>
-lboMask dq      0x<%= bigInt("8000000000000000",16).shiftRight(n64*64 - q.bitLength()).minus(bigInt.one).toString(16) %>
+lboMask dq      0x<%= bigInt("10000000000000000",16).shiftRight(n64*64 - q.bitLength()).minus(bigInt.one).toString(16) %>
 

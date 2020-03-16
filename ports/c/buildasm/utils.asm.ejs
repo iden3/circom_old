@@ -1,8 +1,8 @@
 <% global.setTypeDest = function (t) {
 return (
 `        mov r11b, ${t}
-        shl r11, 56
-        mov [rdi], r11`);
+        shl r11d, 24
+        mov [rdi+4], r11d`);
 } %>
 
 

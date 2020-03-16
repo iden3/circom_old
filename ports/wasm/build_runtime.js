@@ -545,15 +545,15 @@ module.exports = function buildRuntime(module, builder) {
             f.addCode(
                 c.call(
                     "Fr_eq",
-                    c.getLocal(c.i32_const(pTmp)),
+                    c.i32_const(pTmp),
                     c.getLocal("pA"),
                     c.getLocal("pB")
                 ),
                 c.if (
-                    c.eqz(
+                    c.i32_eqz(
                         c.call(
                             "Fr_isTrue",
-                            c.getLocal(c.i32_const(pTmp)),
+                            c.i32_const(pTmp),
                         )
                     ),
                     c.call(
@@ -658,21 +658,6 @@ module.exports = function buildRuntime(module, builder) {
         );
     }
 
-    function buildFrToInt() {
-        const f = module.addFunction("Fr_toInt");
-        f.addParam("p", "i32");
-        f.setReturnType("i32");
-
-        const c = f.getCodeBuilder();
-
-        f.addCode(
-            c.i32_load(c.getLocal("p"))
-        );
-
-        // TODO Handle long and montgomery.
-    }
-
-
     const fErr = module.addIimportFunction("err", "runtime");
     fErr.addParam("code", "i32");
     fErr.addParam("pStr", "i32");
@@ -702,6 +687,9 @@ module.exports = function buildRuntime(module, builder) {
     fErr4.addParam("param2", "i32");
     fErr4.addParam("param3", "i32");
     fErr4.addParam("param4", "i32");
+
+    const fLog = module.addIimportFunction("log", "runtime");
+    fLog.addParam("code", "i32");
 
     buildWasmFf(module, "Fr", builder.header.P);
 
@@ -734,7 +722,7 @@ module.exports = function buildRuntime(module, builder) {
     buildGetPWitness();
     buildGetPRawPrime();
 
-    buildFrToInt();
+//    buildFrToInt();
 
     module.exportFunction("init");
     module.exportFunction("getNVars");

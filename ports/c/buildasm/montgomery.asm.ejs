@@ -245,23 +245,25 @@ montgomeryTemplate("rawFromMontgomery", function(i, r0, r1, r2) {
 ;;;;;;;;;;;;;;;;;;;;
 <%=name%>_toMontgomery:
     mov     rax, [rdi]
-    bts     rax, 62                     ; check if montgomery
+    bt      rax, 62                     ; check if montgomery
     jc      toMontgomery_doNothing
-    bts     rax, 63
+    bt      rax, 63
     jc      toMontgomeryLong
 
 toMontgomeryShort:
-    mov     [rdi], rax
     add     rdi, 8
     push    rsi
+    push    rdx
     lea     rsi, [R2]
     movsx   rdx, eax
     cmp     rdx, 0
     js      negMontgomeryShort
 posMontgomeryShort:
     call    rawMontgomeryMul1
+    pop     rdx
     pop     rsi
     sub     rdi, 8
+    <%=     global.setTypeDest("0x40"); %>
     ret
 
 negMontgomeryShort:
@@ -269,8 +271,10 @@ negMontgomeryShort:
     call    rawMontgomeryMul1
     mov     rsi, rdi
     call    rawNegL
+    pop     rdx
     pop     rsi
     sub     rdi, 8
+    <%=     global.setTypeDest("0x40"); %>
     ret
 
 
@@ -283,6 +287,8 @@ toMontgomeryLong:
     call    rawMontgomeryMul
     pop     rsi
     sub     rdi, 8
+    <%=     global.setTypeDest("0xC0"); %>
+
 
 toMontgomery_doNothing:
     ret
@@ -297,16 +303,16 @@ toMontgomery_doNothing:
 ;;;;;;;;;;;;;;;;;;;;
 <%=name%>_toNormal:
     mov     rax, [rdi]
-    btc     rax, 62                     ; check if montgomery
+    bt      rax, 62                     ; check if montgomery
     jnc     toNormal_doNothing
     bt      rax, 63                     ; if short, it means it's converted
     jnc     toNormal_doNothing
 
 toNormalLong:
-    mov     [rdi], rax
     add     rdi, 8
     call    rawFromMontgomery
     sub     rdi, 8
+    <%=     global.setTypeDest("0x80"); %>
 
 toNormal_doNothing:
     ret
@@ -331,6 +337,7 @@ toLongNormal_fromMontgomery:
     add     rdi, 8
     call    rawFromMontgomery
     sub     rdi, 8
+    <%=     global.setTypeDest("0x80"); %>
     ret
 
 toLongNormal_fromShort:
@@ -338,5 +345,6 @@ toLongNormal_fromShort:
     movsx   rsi, eax
     call    rawCopyS2L
     mov     rsi, r8                     ; recover rsi
+    <%=     global.setTypeDest("0x80"); %>
     ret
 

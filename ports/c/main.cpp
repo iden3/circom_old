@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
 
         ctx->join();
 
-        printf("Finished!\n");
+        // printf("Finished!\n");
 
         std::string outfilename = argv[2];
 

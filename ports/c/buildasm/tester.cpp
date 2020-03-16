@@ -56,6 +56,8 @@ void fillMap() {
     addFunction("land", (FuncAny)Fr_land, 2);
     addFunction("lor", (FuncAny)Fr_lor, 2);
     addFunction("lnot", (FuncAny)Fr_lnot, 1);
+    addFunction("shl", (FuncAny)Fr_shl, 2);
+    addFunction("shr", (FuncAny)Fr_shr, 2);
 }
 
 u_int64_t readInt(std::string &s) {

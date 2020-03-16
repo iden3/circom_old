@@ -47,7 +47,7 @@ async function  c_tester(circomFile, _options) {
                ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` -o ${path.join(dir.path, baseName)}` +
                ` -I ${cdir}` +
-               " -lgmp -std=c++11 -DSANITY_CHECK"
+               " -lgmp -std=c++11 -DSANITY_CHECK -g"
     );
 
     // console.log(dir.path);
@@ -70,10 +70,13 @@ class CTester {
             path.join(this.dir.path, "in.json"),
             JSON.stringify(stringifyBigInts(input), null, 1)
         );
-        await exec(`${path.join(this.dir.path, this.baseName)}` +
+        const r = await exec(`${path.join(this.dir.path, this.baseName)}` +
                    ` ${path.join(this.dir.path, "in.json")}` +
                    ` ${path.join(this.dir.path, "out.json")}`
         );
+        if (r.stdout) {
+            console.log(r.stdout);
+        }
         const resStr = await fs.promises.readFile(
             path.join(this.dir.path, "out.json")
         );

@@ -19,6 +19,7 @@ void Fr_toMpz(mpz_t r, PFrElement pE) {
             mpz_add(r, r, q);
         }
     } else {
+        Fr_toNormal(pE);
         mpz_import(r, Fr_N64, -1, 8, -1, 0, (const void *)pE->longVal);
     }
 }
@@ -42,7 +43,7 @@ void Fr_init() {
     mpz_init_set_ui(one, 1);
     nBits = mpz_sizeinbase (q, 2);
     mpz_init(mask);
-    mpz_mul_2exp(mask, one, nBits-1);
+    mpz_mul_2exp(mask, one, nBits);
     mpz_sub(mask, mask, one);
 
 }
@@ -118,11 +119,19 @@ void Fr_shl(PFrElement r, PFrElement a, PFrElement b) {
 
     Fr_toMpz(ma, a);
     Fr_toMpz(mb, b);
-    if (mpz_cmp_ui(mb, nBits) >= 0) {
-        mpz_set(mr, zero);
-    } else {
+    if (mpz_cmp_ui(mb, nBits) < 0) {
         mpz_mul_2exp(mr, ma, mpz_get_ui(mb));
         mpz_and(mr, mr, mask);
+        if (mpz_cmp(mr, q) >= 0) {
+            mpz_sub(mr, mr, q);
+        }
+    } else {
+        mpz_sub(mb, q, mb);
+        if (mpz_cmp_ui(mb, nBits) < 0) {
+            mpz_tdiv_q_2exp(mr, ma, mpz_get_ui(mb));
+        } else {
+            mpz_set(mr, zero);
+        }
     }
     Fr_fromMpz(r, mr);
 }
@@ -137,11 +146,19 @@ void Fr_shr(PFrElement r, PFrElement a, PFrElement b) {
 
     Fr_toMpz(ma, a);
     Fr_toMpz(mb, b);
-    if (mpz_cmp_ui(mb, nBits) >= 0) {
-        mpz_set(mr, zero);
-    } else {
+    if (mpz_cmp_ui(mb, nBits) < 0) {
         mpz_tdiv_q_2exp(mr, ma, mpz_get_ui(mb));
-        mpz_and(mr, mr, mask);
+    } else {
+        mpz_sub(mb, q, mb);
+        if (mpz_cmp_ui(mb, nBits) < 0) {
+            mpz_mul_2exp(mr, ma, mpz_get_ui(mb));
+            mpz_and(mr, mr, mask);
+            if (mpz_cmp(mr, q) >= 0) {
+                mpz_sub(mr, mr, q);
+            }
+        } else {
+            mpz_set(mr, zero);
+        }
     }
     Fr_fromMpz(r, mr);
 }

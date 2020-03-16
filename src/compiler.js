@@ -94,7 +94,7 @@ async function compile(srcFile, options) {
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
-        ctx.builder = new BuilderWasm();
+        ctx.builder = new BuilderWasm(options.sanityCheck);
         build(ctx);
         if (options.wasmWriteStream) {
             const rdStream = ctx.builder.build("wasm");

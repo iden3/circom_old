@@ -30,7 +30,7 @@ const version = require("./package").version;
 
 const argv = require("yargs")
     .version(version)
-    .usage("circom [input source circuit file] -o [output definition circuit file] -c [output c file]")
+    .usage("circom [input source circuit file] -r [output r1cs file] -c [output c file] -w [output wasm file] -t [output wat file] -s [output sym file]")
     .alias("o", "output")
     .alias("c", "csource")
     .alias("w", "wasm")
@@ -49,6 +49,10 @@ const argv = require("yargs")
         alias: "f",
         type: "boolean",
         description: "Do not optimize constraints"
+    })
+    .option("sanityCheck", {
+        type: "boolean",
+        description: "Add sanity check code"
     })
     .epilogue(`Copyright (C) 2018  0kims association
     This program comes with ABSOLUTELY NO WARRANTY;
@@ -79,6 +83,7 @@ const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 const options = {};
 options.reduceConstraints = !argv.fast;
 options.verbose = argv.verbose || false;
+options.sanityCheck = argv.sanitycheck;
 if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);
 }

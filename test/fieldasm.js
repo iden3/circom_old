@@ -17,6 +17,7 @@ describe("field asm test", function () {
         const tv = buildTestVector2(bn128r, "add");
         await tester(bn128r, tv);
     });
+/*
     it("secp256k1q add", async () => {
         const tv = buildTestVector2(secp256k1q, "add");
         await tester(secp256k1q, tv);
@@ -37,7 +38,6 @@ describe("field asm test", function () {
         const tv = buildTestVector2(mnt6753q, "sub");
         await tester(mnt6753q, tv);
     });
-
     it("bn128r neg", async () => {
         const tv = buildTestVector1(bn128r, "neg");
         await tester(bn128r, tv);
@@ -266,6 +266,51 @@ describe("field asm test", function () {
         const tv = buildTestVector1(mnt6753q, "square");
         await tester(mnt6753q, tv);
     });
+*/
+    it("bn128r shl", async () => {
+        const tv = buildTestVector2(bn128r, "shl");
+        await tester(bn128r, tv);
+    });
+/*
+    it("secp256k1q shl", async () => {
+        const tv = buildTestVector2(secp256k1q, "shl");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q shl", async () => {
+        const tv = buildTestVector2(mnt6753q, "shl");
+        await tester(mnt6753q, tv);
+    });
+*/
+    it("bn128r shr", async () => {
+        const tv = buildTestVector2(bn128r, "shr");
+        await tester(bn128r, tv);
+    });
+/*
+    it("secp256k1q shr", async () => {
+        const tv = buildTestVector2(secp256k1q, "shr");
+        await tester(secp256k1q, tv);
+    });
+    it("mnt6753q shr", async () => {
+        const tv = buildTestVector2(mnt6753q, "shr");
+        await tester(mnt6753q, tv);
+    });
+    it("mnt6753q band", async () => {
+        const tv = buildTestVector2(mnt6753q, "band");
+        await tester(mnt6753q, tv);
+    });
+    it("mnt6753q bor", async () => {
+        const tv = buildTestVector2(mnt6753q, "bor");
+        await tester(mnt6753q, tv);
+    });
+    it("mnt6753q bxor", async () => {
+        const tv = buildTestVector2(mnt6753q, "bxor");
+        await tester(mnt6753q, tv);
+    });
+    it("mnt6753q bnot", async () => {
+        const tv = buildTestVector1(mnt6753q, "bnot");
+        await tester(mnt6753q, tv);
+    });
+*/
 });
 
 function buildTestVector2(p, op) {
@@ -310,6 +355,9 @@ function getCriticalNumbers(p, lim) {
     const numbers = [];
 
     addFrontier(0);
+    addFrontier(bigInt(32));
+    addFrontier(bigInt(64));
+    addFrontier(bigInt(p.bitLength()));
     addFrontier(bigInt.one.shiftLeft(31));
     addFrontier(p.minus(bigInt.one.shiftLeft(31)));
     addFrontier(bigInt.one.shiftLeft(32));
