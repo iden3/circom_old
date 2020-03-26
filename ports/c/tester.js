@@ -52,7 +52,7 @@ async function  c_tester(circomFile, _options) {
         );
     } else throw("Unsupported platform");
 
-    const cdir = path.join(__dirname, "..", "..", "node_modules", "circom_runtime", "c");
+    const cdir = path.join(path.dirname(require.resolve("circom_runtime")), "c");
 
     await exec("g++" +
                ` ${path.join(cdir,  "main.cpp")}` +
