@@ -103,7 +103,11 @@ async function buildR1cs(ctx, fileName) {
 
     async function writeU64(v, pos) {
         const b = Buffer.allocUnsafe(8);
-        b.writeBigUInt64LE(BigInt(v));
+
+        const LSB = v & 0xFFFFFFFF;
+        const MSB = Math.floor(v / 0x100000000);
+        b.writeInt32LE(LSB, 0);
+        b.writeInt32LE(MSB, 4);
 
         await fd.write(b, 0, 8, pos);
 
