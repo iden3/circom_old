@@ -6,7 +6,7 @@ This tutorial will guide you in creating your first Zero Knowledge zkSnark circu
 
 ### 1.1 Pre-requisites
 
-If you don't have it installed yet, you need to install `Node.js`. 
+If you don't have it installed yet, you need to install `Node.js`.
 
 The last stable version of `Node.js` (or 8.12.0) works just fine, but if you install the latest current version `Node.js` (10.12.0) you will see a significant increase in performance. This is because last versions of node includes Big Integer Libraries nativelly. The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
 
@@ -16,6 +16,7 @@ Run:
 
 ```sh
 npm install -g circom
+npm install -g circom_runtime
 npm install -g snarkjs
 ```
 
@@ -42,7 +43,7 @@ template Multiplier() {
     signal private input a;
     signal private input b;
     signal output c;
-    
+
     c <== a*b;
 }
 
@@ -62,10 +63,12 @@ Note: When compiling a circuit, a component named `main` must always exist.
 We are now ready to compile the circuit. Run the following command:
 
 ```sh
-circom circuit.circom -o circuit.json
+circom circuit.circom --r1cs --wasm --sym
 ```
 
-to compile the circuit to a file named `circuit.json`
+The -r optin will generate `circuit.r1cs` ( The r1cs constraint system of the circuit in binary format)
+The -w will generate `circuit.wasm` (The wasm code to generate the witness)
+The -s will generate `circuit.sym` (This is the symbols file, required for debugging or if you want to print the constraint system in an annotated mode)
 
 
 ## 3. Taking the compiled circuit to *snarkjs*
@@ -74,7 +77,7 @@ Now that the circuit is compiled, we will continue with `snarkjs`.
 Please note that you can always access the help of `snarkjs` by typing:
 
 ```sh
-snarkjs --help 
+snarkjs --help
 ```
 
 ### 3.1 View information and stats regarding a circuit
@@ -82,13 +85,13 @@ snarkjs --help
 To show general statistics of this circuit, you can run:
 
 ```sh
-snarkjs info -c circuit.json
+snarkjs info -r circuit.r1cs
 ```
 
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs printconstraints -c circuit.json
+snarkjs printconstraints -r circuit.r1cs -s circuit.sym
 ```
 
 
@@ -98,10 +101,10 @@ snarkjs printconstraints -c circuit.json
 Ok, let's run a setup for our circuit:
 
 ```sh
-snarkjs setup 
+snarkjs setup
 ```
 
-> By default `snarkjs` will look for and use `circuit.json`.  You can always specify a different circuit file by adding `-c <circuit JSON file name>`
+> By default `snarkjs` will look for and use `circuit.r1cs`.  You can always specify a different circuit file by adding `-r <circuit R1CS file name>`
 
 The output of the setup will in the form of 2 files: `proving_key.json` and `verification_key.json`
 
@@ -109,13 +112,13 @@ The output of the setup will in the form of 2 files: `proving_key.json` and `ver
 
 Before creating any proof, we need to calculate all the signals of the circuit that match (all) the constrains of the circuit.
 
-`snarkjs` calculates those for you.  You need to provide a file with the inputs and it will execute the circuit and calculate all the intermediate signals and the output. This set of signals is the *witness*.
+`circom` generates a wasm module that calculates those for you.  You need to provide a file with the inputs and it will execute the circuit and calculate all the intermediate signals and the output. This set of signals is the *witness*.
 
 The zero knowledge proofs prove that you know a set of signals (witness) that match all the constraints, without revealing any of the signals except the public inputs plus the outputs.
 
-For example, imagine you want to prove you are able to factor 33. It means that you know two numbers `a` and `b` and when you multiply them, it results in 33. 
+For example, imagine you want to prove you are able to factor 33. It means that you know two numbers `a` and `b` and when you multiply them, it results in 33.
 
-> Of course you can always use one and the same number as `a` and `b`.  We  will deal with this problem later.
+> Of course you can always use one and the same number as `a` or `b`.  We  will deal with this problem later.
 
 So you want to prove that you know 3 and 11.
 
@@ -128,8 +131,12 @@ Let's create a file named `input.json`
 Now let's calculate the witness:
 
 ```sh
-snarkjs calculatewitness
+snarkjs --wasm circuit.wasm --input input.json --witness witness.json
 ```
+
+`calcwit` is part of the circom_runtime package and it's just a wrapper in JS to call the wasm module.
+
+You can use `circom_runtime` from your own project to calulate the witness.
 
 You may want to take a look at `witness.json` file with all the signals.
 
@@ -214,20 +221,20 @@ template Multiplier() {
     signal output c;
     signal inva;
     signal invb;
-    
+
     inva <-- 1/(a-1);
     (a-1)*inva === 1;
-    
+
     invb <-- 1/(b-1);
-    (b-1)*invb === 1;    
-    
+    (b-1)*invb === 1;
+
     c <== a*b;
 }
 
 component main = Multiplier();
 ```
 
-A nice thing of the circom language is that you can split a <== into two independent actions: <-- and === 
+A nice thing of the circom language is that you can split a <== into two independent actions: <-- and ===
 
 The <-- and --> operators assign a value to a signal without creating any constraints.
 

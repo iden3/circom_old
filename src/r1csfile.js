@@ -4,157 +4,6 @@ const assert = require("assert");
 const bigInt = require("big-integer");
 
 module.exports.buildR1cs = buildR1cs;
-module.exports.loadR1cs = loadR1cs;
-
-async function loadR1cs(fileName, loadConstraints, loadMap) {
-    const res = {};
-    const fd = await fs.promises.open(fileName, "r");
-
-    const b = Buffer.allocUnsafe(4);
-    await fd.read(b, 0, 4, 0);
-
-    if (b.toString() != "r1cs") assert(false, "Invalid File format");
-
-    let p=4;
-
-    let v = await readU32();
-
-    if (v>1) assert(false, "Version not supported");
-
-    const nSections = await readU32();
-
-    let pHeader;
-    let pConstraints;
-    let headerSize;
-    let constraintsSize;
-    let pMap;
-    let mapSize;
-    for (let i=0; i<nSections; i++) {
-        let ht = await readU32();
-        let hl = await readU32();
-        if (ht == 1) {
-            if (typeof pHeader != "undefined") assert(false, "File has two headder sections");
-            pHeader = p;
-            headerSize = hl;
-        } else if (ht==2) {
-            if (typeof pConstraints != "undefined") assert(false, "File has two constraints sections");
-            pConstraints = p;
-            constraintsSize = hl;
-        } else if (ht==3) {
-            pMap = p;
-            mapSize = hl;
-        }
-        p += hl;
-    }
-
-    if (typeof pHeader == "undefined") assert(false, "File has two header");
-
-    // Read Header
-    p = pHeader;
-    const fieldDefSize = await readU32();
-    const pFieldDef = p;
-
-    const defType = await readU32();
-    if (defType != 1) if (typeof pConstraints != "undefined") assert(false, "Field type not supported");
-
-    res.prime = await readBigInt();
-
-    if ( p != pFieldDef + fieldDefSize) assert("Invalid fieldDef size");
-
-    const bigIntFormat = await readU32();
-    if (bigIntFormat != 0) assert(false, "BigInt format not supported");
-
-    const idSize = await readU32();
-    if (idSize != 4) assert(false, "idSize not supported. Mus be 4");
-
-    res.nWires = await readU32();
-    res.nPubOuts = await readU32();
-    res.nPubIns = await readU32();
-    res.nPrvIns = await readU32();
-    res.nLabels = await readU32();
-    res.nConstraints = await readU32();
-
-    if (p != pHeader + headerSize) assert(false, "Invalid header section size");
-
-    if (loadConstraints) {
-        // Read Constraints
-        p = pConstraints;
-
-        res.constraints = [];
-        for (let i=0; i<res.nConstraints; i++) {
-            const c = await readConstraint();
-            res.constraints.push(c);
-        }
-        if (p != pConstraints + constraintsSize) assert(false, "Invalid constraints size");
-    }
-
-    // Read Labels
-
-    if (loadMap) {
-        p = pMap;
-
-        res.map = [];
-        for (let i=0; i<res.nLabels; i++) {
-            const idx = await readU32();
-            res.map.push(idx);
-        }
-        if (p != pMap + mapSize) assert(false, "Invalid Map size");
-    }
-
-    await fd.close();
-
-    return res;
-
-    async function readU32() {
-        const b = Buffer.allocUnsafe(4);
-        await fd.read(b, 0, 4, p);
-
-        p+=4;
-
-        return b.readInt32LE(0);
-    }
-
-    async function readBigInt() {
-        const bl = Buffer.allocUnsafe(1);
-        await fd.read(bl, 0, 1, p);
-        p++;
-
-        const l = bl[0];
-        const b = Buffer.allocUnsafe(l);
-        await fd.read(b, 0, l, p);
-        p += l;
-
-        const arr = Uint8Array.from(b);
-
-        const arrr = new Array(arr.length);
-        for (let i=0; i<arr.length; i++) {
-            arrr[i] = arr[arr.length-1-i];
-        }
-
-        const n = bigInt.fromArray(arrr, 256);
-
-        return n;
-    }
-
-    async function readConstraint() {
-        const c = {};
-        c.a = await readLC();
-        c.b = await readLC();
-        c.c = await readLC();
-        return c;
-    }
-
-    async function readLC() {
-        const lc= {};
-        const nIdx = await readU32();
-        for (let i=0; i<nIdx; i++) {
-            const idx = await readU32();
-            const val = await readBigInt();
-            lc[idx] = val;
-        }
-        return lc;
-    }
-}
 
 async function buildR1cs(ctx, fileName) {
 
@@ -171,18 +20,13 @@ async function buildR1cs(ctx, fileName) {
     ///////////
     await writeU32(1); // Header type
     const pHeaderSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeU64(0); // Temporally set to 0 length
 
 
+    const n8 = (Math.floor( (ctx.field.p.bitLength() - 1) / 64) +1)*8;
     // Field Def
-    const pFieldDefSize = p;
-    await writeU32(0); // Temporally set to 0 length
-    await writeU32(1);
+    await writeU32(n8); // Temporally set to 0 length
     await writeBigInt(ctx.field.p);
-    const fieldDefSize = p - pFieldDefSize - 4;
-
-    await writeU32(0);  // Variable bigInt format
-    await writeU32(4);  // Id Size
 
     const NWires =
         ctx.totals[ctx.stONE] +
@@ -195,16 +39,16 @@ async function buildR1cs(ctx, fileName) {
     await writeU32(ctx.totals[ctx.stOUTPUT]);
     await writeU32(ctx.totals[ctx.stPUBINPUT]);
     await writeU32(ctx.totals[ctx.stPRVINPUT]);
-    await writeU32(ctx.signals.length);
+    await writeU64(ctx.signals.length);
     await writeU32(ctx.constraints.length);
 
-    const headerSize = p - pHeaderSize - 4;
+    const headerSize = p - pHeaderSize - 8;
 
     // Write constraints
     ///////////
     await writeU32(2); // Constraints type
     const pConstraintsSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeU64(0); // Temporally set to 0 length
 
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) {
@@ -214,13 +58,13 @@ async function buildR1cs(ctx, fileName) {
         await writeConstraint(ctx.constraints[i]);
     }
 
-    const constraintsSize = p - pConstraintsSize - 4;
+    const constraintsSize = p - pConstraintsSize - 8;
 
     // Write map
     ///////////
     await writeU32(3); // wires2label type
     const pMapSize = p;
-    await writeU32(0); // Temporally set to 0 length
+    await writeU64(0); // Temporally set to 0 length
 
 
     const arr = new Array(NWires);
@@ -234,15 +78,14 @@ async function buildR1cs(ctx, fileName) {
         }
     }
     for (let i=0; i<arr.length; i++) {
-        await writeU32(arr[i]);
+        await writeU64(arr[i]);
         if ((ctx.verbose)&&(i%100000)) console.log("writing wire2label map: ", i);
     }
 
-    const mapSize = p - pMapSize -4;
+    const mapSize = p - pMapSize - 8;
 
     // Write sizes
     await writeU32(headerSize, pHeaderSize);
-    await writeU32(fieldDefSize, pFieldDefSize);
     await writeU32(constraintsSize, pConstraintsSize);
     await writeU32(mapSize, pMapSize);
 
@@ -256,6 +99,15 @@ async function buildR1cs(ctx, fileName) {
         await fd.write(b, 0, 4, pos);
 
         if (typeof(pos) == "undefined") p += 4;
+    }
+
+    async function writeU64(v, pos) {
+        const b = Buffer.allocUnsafe(8);
+        b.writeBigUInt64LE(BigInt(v));
+
+        await fd.write(b, 0, 8, pos);
+
+        if (typeof(pos) == "undefined") p += 8;
     }
 
     async function writeConstraint(c) {
@@ -277,12 +129,18 @@ async function buildR1cs(ctx, fileName) {
         }
     }
 
-    async function writeBigInt(n) {
+    async function writeBigInt(n, pos) {
+        const b = Buffer.allocUnsafe(n8);
 
-        const bytes = bigInt(n).toArray(256).value.reverse();
+        const dwords = bigInt(n).toArray(0x100000000).value;
 
-        await fd.write(Buffer.from([bytes.length, ...bytes ]));
+        for (let i=0; i<dwords.length; i++) {
+            b.writeUInt32LE(dwords[dwords.length-1-i], i*4, 4 );
+        }
+        b.fill(0, dwords.length*4);
 
-        p += bytes.length+1;
+        await fd.write(b, 0, fs, pos);
+
+        if (typeof(pos) == "undefined") p += n8;
     }
 }

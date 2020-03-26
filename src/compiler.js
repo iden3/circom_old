@@ -18,14 +18,14 @@
 */
 
 const bigInt = require("big-integer");
-const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const __P__ = bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 const sONE = 0;
 const build = require("./build");
 const BuilderC = require("../ports/c/builder.js");
 const BuilderWasm = require("../ports/wasm/builder.js");
 const constructionPhase = require("./construction_phase");
 const Ctx = require("./ctx");
-const ZqField = require("fflib").ZqField;
+const ZqField = require("ffjavascript").ZqField;
 const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
 const BigArray = require("./bigarray");
@@ -49,7 +49,7 @@ async function compile(srcFile, options) {
 
     constructionPhase(ctx, srcFile);
 
-    console.log("NConstraints Before: "+ctx.constraints.length);
+    if (ctx.verbose) console.log("NConstraints Before: "+ctx.constraints.length);
 
     if (ctx.error) {
         throw(ctx.error);
@@ -70,13 +70,13 @@ async function compile(srcFile, options) {
         // Repeat while reductions are performed
         let oldNConstrains = -1;
         while (ctx.constraints.length != oldNConstrains) {
-            console.log("Reducing constraints: "+ctx.constraints.length);
+            if (ctx.verbose) console.log("Reducing constraints: "+ctx.constraints.length);
             oldNConstrains = ctx.constraints.length;
             reduceConstrains(ctx);
         }
     }
 
-    console.log("NConstraints After: "+ctx.constraints.length);
+    if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
 
     generateWitnessNames(ctx);
 
@@ -94,7 +94,7 @@ async function compile(srcFile, options) {
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
-        ctx.builder = new BuilderWasm(options.sanityCheck);
+        ctx.builder = new BuilderWasm();
         build(ctx);
         if (options.wasmWriteStream) {
             const rdStream = ctx.builder.build("wasm");

@@ -924,7 +924,9 @@ function execConstrain(ctx, ast) {
 
     if (!ctx.lc.isZero(res)) {
         ctx.constraints.push(ctx.lc.toQEX(res));
-        if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
+        if (ctx.verbose) {
+            if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
+        }
     }
 
     return a;

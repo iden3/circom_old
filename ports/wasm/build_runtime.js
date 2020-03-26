@@ -1,13 +1,16 @@
 const errs = require("./errs");
 
 
-const buildWasmFf = require("fflib").buildWasmFf;
+const buildWasmFf = require("ffwasm").buildWasmFf;
 
 
 module.exports = function buildRuntime(module, builder) {
 
+    const pSanityCheck = module.alloc(4);
+
     function buildInit() {
         const f = module.addFunction("init");
+        f.addParam("sanityCheck", "i32");
         f.addLocal("i", "i32");
 
         const c = f.getCodeBuilder();
@@ -23,6 +26,14 @@ module.exports = function buildRuntime(module, builder) {
                     ),
                     c.i32_const(16)
                 )
+            )
+        );
+
+        // Save Sanity check flag
+        f.addCode(
+            c.i32_store(
+                c.i32_const(pSanityCheck),
+                c.getLocal("sanityCheck")
             )
         );
 
@@ -66,38 +77,36 @@ module.exports = function buildRuntime(module, builder) {
             ))
         );
 
-        if (builder.sanityCheck) {
-            f.addCode(
-                // i=0
-                c.setLocal("i", c.i32_const(0)),
-                c.block(c.loop(
-                    // if (i==NSignals) break
-                    c.br_if(1, c.i32_eq(c.getLocal("i"), c.i32_const(builder.header.NSignals))),
+        f.addCode(ifSanityCheck(c,
+            // i=0
+            c.setLocal("i", c.i32_const(0)),
+            c.block(c.loop(
+                // if (i==NSignals) break
+                c.br_if(1, c.i32_eq(c.getLocal("i"), c.i32_const(builder.header.NSignals))),
 
-                    // signalsAssigned[i] = false
-                    c.i32_store(
-                        c.i32_add(
-                            c.i32_const(builder.pSignalsAssigned),
-                            c.i32_mul(
-                                c.getLocal("i"),
-                                c.i32_const(4)
-                            )
-                        ),
-                        c.i32_const(0)
-                    ),
-
-                    // i=i+1
-                    c.setLocal(
-                        "i",
-                        c.i32_add(
+                // signalsAssigned[i] = false
+                c.i32_store(
+                    c.i32_add(
+                        c.i32_const(builder.pSignalsAssigned),
+                        c.i32_mul(
                             c.getLocal("i"),
-                            c.i32_const(1)
+                            c.i32_const(4)
                         )
                     ),
-                    c.br(0)
-                ))
-            );
-        }
+                    c.i32_const(0)
+                ),
+
+                // i=i+1
+                c.setLocal(
+                    "i",
+                    c.i32_add(
+                        c.getLocal("i"),
+                        c.i32_const(1)
+                    )
+                ),
+                c.br(0)
+            ))
+        ));
 
         f.addCode(
             c.call(
@@ -109,14 +118,12 @@ module.exports = function buildRuntime(module, builder) {
                 )
             )
         );
-        if (builder.sanityCheck) {
-            f.addCode(
-                c.i32_store(
-                    c.i32_const(builder.pSignalsAssigned),
-                    c.i32_const(1)
-                )
-            );
-        }
+        f.addCode(ifSanityCheck(c,
+            c.i32_store(
+                c.i32_const(builder.pSignalsAssigned),
+                c.i32_const(1)
+            )
+        ));
 
         f.addCode(
             // i=0
@@ -156,6 +163,13 @@ module.exports = function buildRuntime(module, builder) {
             ))
         );
 
+    }
+
+    function ifSanityCheck(c, ...args) {
+        return c.if(
+            c.i32_load(c.i32_const(pSanityCheck)),
+            [].concat(...[...args])
+        );
     }
 
 
@@ -227,9 +241,13 @@ module.exports = function buildRuntime(module, builder) {
                 c.if(
                     c.i64_eqz(c.getLocal("h")),
                     c.call(
-                        "err",
+                        "error",
                         c.i32_const(errs.HASH_NOT_FOUND.code),
-                        c.i32_const(errs.HASH_NOT_FOUND.pointer)
+                        c.i32_const(errs.HASH_NOT_FOUND.pointer),
+                        c.i32_const(0),
+                        c.i32_const(0),
+                        c.i32_const(0),
+                        c.i32_const(0)
                     )
                 ),
                 c.setLocal(
@@ -296,9 +314,13 @@ module.exports = function buildRuntime(module, builder) {
                     c.i32_const(type)
                 ),
                 c.call(
-                    "err",
+                    "error",
                     c.i32_const(errs.INVALID_TYPE.code),
-                    c.i32_const(errs.INVALID_TYPE.pointer)
+                    c.i32_const(errs.INVALID_TYPE.pointer),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0)
                 )
             ),
             c.i32_store(
@@ -345,28 +367,30 @@ module.exports = function buildRuntime(module, builder) {
 
         const c = f.getCodeBuilder();
 
-        if (builder.sanityCheck) {
-            f.addCode(
-                c.if(
-                    c.i32_eqz(
-                        c.i32_load(
-                            c.i32_add(
-                                c.i32_const(builder.pSignalsAssigned),
-                                c.i32_mul(
-                                    c.getLocal("signal"),
-                                    c.i32_const(4)
-                                )
-                            ),
-                        )
-                    ),
-                    c.call(
-                        "err",
-                        c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.code),
-                        c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.pointer)
+        f.addCode(ifSanityCheck(c,
+            c.if(
+                c.i32_eqz(
+                    c.i32_load(
+                        c.i32_add(
+                            c.i32_const(builder.pSignalsAssigned),
+                            c.i32_mul(
+                                c.getLocal("signal"),
+                                c.i32_const(4)
+                            )
+                        ),
                     )
+                ),
+                c.call(
+                    "error",
+                    c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.code),
+                    c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.pointer),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0)
                 )
-            );
-        }
+            )
+        ));
 
         f.addCode(
             c.call(
@@ -381,6 +405,11 @@ module.exports = function buildRuntime(module, builder) {
                 )
             )
         );
+
+        f.addCode(ifSanityCheck(c,
+            c.call("logGetSignal", c.getLocal("signal"), c.getLocal("pR") )
+        ));
+
     }
 
 
@@ -395,25 +424,10 @@ module.exports = function buildRuntime(module, builder) {
         const c = f.getCodeBuilder();
 
 
-        if (builder.sanityCheck) {
-            f.addCode(
-                c.if(
-                    c.i32_load(
-                        c.i32_add(
-                            c.i32_const(builder.pSignalsAssigned),
-                            c.i32_mul(
-                                c.getLocal("signal"),
-                                c.i32_const(4)
-                            )
-                        ),
-                    ),
-                    c.call(
-                        "err",
-                        c.i32_const(errs.SIGNAL_ASSIGNED_TWICE.code),
-                        c.i32_const(errs.SIGNAL_ASSIGNED_TWICE.pointer)
-                    )
-                ),
-                c.i32_store(
+        f.addCode(ifSanityCheck(c,
+            c.call("logSetSignal", c.getLocal("signal"), c.getLocal("pVal") ),
+            c.if(
+                c.i32_load(
                     c.i32_add(
                         c.i32_const(builder.pSignalsAssigned),
                         c.i32_mul(
@@ -421,10 +435,28 @@ module.exports = function buildRuntime(module, builder) {
                             c.i32_const(4)
                         )
                     ),
-                    c.i32_const(1)
                 ),
-            );
-        }
+                c.call(
+                    "error",
+                    c.i32_const(errs.SIGNAL_ASSIGNED_TWICE.code),
+                    c.i32_const(errs.SIGNAL_ASSIGNED_TWICE.pointer),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0)
+                )
+            ),
+            c.i32_store(
+                c.i32_add(
+                    c.i32_const(builder.pSignalsAssigned),
+                    c.i32_mul(
+                        c.getLocal("signal"),
+                        c.i32_const(4)
+                    )
+                ),
+                c.i32_const(1)
+            ),
+        ));
 
         f.addCode(
             c.call(
@@ -510,11 +542,13 @@ module.exports = function buildRuntime(module, builder) {
                             )
                         ],
                         c.call(
-                            "err2",
+                            "error",
                             c.i32_const(errs.MAPISINPUT_DONT_MATCH.code),
                             c.i32_const(errs.MAPISINPUT_DONT_MATCH.pointer),
                             c.getLocal("component"),
-                            c.getLocal("signal")
+                            c.getLocal("signal"),
+                            c.i32_const(0),
+                            c.i32_const(0)
                         )
                     )
                 ]
@@ -527,6 +561,23 @@ module.exports = function buildRuntime(module, builder) {
         f.addParam("cIdx", "i32");
 
         const c = f.getCodeBuilder();
+
+        f.addCode(ifSanityCheck(c,
+            c.call("logFinishComponent", c.getLocal("cIdx"))
+        ));
+
+        f.addCode(c.ret([]));
+    }
+
+    function buildComponentStarted() {
+        const f = module.addFunction("componentStarted");
+        f.addParam("cIdx", "i32");
+
+        const c = f.getCodeBuilder();
+
+        f.addCode(ifSanityCheck(c,
+            c.call("logStartComponent", c.getLocal("cIdx"))
+        ));
 
         f.addCode(c.ret([]));
     }
@@ -541,33 +592,31 @@ module.exports = function buildRuntime(module, builder) {
 
         const c = f.getCodeBuilder();
 
-        if (builder.sanityCheck) {
-            f.addCode(
-                c.call(
-                    "Fr_eq",
-                    c.i32_const(pTmp),
-                    c.getLocal("pA"),
-                    c.getLocal("pB")
-                ),
-                c.if (
-                    c.i32_eqz(
-                        c.call(
-                            "Fr_isTrue",
-                            c.i32_const(pTmp),
-                        )
-                    ),
+        f.addCode(ifSanityCheck(c,
+            c.call(
+                "Fr_eq",
+                c.i32_const(pTmp),
+                c.getLocal("pA"),
+                c.getLocal("pB")
+            ),
+            c.if (
+                c.i32_eqz(
                     c.call(
-                        "err4",
-                        c.i32_const(errs.CONSTRAIN_DOES_NOT_MATCH.code),
-                        c.i32_const(errs.CONSTRAIN_DOES_NOT_MATCH.pointer),
-                        c.getLocal("cIdx"),
-                        c.getLocal("pA"),
-                        c.getLocal("pB"),
-                        c.getLocal("pStr"),
+                        "Fr_isTrue",
+                        c.i32_const(pTmp),
                     )
+                ),
+                c.call(
+                    "error",
+                    c.i32_const(errs.CONSTRAIN_DOES_NOT_MATCH.code),
+                    c.i32_const(errs.CONSTRAIN_DOES_NOT_MATCH.pointer),
+                    c.getLocal("cIdx"),
+                    c.getLocal("pA"),
+                    c.getLocal("pB"),
+                    c.getLocal("pStr"),
                 )
-            );
-        }
+            )
+        ));
     }
 
     function buildGetNVars() {
@@ -638,9 +687,13 @@ module.exports = function buildRuntime(module, builder) {
                         )
                     ),
                     c.call(
-                        "err",
+                        "error",
                         c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.code),
-                        c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.pointer)
+                        c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.pointer),
+                        c.i32_const(0),
+                        c.i32_const(0),
+                        c.i32_const(0),
+                        c.i32_const(0)
                     )
                 )
             );
@@ -658,35 +711,92 @@ module.exports = function buildRuntime(module, builder) {
         );
     }
 
-    const fErr = module.addIimportFunction("err", "runtime");
-    fErr.addParam("code", "i32");
-    fErr.addParam("pStr", "i32");
+    function buildGetWitnessBuffer() {
+        const f = module.addFunction("getWitnessBuffer");
+        f.setReturnType("i32");
+        f.addLocal("i", "i32");
+        f.addLocal("pSrc", "i32");
+        f.addLocal("pDst", "i32");
 
-    const fErr1 = module.addIimportFunction("err1", "runtime");
-    fErr1.addParam("code", "i32");
-    fErr1.addParam("pStr", "i32");
-    fErr1.addParam("param1", "i32");
+        const c = f.getCodeBuilder();
 
-    const fErr2 = module.addIimportFunction("err2", "runtime");
-    fErr2.addParam("code", "i32");
-    fErr2.addParam("pStr", "i32");
-    fErr2.addParam("param1", "i32");
-    fErr2.addParam("param2", "i32");
+        f.addCode(
+            c.setLocal("i", c.i32_const(0)),
+            c.block(c.loop(
+                // if (i==NComponents) break
+                c.br_if(1, c.i32_eq(c.getLocal("i"), c.i32_const(builder.header.NVars))),
 
-    const fErr3 = module.addIimportFunction("err3", "runtime");
-    fErr3.addParam("code", "i32");
-    fErr3.addParam("pStr", "i32");
-    fErr3.addParam("param1", "i32");
-    fErr3.addParam("param2", "i32");
-    fErr3.addParam("param3", "i32");
+                c.setLocal(
+                    "pSrc",
+                    c.i32_add(
+                        c.i32_const(builder.pSignals),
+                        c.i32_mul(
+                            c.getLocal("i"),
+                            c.i32_const(builder.sizeFr)
+                        )
+                    )
+                ),
 
-    const fErr4 = module.addIimportFunction("err4", "runtime");
-    fErr4.addParam("code", "i32");
-    fErr4.addParam("pStr", "i32");
-    fErr4.addParam("param1", "i32");
-    fErr4.addParam("param2", "i32");
-    fErr4.addParam("param3", "i32");
-    fErr4.addParam("param4", "i32");
+                c.call(
+                    "Fr_toLongNormal",
+                    c.getLocal("pSrc")
+                ),
+
+                c.setLocal(
+                    "pDst",
+                    c.i32_add(
+                        c.i32_const(builder.pSignals),
+                        c.i32_mul(
+                            c.getLocal("i"),
+                            c.i32_const(builder.sizeFr-8)
+                        )
+                    )
+                ),
+
+                c.call(
+                    "Fr_F1m_copy",
+                    c.i32_add(c.getLocal("pSrc"), c.i32_const(8)),
+                    c.getLocal("pDst")
+                ),
+
+                // i=i+1
+                c.setLocal(
+                    "i",
+                    c.i32_add(
+                        c.getLocal("i"),
+                        c.i32_const(1)
+                    )
+                ),
+                c.br(0)
+            )),
+
+            c.i32_const(builder.pSignals)
+        );
+
+    }
+
+
+    const fError = module.addIimportFunction("error", "runtime");
+    fError.addParam("code", "i32");
+    fError.addParam("pStr", "i32");
+    fError.addParam("param1", "i32");
+    fError.addParam("param2", "i32");
+    fError.addParam("param3", "i32");
+    fError.addParam("param4", "i32");
+
+    const fLogSetSignal = module.addIimportFunction("logSetSignal", "runtime");
+    fLogSetSignal.addParam("signal", "i32");
+    fLogSetSignal.addParam("val", "i32");
+
+    const fLogGetSignal = module.addIimportFunction("logGetSignal", "runtime");
+    fLogGetSignal.addParam("signal", "i32");
+    fLogGetSignal.addParam("val", "i32");
+
+    const fLogFinishComponent = module.addIimportFunction("logFinishComponent", "runtime");
+    fLogFinishComponent.addParam("cIdx", "i32");
+
+    const fLogStartComponent = module.addIimportFunction("logStartComponent", "runtime");
+    fLogStartComponent.addParam("cIdx", "i32");
 
     const fLog = module.addIimportFunction("log", "runtime");
     fLog.addParam("code", "i32");
@@ -695,9 +805,7 @@ module.exports = function buildRuntime(module, builder) {
 
     builder.pSignals=module.alloc(builder.header.NSignals*builder.sizeFr);
     builder.pInputSignalsToTrigger=module.alloc(builder.header.NComponents*4);
-    if (builder.sanityCheck) {
-        builder.pSignalsAssigned=module.alloc(builder.header.NSignals*4);
-    }
+    builder.pSignalsAssigned=module.alloc(builder.header.NSignals*4);
 
     buildHash2ComponentEntry();
 
@@ -713,6 +821,7 @@ module.exports = function buildRuntime(module, builder) {
     buildGetSignal();
     buildSetSignal();
 
+    buildComponentStarted();
     buildComponentFinished();
 
     buildCheckConstraint();
@@ -721,6 +830,7 @@ module.exports = function buildRuntime(module, builder) {
     buildGetFrLen();
     buildGetPWitness();
     buildGetPRawPrime();
+    buildGetWitnessBuffer();
 
 //    buildFrToInt();
 
@@ -732,5 +842,6 @@ module.exports = function buildRuntime(module, builder) {
     module.exportFunction("getPWitness");
     module.exportFunction("Fr_toInt");
     module.exportFunction("getPRawPrime");
+    module.exportFunction("getWitnessBuffer");
 
 };

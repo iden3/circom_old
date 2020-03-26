@@ -23,6 +23,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const bigInt = require("big-integer");
 
 const compiler = require("./src/compiler");
 
@@ -37,6 +38,7 @@ const argv = require("yargs")
     .alias("t", "wat")
     .alias("s", "sym")
     .alias("r", "r1cs")
+    .alias("p", "prime")
     .alias("n", "newThreadTemplates")
     .help("h")
     .alias("h", "help")
@@ -49,10 +51,6 @@ const argv = require("yargs")
         alias: "f",
         type: "boolean",
         description: "Do not optimize constraints"
-    })
-    .option("sanityCheck", {
-        type: "boolean",
-        description: "Add sanity check code"
     })
     .epilogue(`Copyright (C) 2018  0kims association
     This program comes with ABSOLUTELY NO WARRANTY;
@@ -84,6 +82,8 @@ const options = {};
 options.reduceConstraints = !argv.fast;
 options.verbose = argv.verbose || false;
 options.sanityCheck = argv.sanitycheck;
+options.prime = argv.prime || bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+
 if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);
 }

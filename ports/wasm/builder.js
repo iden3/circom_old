@@ -528,9 +528,13 @@ class FunctionBuilderWasm {
                     c.getLocal("sp")
                 ),
                 c.call(
-                    "err",
+                    "error",
                     c.i32_const(errs.STACK_OUT_OF_MEM.code),
-                    c.i32_const(errs.STACK_OUT_OF_MEM.pointer)
+                    c.i32_const(errs.STACK_OUT_OF_MEM.pointer),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0)
                 )
             ),
 
@@ -550,9 +554,13 @@ class FunctionBuilderWasm {
                     c.getLocal("sp")
                 ),
                 c.call(
-                    "err",
+                    "error",
                     c.i32_const(errs.STACK_TOO_SMALL.code),
-                    c.i32_const(errs.STACK_TOO_SMALL.pointer)
+                    c.i32_const(errs.STACK_TOO_SMALL.pointer),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0),
+                    c.i32_const(0)
                 )
             ),
 
@@ -650,7 +658,12 @@ class FunctionBuilderWasm {
 
         const c = f.getCodeBuilder();
 
+
         const code = [];
+        if (this.type=="COMPONENT") {
+            code.push(c.call("componentStarted", c.getLocal("cIdx")));
+        }
+
         code.push(this._buildHeader(c));
         code.push(this.body.build(c));
         if (this.type=="COMPONENT") {
@@ -676,7 +689,7 @@ class FunctionBuilderWasm {
 }
 
 class BuilderWasm {
-    constructor(sanityCheck) {
+    constructor() {
         this.hashMaps={};
         this.componentEntriesTables={};
         this.sizes ={};
@@ -684,7 +697,6 @@ class BuilderWasm {
         this.usedConstants = {};
         this.functions = [];
         this.components = [];
-        this.sanityCheck = sanityCheck;
 
         this.TYPE_SIGNAL = 1;
         this.TYPE_COMPONENT = 2;

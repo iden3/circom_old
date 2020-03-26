@@ -5,20 +5,15 @@ const fs = require("fs");
 var tmp = require("tmp-promise");
 const path = require("path");
 const compiler = require("../../src/compiler");
-const util = require("util");
-const exec = util.promisify(require("child_process").exec);
 
-const stringifyBigInts = require("../../src/utils").stringifyBigInts;
-const unstringifyBigInts = require("../../src/utils").unstringifyBigInts;
 const bigInt = require("big-integer");
 const utils = require("../../src/utils");
-const loadR1cs = require("../../src/r1csfile").loadR1cs;
-const ZqField = require("fflib").ZqField;
+const loadR1cs = require("r1csfile").load;
+const ZqField = require("ffjavascript").ZqField;
 
-const WitnessCalculator = require("./witness_calculator");
+const WitnessCalculatorBuilder = require("circom_runtime").WitnessCalculatorBuilder;
 
 module.exports = wasm_tester;
-
 
 async function  wasm_tester(circomFile, _options) {
     tmp.setGracefulCleanup();
@@ -33,7 +28,6 @@ async function  wasm_tester(circomFile, _options) {
     options.wasmWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".wasm"));
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
-    options.sanityCheck = true;
 
     const promisesArr = [];
     promisesArr.push(new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill)));
@@ -42,7 +36,9 @@ async function  wasm_tester(circomFile, _options) {
 
     await Promise.all(promisesArr);
 
-    const wc = await WitnessCalculator.fromFile(path.join(dir.path, baseName + ".wasm"));
+    const wasm = await fs.promises.readFile(path.join(dir.path, baseName + ".wasm"));
+
+    const wc = await WitnessCalculatorBuilder(wasm);
 
     return new WasmTester(dir, baseName, wc);
 }
@@ -74,10 +70,11 @@ class WasmTester {
         const lines = symsStr.split("\n");
         for (let i=0; i<lines.length; i++) {
             const arr = lines[i].split(",");
-            if (arr.length!=3) continue;
-            this.symbols[arr[2]] = {
-                idx: Number(arr[0]),
-                idxWit: Number(arr[1])
+            if (arr.length!=4) continue;
+            this.symbols[arr[3]] = {
+                labelIdx: Number(arr[0]),
+                varIdx: Number(arr[1]),
+                componentIdx: Number(arr[2]),
             };
         }
     }
@@ -87,7 +84,7 @@ class WasmTester {
         if (this.constraints) return;
         const r1cs = await loadR1cs(path.join(this.dir.path, this.baseName + ".r1cs"),true, false);
         self.field = new ZqField(r1cs.prime);
-        self.nWires = r1cs.nWires;
+        self.nVars = r1cs.nVars;
         self.constraints = r1cs.constraints;
     }
 
@@ -111,7 +108,7 @@ class WasmTester {
                 if (typeof self.symbols[prefix] == "undefined") {
                     assert(false, "Output variable not defined: "+ prefix);
                 }
-                const ba = bigInt(actualOut[self.symbols[prefix].idxWit]).toString();
+                const ba = bigInt(actualOut[self.symbols[prefix].varIdx]).toString();
                 const be = bigInt(eOut).toString();
                 assert.strictEqual(ba, be, prefix);
             }
@@ -124,8 +121,8 @@ class WasmTester {
         if (!self.symbols) await self.loadSymbols();
         for (let n in self.symbols) {
             let v;
-            if (utils.isDefined(witness[self.symbols[n].idxWit])) {
-                v = witness[self.symbols[n].idxWit].toString();
+            if (utils.isDefined(witness[self.symbols[n].varIdx])) {
+                v = witness[self.symbols[n].varIdx].toString();
             } else {
                 v = "undefined";
             }
@@ -143,9 +140,9 @@ class WasmTester {
 
         function checkConstraint(constraint) {
             const F = self.field;
-            const a = evalLC(constraint.a);
-            const b = evalLC(constraint.b);
-            const c = evalLC(constraint.c);
+            const a = evalLC(constraint[0]);
+            const b = evalLC(constraint[1]);
+            const c = evalLC(constraint[2]);
 
             assert (F.sub(F.mul(a,b), c).isZero(), "Constraint doesn't match");
         }

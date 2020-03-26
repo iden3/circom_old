@@ -8,12 +8,11 @@ const compiler = require("../../src/compiler");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const stringifyBigInts = require("../../src/utils").stringifyBigInts;
-const unstringifyBigInts = require("../../src/utils").unstringifyBigInts;
 const bigInt = require("big-integer");
 const utils = require("../../src/utils");
-const loadR1cs = require("../../src/r1csfile").loadR1cs;
-const ZqField = require("fflib").ZqField;
+const loadR1cs = require("r1csfile").load;
+const ZqField = require("ffjavascript").ZqField;
+const buildZqField = require("ffiasm").buildZqField;
 
 module.exports = c_tester;
 
@@ -31,22 +30,39 @@ async function  c_tester(circomFile, _options) {
     options.cSourceWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".cpp"));
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
+
+    options.p = options.p || bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
     await compiler(circomFile, options);
 
-    const cdir = path.join(__dirname, "..", "c");
-    await exec("cp" +
-               ` ${path.join(dir.path, baseName + ".cpp")}` +
-               " /tmp/circuit.cpp"
-    );
+    const source = await buildZqField(options.p, "Fr");
+
+    // console.log(dir.path);
+
+    await fs.promises.writeFile(path.join(dir.path, "fr.asm"), source.asm, "utf8");
+    await fs.promises.writeFile(path.join(dir.path, "fr.h"), source.h, "utf8");
+    await fs.promises.writeFile(path.join(dir.path, "fr.c"), source.c, "utf8");
+
+    if (process.platform === "darwin") {
+        await exec("nasm -fmacho64 --prefix _ " +
+            ` ${path.join(dir.path,  "fr.asm")}`
+        );
+    }  else if (process.platform === "linux") {
+        await exec("nasm -felf64 " +
+            ` ${path.join(dir.path,  "fr.asm")}`
+        );
+    } else throw("Unsupported platform");
+
+    const cdir = path.join(__dirname, "..", "..", "node_modules", "circom_runtime", "c");
+
     await exec("g++" +
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
-               ` ${path.join(cdir,  "fr.c")}` +
-               ` ${path.join(cdir,  "fr.o")}` +
+               ` ${path.join(dir.path,  "fr.c")}` +
+               ` ${path.join(dir.path,  "fr.o")}` +
                ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` -o ${path.join(dir.path, baseName)}` +
-               ` -I ${cdir}` +
+               ` -I ${dir.path} -I${cdir}` +
                " -lgmp -std=c++11 -DSANITY_CHECK -g"
     );
 
@@ -68,7 +84,7 @@ class CTester {
     async calculateWitness(input) {
         await fs.promises.writeFile(
             path.join(this.dir.path, "in.json"),
-            JSON.stringify(stringifyBigInts(input), null, 1)
+            JSON.stringify(utils.stringifyBigInts(input), null, 1)
         );
         const r = await exec(`${path.join(this.dir.path, this.baseName)}` +
                    ` ${path.join(this.dir.path, "in.json")}` +
@@ -81,7 +97,7 @@ class CTester {
             path.join(this.dir.path, "out.json")
         );
 
-        const res = unstringifyBigInts(JSON.parse(resStr));
+        const res = utils.unstringifyBigInts(JSON.parse(resStr));
         return res;
     }
 
@@ -95,10 +111,11 @@ class CTester {
         const lines = symsStr.split("\n");
         for (let i=0; i<lines.length; i++) {
             const arr = lines[i].split(",");
-            if (arr.length!=3) continue;
-            this.symbols[arr[2]] = {
-                idx: Number(arr[0]),
-                idxWit: Number(arr[1])
+            if (arr.length!=4) continue;
+            this.symbols[arr[3]] = {
+                labelIdx: Number(arr[0]),
+                varIdx: Number(arr[1]),
+                componentIdx: Number(arr[2]),
             };
         }
     }
@@ -108,7 +125,7 @@ class CTester {
         if (this.constraints) return;
         const r1cs = await loadR1cs(path.join(this.dir.path, this.baseName + ".r1cs"),true, false);
         self.field = new ZqField(r1cs.prime);
-        self.nWires = r1cs.nWires;
+        self.nVars = r1cs.nVars;
         self.constraints = r1cs.constraints;
     }
 
@@ -132,7 +149,7 @@ class CTester {
                 if (typeof self.symbols[prefix] == "undefined") {
                     assert(false, "Output variable not defined: "+ prefix);
                 }
-                const ba = bigInt(actualOut[self.symbols[prefix].idxWit]).toString();
+                const ba = bigInt(actualOut[self.symbols[prefix].varIdx]).toString();
                 const be = bigInt(eOut).toString();
                 assert.strictEqual(ba, be, prefix);
             }
@@ -145,8 +162,8 @@ class CTester {
         if (!self.symbols) await self.loadSymbols();
         for (let n in self.symbols) {
             let v;
-            if (utils.isDefined(witness[self.symbols[n].idxWit])) {
-                v = witness[self.symbols[n].idxWit].toString();
+            if (utils.isDefined(witness[self.symbols[n].varIdx])) {
+                v = witness[self.symbols[n].varIdx].toString();
             } else {
                 v = "undefined";
             }
@@ -164,9 +181,9 @@ class CTester {
 
         function checkConstraint(constraint) {
             const F = self.field;
-            const a = evalLC(constraint.a);
-            const b = evalLC(constraint.b);
-            const c = evalLC(constraint.c);
+            const a = evalLC(constraint[0]);
+            const b = evalLC(constraint[1]);
+            const c = evalLC(constraint[2]);
 
             assert (F.sub(F.mul(a,b), c).isZero(), "Constraint doesn't match");
         }

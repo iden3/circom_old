@@ -56,11 +56,10 @@ describe("basic cases", function () {
         });
     }
 
-/*
     for (let i=0; i<basicCases.length; i++) {
         it("wasm " + basicCases[i].name, async () => {
             await doTest(wasm_tester, basicCases[i].circuit, basicCases[i].tv);
         });
     }
-*/
+
 });
