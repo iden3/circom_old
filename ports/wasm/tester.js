@@ -55,9 +55,8 @@ class WasmTester {
         await this.dir.cleanup();
     }
 
-    async calculateWitness(input) {
-
-        return await this.witnessCalculator.calculateWitness(input);
+    async calculateWitness(input, sanityCheck) {
+        return await this.witnessCalculator.calculateWitness(input, sanityCheck);
     }
 
     async loadSymbols() {
