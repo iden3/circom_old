@@ -16,7 +16,6 @@ Run:
 
 ```sh
 npm install -g circom
-npm install -g circom_runtime
 npm install -g snarkjs
 ```
 
@@ -135,10 +134,6 @@ Now let's calculate the witness:
 ```sh
 snarkjs calculatewitness --wasm circuit.wasm --input input.json --witness witness.json
 ```
-
-`calcwit` is part of the circom_runtime package and it's just a wrapper in JS to call the wasm module.
-
-You can use `circom_runtime` from your own project to calulate the witness.
 
 You may want to take a look at `witness.json` file with all the signals.
 
