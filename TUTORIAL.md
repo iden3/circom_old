@@ -1,6 +1,6 @@
 # circom and snarkjs tutorial
 
-This tutorial will guide you in creating your first Zero Knowledge zkSnark circuit. It will take you through the various techniques to write circuits, and will show you how to create proofs and verify them off-chain and on-chain on Ethereum.
+This tutorial will guide you in creating your first zero-knowledge SNARK circuit. It will take you through the various techniques to write circuits and show you how to create and verify proofs off-chain and on-chain on Ethereum.
 
 ## 1. Installing the tools
 
@@ -23,7 +23,7 @@ npm install -g snarkjs
 
 ## 2. Working with a circuit
 
-Let's create a circuit that tries to prove that you are able to factor a number!
+Let's create a circuit that will allow you to prove that you are able to factor a number!
 
 ### 2.1 Create a circuit in a new directory
 
@@ -66,9 +66,11 @@ We are now ready to compile the circuit. Run the following command:
 circom circuit.circom --r1cs --wasm --sym
 ```
 
-The -r optin will generate `circuit.r1cs` ( The r1cs constraint system of the circuit in binary format)
-The -w will generate `circuit.wasm` (The wasm code to generate the witness)
-The -s will generate `circuit.sym` (This is the symbols file, required for debugging or if you want to print the constraint system in an annotated mode)
+The `-r` option will generate `circuit.r1cs` (the r1cs constraint system of the circuit in binary format).
+
+The `-w` option will generate `circuit.wasm` (the wasm code to generate the witness).
+
+The `-s` option will generate `circuit.sym` (a symbols file required for debugging or if you want to print the constraint system in an annotated mode).
 
 
 ## 3. Taking the compiled circuit to *snarkjs*
