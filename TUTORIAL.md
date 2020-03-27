@@ -131,7 +131,7 @@ Let's create a file named `input.json`
 Now let's calculate the witness:
 
 ```sh
-snarkjs --wasm circuit.wasm --input input.json --witness witness.json
+snarkjs calculatewitness --wasm circuit.wasm --input input.json --witness witness.json
 ```
 
 `calcwit` is part of the circom_runtime package and it's just a wrapper in JS to call the wasm module.
