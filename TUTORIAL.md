@@ -66,11 +66,11 @@ We are now ready to compile the circuit. Run the following command:
 circom circuit.circom --r1cs --wasm --sym
 ```
 
-The `-r` option will generate `circuit.r1cs` (the r1cs constraint system of the circuit in binary format).
+The `--r1cs` option will generate `circuit.r1cs` (the r1cs constraint system of the circuit in binary format).
 
-The `-w` option will generate `circuit.wasm` (the wasm code to generate the witness).
+The `--wasm` option will generate `circuit.wasm` (the wasm code to generate the witness).
 
-The `-s` option will generate `circuit.sym` (a symbols file required for debugging or if you want to print the constraint system in an annotated mode).
+The `--sym` option will generate `circuit.sym` (a symbols file required for debugging or if you want to print the constraint system in an annotated mode).
 
 
 ## 3. Taking the compiled circuit to *snarkjs*
