@@ -77,7 +77,7 @@ function fnvHash(str) {
 
 
 function stringifyBigInts(o) {
-    if ((typeof(o) == "bigint") || o.isZero !== undefined)  {
+    if ((typeof(o) == "bigint") || o.eq !== undefined)  {
         return o.toString(10);
     } else if (Array.isArray(o)) {
         return o.map(stringifyBigInts);

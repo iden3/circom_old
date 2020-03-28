@@ -85,12 +85,6 @@ class LCAlgebra {
         const self = this;
         this.field= aField;
         [
-            ["lt",2],
-            ["leq",2],
-            ["eq",2],
-            ["neq",2],
-            ["geq",2],
-            ["gt",2],
             ["idiv",2],
             ["mod",2],
             ["band",2],
@@ -102,12 +96,18 @@ class LCAlgebra {
             ["lnot",2],
             ["shl",2],
             ["shr",2],
+            ["lt",2, true],
+            ["leq",2, true],
+            ["eq",2, true],
+            ["neq",2, true],
+            ["geq",2, true],
+            ["gt",2, true]
         ].forEach( (op) => {
-            self._genNQOp(op[0], op[1]);
+            self._genNQOp(op[0], op[1], op[2]);
         });
     }
 
-    _genNQOp(op, nOps) {
+    _genNQOp(op, nOps, adjustBool) {
         const self=this;
         self[op] = function() {
             const operands = [];
@@ -118,7 +118,7 @@ class LCAlgebra {
             }
             return {
                 t: "N",
-                v: self.field[op](...operands)
+                v: adjustBool ? ( self.field[op](...operands) ? bigInt.one: bigInt.zero) : self.field[op](...operands)
             };
         };
     }

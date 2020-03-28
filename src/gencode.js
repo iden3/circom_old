@@ -175,17 +175,17 @@ function gen(ctx, ast) {
         } else if (ast.op == ">>") {
             return genOp(ctx, ast, "shr", 2);
         } else if (ast.op == "<") {
-            return genOp(ctx, ast, "lt", 2);
+            return genOp(ctx, ast, "lt", 2, true);
         } else if (ast.op == ">") {
-            return genOp(ctx, ast, "gt", 2);
+            return genOp(ctx, ast, "gt", 2, true);
         } else if (ast.op == "<=") {
-            return genOp(ctx, ast, "leq", 2);
+            return genOp(ctx, ast, "leq", 2, true);
         } else if (ast.op == ">=") {
-            return genOp(ctx, ast, "geq", 2);
+            return genOp(ctx, ast, "geq", 2, true);
         } else if (ast.op == "==") {
-            return genOp(ctx, ast, "eq", 2);
+            return genOp(ctx, ast, "eq", 2, true);
         } else if (ast.op == "!=") {
-            return genOp(ctx, ast, "neq", 2);
+            return genOp(ctx, ast, "neq", 2, true);
         } else if (ast.op == "?") {
             return genTerCon(ctx, ast);
         } else {
@@ -1121,7 +1121,7 @@ function genOpOp(ctx, ast, op, lr) {
     }
 }
 
-function genOp(ctx, ast, op, nOps) {
+function genOp(ctx, ast, op, nOps, adjustBool) {
     const vals = [];
     const valRefs = [];
 
@@ -1159,7 +1159,8 @@ function genOp(ctx, ast, op, nOps) {
         for (let i=0; i<nOps; i++) {
             params.push(vals[i].value[0]);
         }
-        rRef = newRef(ctx, "BIGINT", "_tmp", ctx.field[op](...params));
+
+        rRef = newRef(ctx, "BIGINT", "_tmp", adjustBool ? (ctx.field[op](...params)?bigInt.one:bigInt.zero)  : ctx.field[op](...params));
     }
     return rRef;
 }

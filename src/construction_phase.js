@@ -624,6 +624,9 @@ function execReturn(ctx, ast) {
 function execVariable(ctx, ast) {
 
     const v = ctx.refs[ast.refId];
+    if (!v) {
+        return ctx.throwError(ast, "Variable not defined: "+ast.name);
+    }
 
     const sels = [];
     for (let i=0; i< ast.selectors.length; i++) {
