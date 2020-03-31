@@ -359,7 +359,7 @@ function execAssignement(ctx, ast) {
 
     }
 
-    if (!left.s) return ctx.throwError(ast, "variable. not defined yet");
+    if ((!left)||(!left.s)) return ctx.throwError(ast, "variable. not defined yet");
 
     if (left.t == "C") return execInstantiateComponet(ctx, left, ast.values[1], leftSels);
     if ((left.t == "S")&&( ["<--", "<==", "-->", "==>"].indexOf(ast.op) < 0)) return ctx.throwError(ast, "Cannot assign to a signal with `=` use <-- or <== ops");
@@ -444,14 +444,14 @@ function execInstantiateComponet(ctx, vr, fn, sels) {
     const templateName = fn.name;
 
     const template = ctx.templates[templateName];
-    if (!template) return ctx.throwError("Invalid Template");
+    if (!template) return ctx.throwError(fn, "Invalid Template");
 
     const paramValues = [];
     for (let i=0; i< fn.params.length; i++) {
         const v = exec(ctx, fn.params[i]);
         if (ctx.error) return;
         for (let j=0; j<v.s[0]; j++) {
-            if (v.v[j].t != "N") ctx.throwError("Parameters of a template must be constant");
+            if (v.v[j].t != "N") ctx.throwError(fn, "Parameters of a template must be constant");
         }
         paramValues.push(v);
     }
@@ -872,6 +872,8 @@ function execOpOp(ctx, ast, op, lr) {
     } else {
         right = {t:"N", v: ctx.field.one};
     }
+
+    if (!right) return ctx.throwError(ast, "adding a no number");
 
     const resAfter = ctx.lc[op](resBefore, right);
     left.v[o] = resAfter;
