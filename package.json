@@ -1,6 +1,6 @@
 {
   "name": "circom",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Language to generate logic circuits",
   "main": "index.js",
   "directories": {
