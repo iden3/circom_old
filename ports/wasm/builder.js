@@ -923,41 +923,41 @@ class BuilderWasm {
     }
 
     _buildComponents(module) {
-        const bytes = [];
+        const bytes = new Array(this.components.length*5*4);
+        bytes.length=0;
         for (let i=0; i<this.components.length; i++) {
             const c = this.components[i];
 
-            bytes.push(intToBytes32(this.hashMaps[c.hashMapName].pointer));
-            bytes.push(intToBytes32(this.componentEntriesTables[c.entryTableName].pointer));
-            bytes.push(intToBytes32(i));
-            bytes.push(intToBytes32(c.nInSignals));
-            bytes.push(intToBytes32(c.newThread ? 1 : 0));
+            bytes.push(...intToBytes32(this.hashMaps[c.hashMapName].pointer));
+            bytes.push(...intToBytes32(this.componentEntriesTables[c.entryTableName].pointer));
+            bytes.push(...intToBytes32(i));
+            bytes.push(...intToBytes32(c.nInSignals));
+            bytes.push(...intToBytes32(c.newThread ? 1 : 0));
 
             module.addFunctionToTable(c.functionName);
         }
 
-        const fBytes = [].concat(...bytes);
-        this.pComponents = module.alloc(fBytes);
+        this.pComponents = module.alloc(bytes);
     }
 
     _buildMapIsInput(module) {
-        const bytes = [];
+        const bytes = new Array(this.mapIsInput.length*4);
+        bytes.length=0;
         for (let i=0; i<this.mapIsInput.length; i++) {
-            bytes.push(intToBytes32(this.mapIsInput[i]));
+            bytes.push(...intToBytes32(this.mapIsInput[i]));
         }
 
-        const fBytes = [].concat(...bytes);
-        this.pMapIsInput = module.alloc(fBytes);
+        this.pMapIsInput = module.alloc(bytes);
     }
 
     _buildWit2Sig(module) {
-        const bytes = [];
+        const bytes = new Array(this.wit2sig.length*4);
+        bytes.length =0;
         for (let i=0; i<this.wit2sig.length; i++) {
-            bytes.push(intToBytes32(this.wit2sig[i]));
+            bytes.push(...intToBytes32(this.wit2sig[i]));
         }
 
-        const fBytes = [].concat(...bytes);
-        this.pWit2sig = module.alloc(fBytes);
+        this.pWit2sig = module.alloc(bytes);
     }
 
     _buildCircuitVar(module) {
