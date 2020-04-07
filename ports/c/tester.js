@@ -42,11 +42,14 @@ async function  c_tester(circomFile, _options) {
     await fs.promises.writeFile(path.join(dir.path, "fr.h"), source.h, "utf8");
     await fs.promises.writeFile(path.join(dir.path, "fr.c"), source.c, "utf8");
 
+    let pThread = "";
+
     if (process.platform === "darwin") {
         await exec("nasm -fmacho64 --prefix _ " +
             ` ${path.join(dir.path,  "fr.asm")}`
         );
     }  else if (process.platform === "linux") {
+        pThread = "-pthread";
         await exec("nasm -felf64 " +
             ` ${path.join(dir.path,  "fr.asm")}`
         );
@@ -54,7 +57,7 @@ async function  c_tester(circomFile, _options) {
 
     const cdir = path.join(path.dirname(require.resolve("circom_runtime")), "c");
 
-    await exec("g++" +
+    await exec("g++" + ` ${pThread}`
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
