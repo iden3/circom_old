@@ -57,7 +57,7 @@ async function  c_tester(circomFile, _options) {
 
     const cdir = path.join(path.dirname(require.resolve("circom_runtime")), "c");
 
-    await exec("g++" + ` ${pThread}`
+    await exec("g++" + ` ${pThread}` +
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
