@@ -6,7 +6,6 @@ var tmp = require("tmp-promise");
 const path = require("path");
 const compiler = require("../../src/compiler");
 
-const bigInt = require("big-integer");
 const utils = require("../../src/utils");
 const loadR1cs = require("r1csfile").load;
 const ZqField = require("ffjavascript").ZqField;
@@ -82,7 +81,7 @@ class WasmTester {
         const self = this;
         if (this.constraints) return;
         const r1cs = await loadR1cs(path.join(this.dir.path, this.baseName + ".r1cs"),true, false);
-        self.field = new ZqField(r1cs.prime);
+        self.F = new ZqField(r1cs.prime);
         self.nVars = r1cs.nVars;
         self.constraints = r1cs.constraints;
     }
@@ -107,8 +106,8 @@ class WasmTester {
                 if (typeof self.symbols[prefix] == "undefined") {
                     assert(false, "Output variable not defined: "+ prefix);
                 }
-                const ba = bigInt(actualOut[self.symbols[prefix].varIdx]).toString();
-                const be = bigInt(eOut).toString();
+                const ba = actualOut[self.symbols[prefix].varIdx].toString();
+                const be = eOut.toString();
                 assert.strictEqual(ba, be, prefix);
             }
         }
@@ -138,16 +137,16 @@ class WasmTester {
         }
 
         function checkConstraint(constraint) {
-            const F = self.field;
+            const F = self.F;
             const a = evalLC(constraint[0]);
             const b = evalLC(constraint[1]);
             const c = evalLC(constraint[2]);
 
-            assert (F.sub(F.mul(a,b), c).isZero(), "Constraint doesn't match");
+            assert (F.isZero(F.sub(F.mul(a,b), c)), "Constraint doesn't match");
         }
 
         function evalLC(lc) {
-            const F = self.field;
+            const F = self.F;
             let v = F.zero;
             for (let w in lc) {
                 v = F.add(

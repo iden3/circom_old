@@ -17,15 +17,13 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-const bigInt = require("big-integer");
-const __P__ = bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const Scalar = require("ffjavascript").Scalar;
 const sONE = 0;
 const build = require("./build");
 const BuilderC = require("../ports/c/builder.js");
 const BuilderWasm = require("../ports/wasm/builder.js");
 const constructionPhase = require("./construction_phase");
 const Ctx = require("./ctx");
-const ZqField = require("ffjavascript").ZqField;
 const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
 const BigArray = require("./bigarray");
@@ -34,15 +32,14 @@ const buildSyms = require("./buildsyms");
 module.exports = compile;
 
 async function compile(srcFile, options) {
-    options.p = options.p || __P__;
+    options.p = options.p || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
     if (!options) {
         options = {};
     }
     if (typeof options.reduceConstraints === "undefined") {
         options.reduceConstraints = true;
     }
-    const ctx = new Ctx();
-    ctx.field = new ZqField(options.p);
+    const ctx = new Ctx(options.p);
     ctx.verbose= options.verbose || false;
     ctx.mainComponent = options.mainComponent || "main";
     ctx.newThreadTemplates = options.newThreadTemplates;
@@ -85,7 +82,7 @@ async function compile(srcFile, options) {
     }
 
     if (options.cSourceWriteStream) {
-        ctx.builder = new BuilderC();
+        ctx.builder = new BuilderC(options.p);
         build(ctx);
         const rdStream = ctx.builder.build();
         rdStream.pipe(options.cSourceWriteStream);
@@ -94,7 +91,7 @@ async function compile(srcFile, options) {
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
-        ctx.builder = new BuilderWasm();
+        ctx.builder = new BuilderWasm(options.p);
         build(ctx);
         if (options.wasmWriteStream) {
             const rdStream = ctx.builder.build("wasm");
@@ -299,11 +296,11 @@ function reduceConstrains(ctx) {
                         t: "LC",
                         coefs: {}
                     };
-                    const invCoef = c.c.coefs[isolatedSignal].modInv(__P__);
+                    const invCoef = ctx.F.inv(c.c.coefs[isolatedSignal]);
                     for (const s in c.c.coefs) {
                         if (s != isolatedSignal) {
-                            const v = __P__.minus(c.c.coefs[s]).times(invCoef).mod(__P__);
-                            if (!v.isZero()) {
+                            const v = ctx.F.mul( ctx.F.neg(c.c.coefs[s]), invCoef);
+                            if (!ctx.F.isZero(v)) {
                                 isolatedSignalEquivalence.coefs[s] = v;
                             }
                         }
@@ -395,9 +392,9 @@ function reduceConstrains(ctx) {
 
     function isConstant(l) {
         for (let k in l.coefs) {
-            if ((k != sONE) && (!l.coefs[k].isZero())) return false;
+            if ((k != sONE) && (!ctx.F.isZero(l.coefs[k]))) return false;
         }
-        if (!l.coefs[sONE] || l.coefs[sONE].isZero()) return false;
+        if (!l.coefs[sONE] || ctx.F.isZero(l.coefs[sONE])) return false;
         return true;
     }
 

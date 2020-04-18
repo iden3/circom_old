@@ -1,10 +1,11 @@
 const streamFromArrayTxt = require("../../src/streamfromarray_txt");
 const streamFromArrayBin = require("../../src/streamfromarray_bin");
-const bigInt = require("big-integer");
 const assert = require("assert");
 const ModuleBuilder = require("wasmbuilder").ModuleBuilder;
 const ModuleBuilderWat = require("wasmbuilder").ModuleBuilderWat;
 const buildRuntime = require("./build_runtime");
+const Scalar = require("ffjavascript").Scalar;
+const F1Field = require("ffjavascript").F1Field;
 
 
 const errs = require("./errs");
@@ -689,7 +690,8 @@ class FunctionBuilderWasm {
 }
 
 class BuilderWasm {
-    constructor() {
+    constructor(p) {
+        this.F = new F1Field(p);
         this.hashMaps={};
         this.componentEntriesTables={};
         this.sizes ={};
@@ -701,8 +703,8 @@ class BuilderWasm {
         this.TYPE_SIGNAL = 1;
         this.TYPE_COMPONENT = 2;
 
-        this.addConstant(bigInt(0));  // constants[0] = 0;
-        this.addConstant(bigInt(1));  // constants[1] = 1;
+        this.addConstant(Scalar.fromString("0"));  // constants[0] = 0;
+        this.addConstant(Scalar.fromString("1"));  // constants[1] = 1;
 
         this.offsetComponentNInputSignals = 12;
         this.sizeofComponent = 20;
@@ -710,7 +712,8 @@ class BuilderWasm {
 
     setHeader(header) {
         this.header=header;
-        this.n64 = Math.floor((this.header.P.bitLength() - 1) / 64)+1;
+
+        this.n64 = Math.floor((Scalar.bitLength(this.header.P) - 1) / 64)+1;
         this.sizeFr = this.n64*8 + 8;
     }
 
@@ -728,9 +731,9 @@ class BuilderWasm {
     }
 
     addConstant(c) {
-        c = bigInt(c);
+        c = this.F.e(c);
         const cS = c.toString();
-        if (this.usedConstants[cS]) return this.usedConstants[cS];
+        if (typeof this.usedConstants[cS] != "undefined") return this.usedConstants[cS];
         this.constants.push(c);
         this.usedConstants[cS] = this.constants.length - 1;
         return this.constants.length - 1;
@@ -842,7 +845,6 @@ class BuilderWasm {
 
     _buildConstants(module) {
         const self = this;
-        const R = bigInt.one.shiftLeft(this.n64*64);
 
         const bytes = [];
         for (let i=0; i<self.constants.length; i++) {
@@ -852,19 +854,27 @@ class BuilderWasm {
         const fBytes = [].concat(...bytes);
         this.pConstants = module.alloc(fBytes);
 
+
         function Fr2Bytes(n) {
-            if (n.lt(bigInt("80000000", 16)) ) {
-                return shortMontgomeryPositive(n);
+            const minShort = self.F.neg(self.F.e("80000000"));
+            const maxShort = self.F.e("7FFFFFFF", 16);
+
+            if (  (self.F.geq(n, minShort))
+                &&(self.F.leq(n, maxShort)))
+            {
+                if (self.F.geq(n, self.F.zero)) {
+                    return shortMontgomeryPositive(n);
+                } else {
+                    return shortMontgomeryNegative(n);
+                }
             }
-            if (n.geq(self.header.P.minus(bigInt("80000000", 16))) ) {
-                return shortMontgomeryNegative(n);
-            }
+
             return longMontgomery(n);
 
 
             function shortMontgomeryPositive(a) {
                 return [
-                    ...intToBytes32(parseInt(a)),
+                    ...intToBytes32(Scalar.toNumber(a)),
                     ...intToBytes32(0x40000000),
                     ...long(toMontgomery(a))
                 ];
@@ -872,9 +882,9 @@ class BuilderWasm {
 
 
             function shortMontgomeryNegative(a) {
-                const b = a.minus(self.header.P);
+                const b = -Scalar.toNumber(self.F.neg(a));
                 return [
-                    ...intToBytes32(parseInt(b)),
+                    ...intToBytes32(b),
                     ...intToBytes32(0x40000000),
                     ...long(toMontgomery(a))
                 ];
@@ -889,27 +899,24 @@ class BuilderWasm {
             }
 
             function long(a) {
+
                 const bytes = [];
-                let r = bigInt(a);
-                let S = "";
-                let i = 0;
-                while (!r.isZero()) {
-                    S = ("0000000000000000" + r.and(bigInt("FFFFFFFFFFFFFFFF", 16)).toString(16)).substr(-16);
-                    bytes.push(hexToBytesR(S));
-                    i++;
-                    r = r.shiftRight(64);
-                }
-                while (i<self.n64) {
-                    bytes.push(hexToBytesR("0000000000000000"));
-                    i++;
+                const arr = Scalar.toArray(a, 0x100000000);
+                for (let i=0; i<self.F.n64*2; i++) {
+                    const idx = arr.length-1-i;
+
+                    if ( idx >=0) {
+                        bytes.push(...intToBytes32(arr[idx]));
+                    } else {
+                        bytes.push(...intToBytes32(0));
+                    }
                 }
 
-                const fBytes = [].concat(...bytes);
-                return fBytes;
+                return bytes;
             }
 
             function toMontgomery(a) {
-                return a.times(R).mod(self.header.P);
+                return self.F.mul(a, self.F.R);
             }
 
         }

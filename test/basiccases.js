@@ -1,17 +1,19 @@
 const path = require("path");
 
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
+const F1Field = require("ffjavascript").F1Field;
 const c_tester = require("../index.js").c_tester;
 const wasm_tester = require("../index.js").wasm_tester;
 
-const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+const __P__ = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+
+const Fr = new F1Field(__P__);
 
 const basicCases = require("./basiccases.json");
 
 function normalize(o) {
     if ((typeof(o) == "bigint") || o.isZero !== undefined)  {
-        const res = bigInt(o);
-        return norm(res);
+        return Fr.e(o);
     } else if (Array.isArray(o)) {
         return o.map(normalize);
     } else if (typeof o == "object") {
@@ -21,15 +23,9 @@ function normalize(o) {
         }
         return res;
     } else {
-        const res = bigInt(o);
-        return norm(res);
+        return Fr.e(o);
     }
 
-    function norm(n) {
-        let res = n.mod(__P__);
-        if (res.isNegative()) res = __P__.add(res);
-        return res;
-    }
 }
 
 

@@ -18,7 +18,6 @@
 */
 
 const assert = require("assert");
-const bigInt = require("big-integer");
 const utils = require("./utils");
 const gen = require("./gencode").gen;
 const createRefs = require("./gencode").createRefs;
@@ -35,8 +34,8 @@ function build(ctx) {
     ctx.definedSizes = {};
     ctx.addSizes = addSizes;
     ctx.addConstant = addConstant;
-    ctx.addConstant(bigInt.zero);
-    ctx.addConstant(bigInt.one);
+    ctx.addConstant(ctx.F.zero);
+    ctx.addConstant(ctx.F.one);
 
     buildHeader(ctx);
     buildEntryTables(ctx);
@@ -209,7 +208,7 @@ function buildHeader(ctx) {
         NInputs: ctx.components[ ctx.getComponentIdx("main") ].nInSignals,
         NOutputs: ctx.totals[ ctx.stOUTPUT ],
         NVars: ctx.totals[ctx.stONE] + ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT] + ctx.totals[ctx.stPRVINPUT] + ctx.totals[ctx.stINTERNAL],
-        P: ctx.field.p
+        P: ctx.F.p
     });
 }
 
@@ -391,7 +390,7 @@ function hashComponentCall(ctx, cIdx) {
     // TODO: At the moment generate a diferent function for each instance of the component
     const constParams = [];
     for (let p in ctx.components[cIdx].params) {
-        constParams.push(p + "=" + value2str(ctx.components[cIdx].params[p]));
+        constParams.push(p + "=" + value2str(ctx.F, ctx.components[cIdx].params[p]));
     }
 
     for (let n in ctx.components[cIdx].names.o) {
@@ -399,7 +398,7 @@ function hashComponentCall(ctx, cIdx) {
         if ((entry.type == "S")&&(ctx.signals[entry.offset].o & ctx.IN)) {
             travelSizes(n, entry.offset, entry.sizes, (prefix, offset) => {
                 if (utils.isDefined(ctx.signals[offset].v)) {
-                    constParams.push(prefix + "=" + bigInt(ctx.signals[offset].value));
+                    constParams.push(prefix + "=" + ctx.F.e(ctx.signals[offset].v));
                 }
             });
         }
@@ -433,7 +432,7 @@ function hashFunctionCall(ctx, name, paramValues) {
     const constParams = [];
     for (let i=0; i<ctx.functions[name].params.length; i++) {
         if (!paramValues[i].used) {
-            constParams.push(ctx.functions[name].params[i] + utils.accSizes2Str(paramValues[i].sizes) + "=" + value2str(paramValues[i].value));
+            constParams.push(ctx.functions[name].params[i] + utils.accSizes2Str(paramValues[i].sizes) + "=" + value2str(ctx.F, paramValues[i].value));
         }
     }
     let instanceDef = name;
@@ -447,16 +446,16 @@ function hashFunctionCall(ctx, name, paramValues) {
     return {h, instanceDef};
 }
 
-function value2str(v) {
+function value2str(F, v) {
     if (Array.isArray(v)) {
         let S="[";
         for (let i=0; i<v.length; i++) {
             if (i>0) S+=",";
-            S+=value2str(v[i]);
+            S+=value2str(F, v[i]);
         }
         S+="]";
         return S;
     } else {
-        return bigInt(v).toString();
+        return F.toString(F.e(v));
     }
 }

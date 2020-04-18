@@ -49,10 +49,11 @@ const assert = require("assert");
 const iterateAST = require("./iterateast");
 const utils = require("./utils");
 
-const bigInt = require("big-integer");
-
 const LCAlgebra = require("./lcalgebra");
 const parser = require("../parser/jaz.js").parser;
+const Scalar = require("ffjavascript").Scalar;
+
+const {stringifyBigInts} = require("ffjavascript").utils;
 
 /* TODO: Add lines information
 
@@ -79,7 +80,7 @@ function constructionPhase(ctx, srcFile) {
 
     assert(ctx.ast.type == "BLOCK");
 
-    ctx.lc = new LCAlgebra(ctx.field);
+    ctx.lc = new LCAlgebra(ctx.F);
     ctx.filePath= fullFilePath;
     ctx.fileName= fullFileName;
     ctx.includedFiles = {};
@@ -218,7 +219,7 @@ function execNumber(ctx, ast) {
         s:[1,0],
         v: [{
             t: "N",
-            v: bigInt(ast.value)
+            v: ctx.F.e(ast.value)
         }]
     };
 }
@@ -253,7 +254,7 @@ function execDeclareComponent(ctx, ast) {
         const size = val(ctx, sizeRef);
         if (size.t != "N") return ctx.throwError(  ast.name.selectors[i], "expected a number");
 
-        sizes.push( size.v.toJSNumber() );
+        sizes.push( Scalar.toNumber(size.v) );
     }
 
     let cIdx = ctx.addComponent(ast.name.name, sizes);
@@ -277,7 +278,7 @@ function execDeclareSignal(ctx, ast) {
         if (ctx.error) return;
         if (size.s[0] != 1) return ctx.throwError(ast, "Size cannot be an array");
         if (size.v[0].t != "N") return ctx.throwError(ast, "Size must be declared in construction time");
-        sizes.push( size.v[0].v.toJSNumber() );
+        sizes.push( Scalar.toNumber(size.v[0].v) );
     }
 
     let sIdx = ctx.addSignal(ast.name.name, sizes);
@@ -322,7 +323,7 @@ function execDeclareVariable(ctx, ast) {
         if (ctx.error) return;
         if (size.s[0] != 1) return ctx.throwError(ast, "Size cannot be an array");
         if (size.v[0].t != "N") return ctx.throwError(ast, "Size must be declared in construction time");
-        sizes.push( size.v[0].v.toJSNumber() );
+        sizes.push( Scalar.toNumber(size.v[0].v) );
     }
 
     const v = ctx.refs[ast.refId];
@@ -353,7 +354,7 @@ function execAssignement(ctx, ast) {
                 if (sel.s[0] != 1) return ctx.throwError(ast, "Selector cannot be an array");
                 if (sel.v[0].t != "N") return {t: "NQ"};
 
-                leftSels.push( sel.v[0].v.toJSNumber() );
+                leftSels.push( Scalar.toNumber(sel.v[0].v) );
             }
         }
 
@@ -380,7 +381,7 @@ function execAssignement(ctx, ast) {
         } else if (right.t == "S") {
             for (let i=0; i<right.s[0]; i++) {
                 left.v[o+i]={t: "LC", coefs: {}};
-                left.v[o+i].coefs[right.sIdx+i] = ctx.field.one;
+                left.v[o+i].coefs[right.sIdx+i] = ctx.F.one;
             }
         }
     } else if ( left.t == "S") {
@@ -561,14 +562,14 @@ function execFunctionCall(ctx, ast) {
         if (ev.v) {
             console.log(ev.v.toString());
         } else {
-            console.log(JSON.stringify(ev));
+            console.log(JSON.stringify(stringifyBigInts(ev)));
         }
         return;
     }
     if (ast.name == "assert") {
         const v = exec(ctx, ast.params[0]);
         const ev = val(ctx, v, ast);
-        if (ev.isZero()) return ctx.throwError(ast, "Assertion failed");
+        if (ctx.F.isZero(ev)) return ctx.throwError(ast, "Assertion failed");
     }
 
     const fnc = ctx.functions[ast.name];
@@ -634,7 +635,7 @@ function execVariable(ctx, ast) {
         if (ctx.error) return;
         if (sel.s[0] != 1) return ctx.throwError(ast, "Variable selector cannot be an array");
         if (sel.v[0].t != "N") return NQVAL;
-        sels.push(sel.v[0].v.toJSNumber());
+        sels.push(Scalar.toNumber(sel.v[0].v));
     }
 
     let o = 0;
@@ -682,7 +683,7 @@ function execPin(ctx, ast) {
 
         if (sel.s[0] != 1) return ctx.throwError(ast, "Component selector cannot be an array");
         if (sel.v[0].t != "N") return NQVAL;
-        selsC.push(sel.v[0].v.toJSNumber());
+        selsC.push(Scalar.toNumber(sel.v[0].v));
     }
 
     const cIdx = ctx.getComponentIdx(ast.component.name, selsC);
@@ -694,7 +695,7 @@ function execPin(ctx, ast) {
         if (ctx.error) return;
         if (sel.s[0] != 1) return ctx.throwError(ast, "Signal selector cannot be an array");
         if (sel.v[0].t != "N") return NQVAL;
-        selsP.push(sel.v[0].v.toJSNumber());
+        selsP.push(Scalar.toNumber(sel.v[0].v));
     }
     const sIdx = ctx.components[cIdx].names.getSignalIdx(ast.pin.name, selsP);
 
@@ -741,7 +742,7 @@ function execLoop(ctx, ast) {
         return;
     }
 
-    while ((!v.v[0].v.isZero())&&(!ctx.returnValue)) {
+    while ((! ctx.F.isZero(v.v[0].v))&&(!ctx.returnValue)) {
         exec(ctx, ast.body);
         if (ctx.error) return;
 
@@ -784,7 +785,7 @@ function execIf(ctx, ast) {
         return;
     }
 
-    if (!v.v[0].v.isZero()) {
+    if (!ctx.F.isZero(v.v[0].v)) {
         exec(ctx, ast.then);
     } else {
         if (ast.else) {
@@ -811,7 +812,7 @@ function execTerCon(ctx, ast) {
         return NQVAL;
     }
 
-    if (!v.v[0].v.isZero()) {
+    if (!ctx.F.isZero(v.v[0].v)) {
         return exec(ctx, ast.values[1]);
     } else {
         return exec(ctx, ast.values[2]);
@@ -850,7 +851,7 @@ function execOpOp(ctx, ast, op, lr) {
             if (sel.s[0] != 1) return ctx.throwError(ast, "Selector cannot be an array");
             if (sel.v[0].t != "N") return {t: "NQ"};
 
-            leftSels.push( sel.v[0].v.toJSNumber() );
+            leftSels.push( Scalar.toNumber(sel.v[0].v) );
         }
     }
     if (!left.s) return ctx.throwError(ast, "variable. not defined yet");
@@ -870,7 +871,7 @@ function execOpOp(ctx, ast, op, lr) {
         if (ctx.error) return;
         right = val(ctx, rightRef);
     } else {
-        right = {t:"N", v: ctx.field.one};
+        right = {t:"N", v: ctx.F.one};
     }
 
     if (!right) return ctx.throwError(ast, "adding a no number");
@@ -907,7 +908,7 @@ function val(ctx, a, ast) {
         };
         let sIdx = a.sIdx;
         while (ctx.signals[sIdx].e >= 0) sIdx = ctx.signals[sIdx].e;
-        res.coefs[sIdx] = ctx.field.one;
+        res.coefs[sIdx] = ctx.F.one;
         return res;
     } else {
         ctx.throwError(ast, "Invalid type: " + a.t);
@@ -979,7 +980,7 @@ function execArray(ctx, ast) {
         } else if (e.t == "S") {
             for (let j=0; j<e.v.length;j++) {
                 const sv = {t: "LC", coefs: {}};
-                sv.coefs[e.sIdx+j] = ctx.field.one;
+                sv.coefs[e.sIdx+j] = ctx.F.one;
                 res.v.push(sv);
             }
         } else {

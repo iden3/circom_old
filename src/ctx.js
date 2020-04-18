@@ -1,6 +1,5 @@
-const bigInt = require("big-integer");
 const BigArray = require("./bigarray.js");
-
+const F1Field = require("ffjavascript").F1Field;
 
 class TableName {
     constructor (ctx) {
@@ -86,7 +85,9 @@ class TableName {
 
 module.exports = class Ctx {
 
-    constructor() {
+    constructor(p) {
+
+        this.F = new F1Field(p);
 
         this.stONE = 1;
         this.stOUTPUT = 2;
@@ -121,7 +122,7 @@ module.exports = class Ctx {
 
         const oneIdx = this.addSignal("one");
         this.signals[oneIdx] = {
-            v: bigInt(1),
+            v: this.F.one,
             o: this.ONE,
             e: -1,
         };

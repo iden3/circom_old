@@ -23,7 +23,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 
 const compiler = require("./src/compiler");
 
@@ -82,7 +82,7 @@ const options = {};
 options.reduceConstraints = !argv.fast;
 options.verbose = argv.verbose || false;
 options.sanityCheck = argv.sanitycheck;
-options.prime = argv.prime || bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+options.prime = argv.prime ? Scalar.fromString(argv.prime) : Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 
 if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);

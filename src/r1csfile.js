@@ -1,7 +1,7 @@
 
 const fs = require("fs");
 const assert = require("assert");
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 
 module.exports.buildR1cs = buildR1cs;
 
@@ -23,10 +23,10 @@ async function buildR1cs(ctx, fileName) {
     await writeU64(0); // Temporally set to 0 length
 
 
-    const n8 = (Math.floor( (ctx.field.p.bitLength() - 1) / 64) +1)*8;
+    const n8 = (Math.floor( (ctx.F.bitLength - 1) / 64) +1)*8;
     // Field Def
     await writeU32(n8); // Temporally set to 0 length
-    await writeBigInt(ctx.field.p);
+    await writeBigInt(ctx.F.p);
 
     const NWires =
         ctx.totals[ctx.stONE] +
@@ -136,7 +136,7 @@ async function buildR1cs(ctx, fileName) {
     async function writeBigInt(n, pos) {
         const b = Buffer.allocUnsafe(n8);
 
-        const dwords = bigInt(n).toArray(0x100000000).value;
+        const dwords = Scalar.toArray(n, 0x100000000);
 
         for (let i=0; i<dwords.length; i++) {
             b.writeUInt32LE(dwords[dwords.length-1-i], i*4, 4 );

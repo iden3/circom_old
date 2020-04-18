@@ -146,21 +146,13 @@ case 20:
 break;
 case 21:
 
-            if ($$[$0-4].type == "NUMBER") {
-                this.$ = !$$[$0-4].value.eq(0) ? $$[$0-2] : $$[$0];
-            } else {
-                this.$ = { type: "IF", condition: $$[$0-4], then: $$[$0-2], else: $$[$0] };
-            }
+            this.$ = { type: "IF", condition: $$[$0-4], then: $$[$0-2], else: $$[$0] };
             setLines(this.$, _$[$0-6], _$[$0]);
         
 break;
 case 22:
 
-            if ($$[$0-2].type == "NUMBER") {
-                this.$ = !$$[$0-2].value.eq(0) ? $$[$0] : { type: "NUMBER", value: bigInt(0) };
-            } else {
-                this.$ = { type: "IF", condition: $$[$0-2], then: $$[$0] };
-            }
+            this.$ = { type: "IF", condition: $$[$0-2], then: $$[$0] };
             setLines(this.$, _$[$0-4], _$[$0]);
         
 break;
@@ -321,11 +313,7 @@ case 50:
 break;
 case 51:
 
-            if ($$[$0-4].type == "NUMBER") {
-                this.$ = !$$[$0-4].value.eq(0) ? $$[$0-2] : $$[$0];
-            } else {
-                this.$ = { type: "OP", op: "?", values: [$$[$0-4], $$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "?", values: [$$[$0-4], $$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-4], _$[$0]);
         
 break;
@@ -336,71 +324,43 @@ case 52: case 53: case 54: case 56: case 58: case 60:
 break;
 case 55:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: !$$[$0-2].value.eq(0) || !$$[$0].value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "||", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "||", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 57:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: !$$[$0-2].value.eq(0) && !$$[$0].value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "&&", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "&&", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 59:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.or($$[$0].value).and(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: "|", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "|", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 61:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.xor($$[$0].value).and(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: "^", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "^", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 63:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.and($$[$0].value).and(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: "&", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "&", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 65:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.equals($$[$0].value) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "==", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "==", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 66:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.eq($$[$0].value) ? bigInt(0) : bigInt(1) };
-            } else {
-                this.$ = { type: "OP", op: "!=", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "!=", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
@@ -411,63 +371,37 @@ case 67: case 72:
 break;
 case 68:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.lesserOrEquals($$[$0].value) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "<=", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "<=", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 69:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.greaterOrEquals($$[$0].value) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: ">=", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: ">=", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 70:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.lesser($$[$0].value) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "<", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "<", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 71:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.greater($$[$0].value) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: ">", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: ">", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 73:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                let v = $$[$0].value.greater(256) ? 256 : $$[$0].value.value;
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.shiftLeft(v).and(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: "<<", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "<<", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 74:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                let v = $$[$0].value.greater(256) ? 256 : $$[$0].value.value;
-                this.$ = {type: "NUMBER", value: $$[$0-2].value.shiftRight(v).and(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: ">>", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: ">>", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
@@ -478,71 +412,43 @@ case 75:
 break;
 case 76:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: ($$[$0-2].value.plus($$[$0].value)).mod(__P__) };
-            } else {
-                this.$ = { type: "OP", op: "+", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "+", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 77:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: ($$[$0-2].value.plus(__P__).minus($$[$0].value)).mod(__P__) };
-            } else {
-                this.$ = { type: "OP", op: "-", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "-", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 79:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: ($$[$0-2].value.times($$[$0].value)).mod(__P__) };
-            } else {
-                this.$ = { type: "OP", op: "*", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "*", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 80:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: ($$[$0-2].value.times($$[$0].value.modInv(__P__))).mod(__P__) };
-            } else {
-                this.$ = { type: "OP", op: "/", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "/", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 81:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: ($$[$0-2].value.divide($$[$0].value)) };
-            } else {
-                this.$ = { type: "OP", op: "\\", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "\\", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 82:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.mod($$[$0].value) };
-            } else {
-                this.$ = { type: "OP", op: "%", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "%", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 84:
 
-            if (($$[$0-2].type == "NUMBER") && ($$[$0].type == "NUMBER")) {
-                this.$ = { type: "NUMBER", value: $$[$0-2].value.modPow($$[$0].value, __P__) };
-            } else {
-                this.$ = { type: "OP", op: "**", values: [$$[$0-2], $$[$0]] };
-            }
+            this.$ = { type: "OP", op: "**", values: [$$[$0-2], $$[$0]] };
             setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
@@ -566,31 +472,19 @@ case 88:
 break;
 case 89:
 
-            if ($$[$0].type == "NUMBER") {
-                this.$ = { type: "NUMBER", value: __P__.minus($$[$0].value).mod(__P__) };
-            } else {
-                this.$ = { type: "OP", op: "UMINUS", values: [$$[$0]] };
-            }
+            this.$ = { type: "OP", op: "UMINUS", values: [$$[$0]] };
             setLines(this.$, _$[$0-1], _$[$0]);
         
 break;
 case 90:
 
-            if ($$[$0].type == "NUMBER") {
-                this.$ = { type: "NUMBER", value: $$[$0].value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                this.$ = { type: "OP", op: "!", values: [$$[$0]] };
-            }
+            this.$ = { type: "OP", op: "!", values: [$$[$0]] };
             setLines(this.$, _$[$0-1], _$[$0]);
         
 break;
 case 91:
 
-            if ($$[$0].type == "NUMBER") {
-                this.$ = { type: "NUMBER", value: $$[$0].value.xor(__MASK__) };
-            } else {
-                this.$ = { type: "OP", op: "~", values: [$$[$0]] };
-            }
+            this.$ = { type: "OP", op: "~", values: [$$[$0]] };
             setLines(this.$, _$[$0-1], _$[$0]);
         
 break;
@@ -613,13 +507,13 @@ case 97: case 102: case 103:
 break;
 case 98:
 
-            this.$ = {type: "NUMBER", value: bigInt($$[$0]).mod(__P__) }
+            this.$ = {type: "NUMBER", value: Scalar.fromString($$[$0]) }
             setLines(this.$, _$[$0]);
         
 break;
 case 99:
 
-            this.$ = {type: "NUMBER", value: bigInt($$[$0].substr(2).toUpperCase(), 16).mod(__P__) }
+            this.$ = {type: "NUMBER", value: Scalar.fromString($$[$0].substr(2).toUpperCase(), 16) }
             setLines(this.$, _$[$0]);
         
 break;
@@ -866,10 +760,8 @@ parse: function parse(input) {
     return true;
 }};
 
-const bigInt = require('big-integer');
+const Scalar = require('ffjavascript').Scalar;
 const util = require('util');
-const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-const __MASK__ = new bigInt(2).pow(253).minus(1);
 
 function setLines(dst, first, last) {
     last = last || first;
@@ -1365,7 +1257,7 @@ case 77: console.log("INVALID: " + yy_.yytext); return 'INVALID'
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)/,/^(?:\/\/.*)/,/^(?:var\b)/,/^(?:signal\b)/,/^(?:private\b)/,/^(?:input\b)/,/^(?:output\b)/,/^(?:linearCombination\b)/,/^(?:component\b)/,/^(?:template\b)/,/^(?:function\b)/,/^(?:if\b)/,/^(?:else\b)/,/^(?:for\b)/,/^(?:while\b)/,/^(?:compute\b)/,/^(?:do\b)/,/^(?:return\b)/,/^(?:include\b)/,/^(?:0x[0-9A-Fa-f]*)/,/^(?:[0-9]+)/,/^(?:[a-zA-Z][a-zA-Z$_0-9]*)/,/^(?:"[^"]+")/,/^(?:==>)/,/^(?:<==)/,/^(?:-->)/,/^(?:<--)/,/^(?:===)/,/^(?:>>=)/,/^(?:<<=)/,/^(?:&&)/,/^(?:\|\|)/,/^(?:==)/,/^(?:<=)/,/^(?:>=)/,/^(?:!=)/,/^(?:>>)/,/^(?:<<)/,/^(?:\*\*)/,/^(?:\+\+)/,/^(?:--)/,/^(?:\+=)/,/^(?:-=)/,/^(?:\*=)/,/^(?:\/=)/,/^(?:%=)/,/^(?:\|=)/,/^(?:&=)/,/^(?:\^=)/,/^(?:=)/,/^(?:\+)/,/^(?:-)/,/^(?:\*)/,/^(?:\/)/,/^(?:\\)/,/^(?:%)/,/^(?:\^)/,/^(?:&)/,/^(?:\|)/,/^(?:!)/,/^(?:~)/,/^(?:<)/,/^(?:>)/,/^(?:!)/,/^(?:\?)/,/^(?::)/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?:\{)/,/^(?:\})/,/^(?:;)/,/^(?:,)/,/^(?:\.)/,/^(?:$)/,/^(?:.)/],
+rules: [/^(?:\s+)/,/^(?:\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)/,/^(?:\/\/.*)/,/^(?:var\b)/,/^(?:signal\b)/,/^(?:private\b)/,/^(?:input\b)/,/^(?:output\b)/,/^(?:linearCombination\b)/,/^(?:component\b)/,/^(?:template\b)/,/^(?:function\b)/,/^(?:if\b)/,/^(?:else\b)/,/^(?:for\b)/,/^(?:while\b)/,/^(?:compute\b)/,/^(?:do\b)/,/^(?:return\b)/,/^(?:include\b)/,/^(?:0x[0-9A-Fa-f]*)/,/^(?:[0-9]+)/,/^(?:[a-zA-Z][a-zA-Z$_0-9]*)/,/^(?:"[^"]+")/,/^(?:==>)/,/^(?:<==)/,/^(?:-->)/,/^(?:<--)/,/^(?:===)/,/^(?:>>=)/,/^(?:<<=)/,/^(?:&&)/,/^(?:\|\|)/,/^(?:==)/,/^(?:<=)/,/^(?:>=)/,/^(?:!=)/,/^(?:>>)/,/^(?:<<)/,/^(?:\*\*)/,/^(?:\+\+)/,/^(?:--)/,/^(?:\+=)/,/^(?:-=)/,/^(?:\*=)/,/^(?:\/=)/,/^(?:%=)/,/^(?:\|=)/,/^(?:&=)/,/^(?:\^=)/,/^(?:=)/,/^(?:\+)/,/^(?:-)/,/^(?:\*)/,/^(?:\/)/,/^(?:\\)/,/^(?:%)/,/^(?:\^)/,/^(?:&)/,/^(?:\|)/,/^(?:!)/,/^(?:~)/,/^(?:<)/,/^(?:>)/,/^(?:!)/,/^(?:\?)/,/^(?::)/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?:\{)/,/^(?:\})/,/^(?:;)/,/^(?:,)/,/^(?:\.)/,/^(?:$)/,/^(?:.)/],
 conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77],"inclusive":true}}
 });
 return lexer;

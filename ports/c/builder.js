@@ -1,7 +1,8 @@
 const streamFromMultiArray = require("../../src/streamfromarray_txt.js");
-const bigInt = require("big-integer");
 const utils = require("../../src/utils");
 const assert = require("assert");
+const Scalar = require("ffjavascript").Scalar;
+const F1Field = require("ffjavascript").F1Field;
 
 function ref2src(c) {
     if ((c[0] == "R")||(c[0] == "RI")) {
@@ -340,7 +341,9 @@ class FunctionBuilderC {
 }
 
 class BuilderC {
-    constructor() {
+    constructor(p) {
+        this.F = new F1Field(p);
+
         this.hashMaps={};
         this.componentEntriesTables={};
         this.sizes ={};
@@ -348,7 +351,6 @@ class BuilderC {
         this.functions = [];
         this.components = [];
         this.usedConstants = {};
-
     }
 
     setHeader(header) {
@@ -369,9 +371,9 @@ class BuilderC {
     }
 
     addConstant(c) {
-        c = bigInt(c);
+        c = this.F.e(c);
         const cS = c.toString();
-        if (this.usedConstants[cS]) return this.usedConstants[cS];
+        if (typeof this.usedConstants[cS] != "undefined") return this.usedConstants[cS];
         this.constants.push(c);
         this.usedConstants[cS] = this.constants.length - 1;
         return this.constants.length - 1;
@@ -471,8 +473,6 @@ class BuilderC {
 
     _buildConstants(code) {
         const self = this;
-        const n64 = Math.floor((self.header.P.bitLength() - 1) / 64)+1;
-        const R = bigInt.one.shiftLeft(n64*64);
 
         code.push("// Constants");
         code.push(`FrElement _constants[${self.constants.length}] = {`);
@@ -482,12 +482,19 @@ class BuilderC {
         code.push("};");
 
         function number2Code(n) {
-            if (n.lt(bigInt("80000000", 16)) ) {
-                return addShortMontgomeryPositive(n);
+            const minShort = self.F.neg(self.F.e("80000000"));
+            const maxShort = self.F.e("7FFFFFFF", 16);
+
+            if (  (self.F.geq(n, minShort))
+                &&(self.F.leq(n, maxShort)))
+            {
+                if (self.F.geq(n, self.F.zero)) {
+                    return addShortMontgomeryPositive(n);
+                } else {
+                    return addShortMontgomeryNegative(n);
+                }
             }
-            if (n.geq(self.header.P.minus(bigInt("80000000", 16))) ) {
-                return addShortMontgomeryNegative(n);
-            }
+
             return addLongMontgomery(n);
 
 
@@ -506,25 +513,31 @@ class BuilderC {
             }
 
             function getLongString(a) {
-                let r = bigInt(a);
                 let S = "";
-                let i = 0;
-                while (!r.isZero()) {
-                    if (S!= "") S = S+",";
-                    S += "0x" + r.and(bigInt("FFFFFFFFFFFFFFFF", 16)).toString(16) + "LL";
-                    i++;
-                    r = r.shiftRight(64);
+                const arr = Scalar.toArray(a, 0x100000000);
+                for (let i=0; i<self.F.n64*2; i+=2) {
+                    const idx = arr.length-2-i;
+
+                    if (i>0) S = S + ",";
+
+                    if ( idx >=0) {
+                        let msb = arr[idx].toString(16);
+                        while (msb.length<8) msb = "0" + msb;
+
+                        let lsb = arr[idx+1].toString(16);
+                        while (lsb.length<8) lsb = "0" + lsb;
+
+                        S += "0x" + msb + lsb + "LL";
+                    } else {
+                        S += "0LL";
+                    }
                 }
-                while (i<n64) {
-                    if (S!= "") S = S+",";
-                    S += "0LL";
-                    i++;
-                }
+
                 return S;
             }
 
             function toMontgomery(a) {
-                return a.times(R).mod(self.header.P);
+                return self.F.mul(a, self.F.R);
             }
 
         }

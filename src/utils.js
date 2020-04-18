@@ -1,5 +1,4 @@
 const fnv = require("fnv-plus");
-const bigInt = require("big-integer");
 
 module.exports.ident =ident;
 
@@ -8,8 +7,6 @@ module.exports.flatArray = flatArray;
 module.exports.csArr = csArr;
 module.exports.accSizes = accSizes;
 module.exports.fnvHash = fnvHash;
-module.exports.stringifyBigInts = stringifyBigInts;
-module.exports.unstringifyBigInts = unstringifyBigInts;
 module.exports.sameSizes = sameSizes;
 module.exports.isDefined = isDefined;
 module.exports.accSizes2Str = accSizes2Str;
@@ -45,7 +42,7 @@ function flatArray(a) {
                 fillArray(res, a[i]);
             }
         } else {
-            res.push(bigInt(a));
+            res.push(a);
         }
     }
 }
@@ -72,42 +69,6 @@ function accSizes(_sizes) {
 
 function fnvHash(str) {
     return fnv.hash(str, 64).hex();
-}
-
-
-
-function stringifyBigInts(o) {
-    if ((typeof(o) == "bigint") || o.eq !== undefined)  {
-        return o.toString(10);
-    } else if (Array.isArray(o)) {
-        return o.map(stringifyBigInts);
-    } else if (typeof o == "object") {
-        const res = {};
-        for (let k in o) {
-            res[k] = stringifyBigInts(o[k]);
-        }
-        return res;
-    } else {
-        return o;
-    }
-}
-
-
-
-function unstringifyBigInts(o) {
-    if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
-        return bigInt(o);
-    } else if (Array.isArray(o)) {
-        return o.map(unstringifyBigInts);
-    } else if (typeof o == "object") {
-        const res = {};
-        for (let k in o) {
-            res[k] = unstringifyBigInts(o[k]);
-        }
-        return res;
-    } else {
-        return bigInt(o);
-    }
 }
 
 function sameSizes(s1, s2) {

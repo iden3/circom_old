@@ -132,10 +132,8 @@ include                 { return 'include'; }
 
 
 %{
-const bigInt = require('big-integer');
+const Scalar = require('ffjavascript').Scalar;
 const util = require('util');
-const __P__ = new bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-const __MASK__ = new bigInt(2).pow(253).minus(1);
 
 function setLines(dst, first, last) {
     last = last || first;
@@ -266,20 +264,12 @@ identifierList
 ifStatment
     : 'if' '(' expression ')' statment 'else' statment
         {
-            if ($3.type == "NUMBER") {
-                $$ = !$3.value.eq(0) ? $5 : $7;
-            } else {
-                $$ = { type: "IF", condition: $3, then: $5, else: $7 };
-            }
+            $$ = { type: "IF", condition: $3, then: $5, else: $7 };
             setLines($$, @1, @7);
         }
     | 'if' '(' expression ')' statment
         {
-            if ($3.type == "NUMBER") {
-                $$ = !$3.value.eq(0) ? $5 : { type: "NUMBER", value: bigInt(0) };
-            } else {
-                $$ = { type: "IF", condition: $3, then: $5 };
-            }
+            $$ = { type: "IF", condition: $3, then: $5 };
             setLines($$, @1, @5);
         }
     ;
@@ -451,11 +441,7 @@ e17
         }
     | e17 '?' e17 ':' e17 %prec TERCOND
         {
-            if ($1.type == "NUMBER") {
-                $$ = !$1.value.eq(0) ? $3 : $5;
-            } else {
-                $$ = { type: "OP", op: "?", values: [$1, $3, $5] };
-            }
+            $$ = { type: "OP", op: "?", values: [$1, $3, $5] };
             setLines($$, @1, @5);
         }
     | e16 %prec EMPTY
@@ -478,11 +464,7 @@ e16
 e15
     : e15 '||' e14
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: !$1.value.eq(0) || !$3.value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "||", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "||", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e14 %prec EMPTY
@@ -494,11 +476,7 @@ e15
 e14
     : e14 '&&' e13
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: !$1.value.eq(0) && !$3.value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "&&", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "&&", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e13 %prec EMPTY
@@ -510,11 +488,7 @@ e14
 e13
     : e13 '|' e12
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.or($3.value).and(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: "|", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "|", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e12 %prec EMPTY
@@ -527,11 +501,7 @@ e13
 e12
     : e12 '^' e11
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.xor($3.value).and(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: "^", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "^", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e11 %prec EMPTY
@@ -543,11 +513,7 @@ e12
 e11
     : e11 '&' e10
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.and($3.value).and(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: "&", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "&", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e10 %prec EMPTY
@@ -562,20 +528,12 @@ e11
 e10
     : e10 '==' e9
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.equals($3.value) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "==", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "==", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e10 '!=' e9
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.eq($3.value) ? bigInt(0) : bigInt(1) };
-            } else {
-                $$ = { type: "OP", op: "!=", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "!=", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e9 %prec EMPTY
@@ -587,38 +545,22 @@ e10
 e9
     : e9 '<=' e7
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.lesserOrEquals($3.value) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "<=", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "<=", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e9 '>=' e7
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.greaterOrEquals($3.value) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: ">=", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: ">=", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e9 '<' e7
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.lesser($3.value) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "<", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "<", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e9 '>' e7
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.greater($3.value) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: ">", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: ">", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e7 %prec EMPTY
@@ -630,22 +572,12 @@ e9
 e7
     : e7 '<<' e6
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                let v = $3.value.greater(256) ? 256 : $3.value.value;
-                $$ = { type: "NUMBER", value: $1.value.shiftLeft(v).and(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: "<<", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "<<", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e7 '>>' e6
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                let v = $3.value.greater(256) ? 256 : $3.value.value;
-                $$ = {type: "NUMBER", value: $1.value.shiftRight(v).and(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: ">>", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: ">>", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e6 %prec EMPTY
@@ -657,20 +589,12 @@ e7
 e6
     : e6 '+' e5
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: ($1.value.plus($3.value)).mod(__P__) };
-            } else {
-                $$ = { type: "OP", op: "+", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "+", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e6 '-' e5
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: ($1.value.plus(__P__).minus($3.value)).mod(__P__) };
-            } else {
-                $$ = { type: "OP", op: "-", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "-", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e5 %prec EMPTY
@@ -683,38 +607,22 @@ e6
 e5
     : e5 '*' e4
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: ($1.value.times($3.value)).mod(__P__) };
-            } else {
-                $$ = { type: "OP", op: "*", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "*", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e5 '/' e4
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: ($1.value.times($3.value.modInv(__P__))).mod(__P__) };
-            } else {
-                $$ = { type: "OP", op: "/", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "/", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e5 '\\' e4
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: ($1.value.divide($3.value)) };
-            } else {
-                $$ = { type: "OP", op: "\\", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "\\", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e5 '%' e4
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.mod($3.value) };
-            } else {
-                $$ = { type: "OP", op: "%", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "%", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e4 %prec EMPTY
@@ -726,11 +634,7 @@ e5
 e4
     : e4 '**' e3
         {
-            if (($1.type == "NUMBER") && ($3.type == "NUMBER")) {
-                $$ = { type: "NUMBER", value: $1.value.modPow($3.value, __P__) };
-            } else {
-                $$ = { type: "OP", op: "**", values: [$1, $3] };
-            }
+            $$ = { type: "OP", op: "**", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e3 %prec EMPTY
@@ -758,29 +662,17 @@ e3
         }
     | '-' e3 %prec UMINUS
         {
-            if ($2.type == "NUMBER") {
-                $$ = { type: "NUMBER", value: __P__.minus($2.value).mod(__P__) };
-            } else {
-                $$ = { type: "OP", op: "UMINUS", values: [$2] };
-            }
+            $$ = { type: "OP", op: "UMINUS", values: [$2] };
             setLines($$, @1, @2);
         }
     | '!' e3
         {
-            if ($2.type == "NUMBER") {
-                $$ = { type: "NUMBER", value: $2.value.eq(0) ? bigInt(1) : bigInt(0) };
-            } else {
-                $$ = { type: "OP", op: "!", values: [$2] };
-            }
+            $$ = { type: "OP", op: "!", values: [$2] };
             setLines($$, @1, @2);
         }
     | '~' e3
         {
-            if ($2.type == "NUMBER") {
-                $$ = { type: "NUMBER", value: $2.value.xor(__MASK__) };
-            } else {
-                $$ = { type: "OP", op: "~", values: [$2] };
-            }
+            $$ = { type: "OP", op: "~", values: [$2] };
             setLines($$, @1, @2);
         }
     | e2 %prec EMPTY
@@ -817,12 +709,12 @@ e0
         }
     | DECNUMBER
         {
-            $$ = {type: "NUMBER", value: bigInt($1).mod(__P__) }
+            $$ = {type: "NUMBER", value: Scalar.fromString($1) }
             setLines($$, @1);
         }
     | HEXNUMBER
         {
-            $$ = {type: "NUMBER", value: bigInt($1.substr(2).toUpperCase(), 16).mod(__P__) }
+            $$ = {type: "NUMBER", value: Scalar.fromString($1.substr(2).toUpperCase(), 16) }
             setLines($$, @1);
         }
     | '(' expression ')' %prec EMPTY

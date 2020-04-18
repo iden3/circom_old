@@ -8,11 +8,13 @@ const compiler = require("../../src/compiler");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 const utils = require("../../src/utils");
 const loadR1cs = require("r1csfile").load;
 const ZqField = require("ffjavascript").ZqField;
 const buildZqField = require("ffiasm").buildZqField;
+
+const {stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
 
 module.exports = c_tester;
 
@@ -31,7 +33,7 @@ async function  c_tester(circomFile, _options) {
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
 
-    options.p = options.p || bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    options.p = options.p || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
     await compiler(circomFile, options);
 
     const source = await buildZqField(options.p, "Fr");
@@ -87,7 +89,7 @@ class CTester {
     async calculateWitness(input) {
         await fs.promises.writeFile(
             path.join(this.dir.path, "in.json"),
-            JSON.stringify(utils.stringifyBigInts(input), null, 1)
+            JSON.stringify(stringifyBigInts(input), null, 1)
         );
         const r = await exec(`${path.join(this.dir.path, this.baseName)}` +
                    ` ${path.join(this.dir.path, "in.json")}` +
@@ -100,7 +102,7 @@ class CTester {
             path.join(this.dir.path, "out.json")
         );
 
-        const res = utils.unstringifyBigInts(JSON.parse(resStr));
+        const res = unstringifyBigInts(JSON.parse(resStr));
         return res;
     }
 
@@ -127,7 +129,7 @@ class CTester {
         const self = this;
         if (this.constraints) return;
         const r1cs = await loadR1cs(path.join(this.dir.path, this.baseName + ".r1cs"),true, false);
-        self.field = new ZqField(r1cs.prime);
+        self.F = new ZqField(r1cs.prime);
         self.nVars = r1cs.nVars;
         self.constraints = r1cs.constraints;
     }
@@ -152,8 +154,8 @@ class CTester {
                 if (typeof self.symbols[prefix] == "undefined") {
                     assert(false, "Output variable not defined: "+ prefix);
                 }
-                const ba = bigInt(actualOut[self.symbols[prefix].varIdx]).toString();
-                const be = bigInt(eOut).toString();
+                const ba = actualOut[self.symbols[prefix].varIdx].toString();
+                const be = eOut.toString();
                 assert.strictEqual(ba, be, prefix);
             }
         }
@@ -183,7 +185,7 @@ class CTester {
         }
 
         function checkConstraint(constraint) {
-            const F = self.field;
+            const F = self.F;
             const a = evalLC(constraint[0]);
             const b = evalLC(constraint[1]);
             const c = evalLC(constraint[2]);
@@ -192,7 +194,7 @@ class CTester {
         }
 
         function evalLC(lc) {
-            const F = self.field;
+            const F = self.F;
             let v = F.zero;
             for (let w in lc) {
                 v = F.add(

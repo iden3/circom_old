@@ -76,14 +76,13 @@ QEX     QEX     NQ      NQ      NQ
 NQ      NQ      NQ      NQ      NQ
 */
 
-const bigInt = require("big-integer");
 const utils = require("./utils");
 const sONE = 0;
 
 class LCAlgebra {
     constructor (aField) {
         const self = this;
-        this.field= aField;
+        this.F= aField;
         [
             ["idiv",2],
             ["mod",2],
@@ -118,7 +117,7 @@ class LCAlgebra {
             }
             return {
                 t: "N",
-                v: adjustBool ? ( self.field[op](...operands) ? bigInt.one: bigInt.zero) : self.field[op](...operands)
+                v: adjustBool ? ( self.F[op](...operands) ? self.F.one: self.F.zero) : self.F[op](...operands)
             };
         };
     }
@@ -129,7 +128,7 @@ class LCAlgebra {
                 t: "LC",
                 coefs: {}
             };
-            lc.coefs[a.sIdx] = bigInt(1);
+            lc.coefs[a.sIdx] = self.F.one;
             return lc;
         } else {
             return a;
@@ -200,17 +199,17 @@ class LCAlgebra {
         function add_N_N(a,b) {
             return {
                 t: "N",
-                v: self.field.add(a.v, b.v)
+                v: self.F.add(a.v, b.v)
             };
         }
 
         function add_LC_N(a,b) {
             let res = self._clone(a);
-            if (b.v.isZero()) return res;
+            if (self.F.isZero(b.v)) return res;
             if (!utils.isDefined(res.coefs[sONE])) {
                 res.coefs[sONE]= b.v;
             } else {
-                res.coefs[sONE]= self.field.add(res.coefs[sONE], b.v);
+                res.coefs[sONE]= self.F.add(res.coefs[sONE], b.v);
             }
             return res;
         }
@@ -221,7 +220,7 @@ class LCAlgebra {
                 if (!utils.isDefined(res.coefs[k])) {
                     res.coefs[k]=b.coefs[k];
                 } else {
-                    res.coefs[k]= self.field.add(res.coefs[k], b.coefs[k]);
+                    res.coefs[k]= self.F.add(res.coefs[k], b.coefs[k]);
                 }
             }
             return res;
@@ -283,14 +282,14 @@ class LCAlgebra {
         function mul_N_N(a,b) {
             return {
                 t: "N",
-                v: self.field.mul(a.v, b.v)
+                v: self.F.mul(a.v, b.v)
             };
         }
 
         function mul_LC_N(a,b) {
             let res = self._clone(a);
             for (let k in res.coefs) {
-                res.coefs[k] = self.field.mul(res.coefs[k], b.v);
+                res.coefs[k] = self.F.mul(res.coefs[k], b.v);
             }
             return res;
         }
@@ -318,10 +317,10 @@ class LCAlgebra {
         const a = this._signal2lc(_a);
         let res = this._clone(a);
         if (res.t == "N") {
-            res.v = this.field.neg(a.v);
+            res.v = this.F.neg(a.v);
         } else if (res.t == "LC") {
             for (let k in res.coefs) {
-                res.coefs[k] = this.field.neg(res.coefs[k]);
+                res.coefs[k] = this.F.neg(res.coefs[k]);
             }
         } else if (res.t == "QEX") {
             res.a = this.neg(res.a);
@@ -338,10 +337,10 @@ class LCAlgebra {
 
     div(a, b) {
         if (b.t == "N") {
-            if (b.v.isZero()) throw new Error("Division by zero");
+            if (this.F.isZero(b.v)) throw new Error("Division by zero");
             const inv = {
                 t: "N",
-                v: this.field.inv(b.v)
+                v: this.F.inv(b.v)
             };
             return this.mul(a, inv);
         } else {
@@ -351,23 +350,23 @@ class LCAlgebra {
 
     pow(a, b) {
         if (b.t == "N") {
-            if (b.v.isZero()) {
+            if (this.F.isZero(b.v)) {
                 if (this.isZero(a)) {
                     throw new Error("Zero to the Zero");
                 }
                 return {
                     t: "N",
-                    v: this.field.one
+                    v: this.F.one
                 };
-            } else if (b.v.eq(this.field.one)) {
+            } else if (this.F.eq(b.v, this.F.one)) {
                 return a;
-            } else if (b.v.eq(bigInt(2))) {
+            } else if (this.F.eq(b.v, this.F.two)) {
                 return this.mul(a,a);
             } else {
                 if (a.t=="N") {
                     return {
                         t: "N",
-                        v: this.field.pow(a.v, b.v)
+                        v: this.F.pow(a.v, b.v)
                     };
                 } else {
                     return {t: "NQ"};
@@ -381,18 +380,18 @@ class LCAlgebra {
     substitute(where, signal, equivalence) {
         if (equivalence.t != "LC") throw new Error("Equivalence must be a Linear Combination");
         if (where.t == "LC") {
-            if (!utils.isDefined(where.coefs[signal]) || where.coefs[signal].isZero()) return where;
+            if (!utils.isDefined(where.coefs[signal]) || this.F.isZero(where.coefs[signal])) return where;
             const res=this._clone(where);
             const coef = res.coefs[signal];
             for (let k in equivalence.coefs) {
                 if (k != signal) {
-                    const v = this.field.mul( coef, equivalence.coefs[k] );
+                    const v = this.F.mul( coef, equivalence.coefs[k] );
                     if (!utils.isDefined(res.coefs[k])) {
                         res.coefs[k]=v;
                     } else {
-                        res.coefs[k]= this.field.add(res.coefs[k],v);
+                        res.coefs[k]= this.F.add(res.coefs[k],v);
                     }
-                    if (res.coefs[k].isZero()) delete res.coefs[k];
+                    if (this.F.isZero(res.coefs[k])) delete res.coefs[k];
                 }
             }
             delete res.coefs[signal];
@@ -436,10 +435,10 @@ class LCAlgebra {
 
     isZero(a) {
         if (a.t == "N") {
-            return a.v.isZero();
+            return this.F.isZero(a.v);
         } else if (a.t == "LC") {
             for (let k in a.coefs) {
-                if (!a.coefs[k].isZero()) return false;
+                if (!this.F.isZero(a.coefs[k])) return false;
             }
             return true;
         } else if (a.t == "QEX") {
@@ -455,16 +454,16 @@ class LCAlgebra {
         } else if (a.t == "LC") {
             let S="";
             for (let k in a.coefs) {
-                if (!a.coefs[k].isZero()) {
+                if (!this.F.isZero(a.coefs[k])) {
                     let c;
-                    if (a.coefs[k].greater(this.field.p.divide(2))) {
+                    if (a.coefs[k].greater(this.F.p.divide(2))) {
                         S = S + "-";
-                        c = this.field.p.minus(a.coefs[k]);
+                        c = this.F.p.minus(a.coefs[k]);
                     } else {
                         if (S!="") S=S+" + ";
                         c = a.coefs[k];
                     }
-                    if (!c.equals(bigInt.one)) {
+                    if (!c.equals(this.F.one)) {
                         S = S + c.toString() + "*";
                     }
                     let sIdx = k;
@@ -491,11 +490,11 @@ class LCAlgebra {
         } else if (n.t == "SIGNAL") {
             return getSignalValue(ctx, n.sIdx);
         } else if (n.t == "LC") {
-            let v= this.field.zero;
+            let v= this.F.zero;
             for (let k in n.coefs) {
                 const s = getSignalValue(ctx, k);
                 if (s === null) return null;
-                v = this.field.add(v, this.field.mul( n.coefs[k], s));
+                v = this.F.add(v, this.F.mul( n.coefs[k], s));
             }
             return v;
         } else if (n.type == "QEX") {
@@ -506,7 +505,7 @@ class LCAlgebra {
             const c = this.evaluate(ctx, n.c);
             if (c === null) return null;
 
-            return this.field.add(this.field.mul(a,b), c);
+            return this.F.add(this.F.mul(a,b), c);
         } else {
             return null;
         }
@@ -529,24 +528,24 @@ class LCAlgebra {
                 let s = k;
                 while (ctx.signals[s].e>=0) s= ctx.signals[s].e;
                 if (utils.isDefined(ctx.signals[s].v)&&(k != sONE)) {
-                    const v = this.field.mul(res.coefs[k], ctx.signals[s].v);
+                    const v = this.F.mul(res.coefs[k], ctx.signals[s].v);
                     if (!utils.isDefined(res.coefs[sONE])) {
                         res.coefs[sONE]=v;
                     } else {
-                        res.coefs[sONE]= this.field.add(res.coefs[sONE], v);
+                        res.coefs[sONE]= this.F.add(res.coefs[sONE], v);
                     }
                     delete res.coefs[k];
                 } else if (s != k) {
                     if (!utils.isDefined(res.coefs[s])) {
                         res.coefs[s]=res.coefs[k];
                     } else {
-                        res.coefs[s]= this.field.add(res.coefs[s], res.coefs[k]);
+                        res.coefs[s]= this.F.add(res.coefs[s], res.coefs[k]);
                     }
                     delete res.coefs[k];
                 }
             }
             for (let k in res.coefs) {
-                if (res.coefs[k].isZero()) delete res.coefs[k];
+                if (this.F.isZero(res.coefs[k])) delete res.coefs[k];
             }
             return res;
         } else if (a.t == "QEX") {

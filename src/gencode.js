@@ -1,7 +1,7 @@
-const bigInt = require("big-integer");
 const utils = require("./utils");
 const assert = require("assert");
 const iterateAST = require("./iterateast");
+const Scalar = require("ffjavascript").Scalar;
 
 module.exports.gen =  gen;
 module.exports.newRef = newRef;
@@ -300,7 +300,7 @@ function genDeclareVariable(ctx, ast) {
             const size = ctx.refs[sizeRef];
             if (size.sizes[0] != 1) return ctx.throwError(ast, "A selector cannot be an array");
             if (size.used) return ctx.throwError(ast, "Variable size variables not allowed");
-            sizes.push(size.value[0]);
+            sizes.push(Scalar.toNumber(size.value[0]));
         }
         sizes = utils.accSizes(sizes);
     } else {
@@ -320,7 +320,7 @@ function genDeclareVariable(ctx, ast) {
 }
 
 function genNumber(ctx, ast) {
-    return newRef(ctx, "BIGINT", "_num", bigInt(ast.value));
+    return newRef(ctx, "BIGINT", "_num", ctx.F.e(ast.value));
 }
 
 
@@ -950,7 +950,7 @@ function genLoop(ctx, ast) {
         ctx.codeBuilder.assign(loopCond.label, ["R", cond.label], ["V", 0]);
     } else {
         if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
-        if (cond.value[0].isZero()) end=true;
+        if (ctx.F.isZero(cond.value[0])) end=true;
     }
 
 
@@ -993,7 +993,7 @@ function genLoop(ctx, ast) {
             } else {
                 oldCodeBuilder.concat(ctx.codeBuilder);
                 ctx.codeBuilder = oldCodeBuilder;
-                if (cond2.value[0].isZero()) end=true;
+                if (ctx.F.isZero(cond2.value[0])) end=true;
             }
         } else {
             ctx.codeBuilder.assign(loopCond.label, ["R", cond2.label], ["V", 0]);
@@ -1042,7 +1042,7 @@ function genIf(ctx, ast) {
 
     } else {
         if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
-        if (!cond.value[0].isZero()) {
+        if (!ctx.F.isZero(cond.value[0])) {
             gen(ctx, ast.then);
         } else {
             if (ast.else) {
@@ -1109,9 +1109,9 @@ function genOpOp(ctx, ast, op, lr) {
     const res = ctx.refs[resRef];
     if (veval.used) {
         instantiateRef(ctx, resRef);
-        ctx.codeBuilder.fieldOp(res.label, op, [["R", veval.label], ["C", ctx.addConstant(bigInt.one)]]);
+        ctx.codeBuilder.fieldOp(res.label, op, [["R", veval.label], ["C", ctx.addConstant(ctx.F.one)]]);
     } else {
-        res.value = [ctx.field[op](veval.value[0], bigInt(1))];
+        res.value = [ctx.F[op](veval.value[0], ctx.F.one)];
     }
     genVarAssignment(ctx, ast, vRef, ast.values[0].selectors, resRef);
     if (lr == "RIGHT") {
@@ -1157,10 +1157,10 @@ function genOp(ctx, ast, op, nOps, adjustBool) {
     } else {
         const params = [];
         for (let i=0; i<nOps; i++) {
-            params.push(vals[i].value[0]);
+            params.push(ctx.F.e(vals[i].value[0]));
         }
 
-        rRef = newRef(ctx, "BIGINT", "_tmp", adjustBool ? (ctx.field[op](...params)?bigInt.one:bigInt.zero)  : ctx.field[op](...params));
+        rRef = newRef(ctx, "BIGINT", "_tmp", adjustBool ? (ctx.F[op](...params)?ctx.F.one:ctx.F.zero)  : ctx.F[op](...params));
     }
     return rRef;
 }
@@ -1242,7 +1242,7 @@ function genTerCon(ctx, ast) {
 
     } else {
         if (!utils.isDefined(cond.value)) return ctx.throwError(ast, "condition value not assigned");
-        if (!cond.value[0].isZero()) {
+        if (!ctx.F.isZero(cond.value[0])) {
             return gen(ctx, ast.values[1]);
         } else {
             return gen(ctx, ast.values[2]);
