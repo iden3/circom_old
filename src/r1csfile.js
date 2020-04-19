@@ -1,16 +1,15 @@
 
-const fs = require("fs");
+const fastFile = require("fastfile");
 const assert = require("assert");
-const Scalar = require("ffjavascript").Scalar;
 
 module.exports.buildR1cs = buildR1cs;
 
 async function buildR1cs(ctx, fileName) {
 
-    const fd = await fs.promises.open(fileName, "w");
+    const fd = await fastFile.createOverride(fileName);
 
 
-    await fd.write("r1cs"); // Magic "r1cs"
+    await fd.write(Buffer.from("r1cs"), 0); // Magic "r1cs"
 
     let p = 4;
     await writeU32(1); // Version
@@ -53,7 +52,6 @@ async function buildR1cs(ctx, fileName) {
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) {
             if (ctx.verbose) console.log("writing constraint: ", i);
-            await fd.datasync();
         }
         await writeConstraint(ctx.constraints[i]);
     }
@@ -89,19 +87,22 @@ async function buildR1cs(ctx, fileName) {
     await writeU32(constraintsSize, pConstraintsSize);
     await writeU32(mapSize, pMapSize);
 
-    await fd.sync();
     await fd.close();
 
     async function writeU32(v, pos) {
+        let o = (typeof pos == "undefined") ? p : pos;
+
         const b = Buffer.allocUnsafe(4);
         b.writeInt32LE(v);
 
-        await fd.write(b, 0, 4, pos);
+        await fd.write(b, o);
 
         if (typeof(pos) == "undefined") p += 4;
     }
 
     async function writeU64(v, pos) {
+        let o = (typeof pos == "undefined") ? p : pos;
+
         const b = Buffer.allocUnsafe(8);
 
         const LSB = v & 0xFFFFFFFF;
@@ -109,7 +110,7 @@ async function buildR1cs(ctx, fileName) {
         b.writeInt32LE(LSB, 0);
         b.writeInt32LE(MSB, 4);
 
-        await fd.write(b, 0, 8, pos);
+        await fd.write(b, o);
 
         if (typeof(pos) == "undefined") p += 8;
     }
@@ -134,16 +135,15 @@ async function buildR1cs(ctx, fileName) {
     }
 
     async function writeBigInt(n, pos) {
-        const b = Buffer.allocUnsafe(n8);
 
-        const dwords = Scalar.toArray(n, 0x100000000);
+        let o = (typeof pos == "undefined") ? p : pos;
 
-        for (let i=0; i<dwords.length; i++) {
-            b.writeUInt32LE(dwords[dwords.length-1-i], i*4, 4 );
-        }
-        b.fill(0, dwords.length*4);
+        const s = n.toString(16);
+        const b = Buffer.from(s.padStart(n8*2, "0"), "hex");
+        const buff = Buffer.allocUnsafe(b.length);
+        for (let i=0; i<b.length; i++) buff[i] = b[b.length-1-i];
 
-        await fd.write(b, 0, fs, pos);
+        await fd.write(buff, o);
 
         if (typeof(pos) == "undefined") p += n8;
     }
