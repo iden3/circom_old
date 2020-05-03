@@ -273,7 +273,7 @@ template MatrixMultiplier(m, n, p) {
 component main = MatrixMultiplier(2, 3, 4);
 ```
 
-Using this template, you should make different circuits when m, n, and p values vary. Here, we'll make a circuit which proves the matrix multiplication result of 2x3 matrix and 3x4 matrix. With the circuir we will prove
+Using this template, you should make different circuits when m, n, and p values vary. Here, we'll make a circuit which proves the matrix multiplication result of 2x3 matrix and 3x4 matrix. With the circuit we will prove
 ```
 ┌         ┐   ┌                ┐   ┌                ┐ 
 │ 0 -1  3 │ x │ -2  11  12  13 │ = │  4   9   4   1 │ 	
