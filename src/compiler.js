@@ -32,14 +32,14 @@ const buildSyms = require("./buildsyms");
 module.exports = compile;
 
 async function compile(srcFile, options) {
-    options.p = options.p || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    options.prime = options.prime || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
     if (!options) {
         options = {};
     }
     if (typeof options.reduceConstraints === "undefined") {
         options.reduceConstraints = true;
     }
-    const ctx = new Ctx(options.p);
+    const ctx = new Ctx(options.prime);
     ctx.verbose= options.verbose || false;
     ctx.mainComponent = options.mainComponent || "main";
     ctx.newThreadTemplates = options.newThreadTemplates;
@@ -82,7 +82,8 @@ async function compile(srcFile, options) {
     }
 
     if (options.cSourceWriteStream) {
-        ctx.builder = new BuilderC(options.p);
+        if (ctx.verbose) console.log("Generating c...");
+        ctx.builder = new BuilderC(options.prime);
         build(ctx);
         const rdStream = ctx.builder.build();
         rdStream.pipe(options.cSourceWriteStream);
@@ -91,7 +92,8 @@ async function compile(srcFile, options) {
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
-        ctx.builder = new BuilderWasm(options.p);
+        if (ctx.verbose) console.log("Generating wasm...");
+        ctx.builder = new BuilderWasm(options.prime);
         build(ctx);
         if (options.wasmWriteStream) {
             const rdStream = ctx.builder.build("wasm");

@@ -728,12 +728,9 @@ module.exports = function buildRuntime(module, builder) {
 
                 c.setLocal(
                     "pSrc",
-                    c.i32_add(
-                        c.i32_const(builder.pSignals),
-                        c.i32_mul(
-                            c.getLocal("i"),
-                            c.i32_const(builder.sizeFr)
-                        )
+                    c.call(
+                        "getPWitness",
+                        c.getLocal("i"),
                     )
                 ),
 
@@ -745,7 +742,7 @@ module.exports = function buildRuntime(module, builder) {
                 c.setLocal(
                     "pDst",
                     c.i32_add(
-                        c.i32_const(builder.pSignals),
+                        c.i32_const(builder.pOutput),
                         c.i32_mul(
                             c.getLocal("i"),
                             c.i32_const(builder.sizeFr-8)
@@ -770,7 +767,7 @@ module.exports = function buildRuntime(module, builder) {
                 c.br(0)
             )),
 
-            c.i32_const(builder.pSignals)
+            c.i32_const(builder.pOutput)
         );
 
     }
@@ -804,6 +801,7 @@ module.exports = function buildRuntime(module, builder) {
     buildWasmFf(module, "Fr", builder.header.P);
 
     builder.pSignals=module.alloc(builder.header.NSignals*builder.sizeFr);
+    builder.pOutput=module.alloc(builder.header.NVars*(builder.sizeFr-8));
     builder.pInputSignalsToTrigger=module.alloc(builder.header.NComponents*4);
     builder.pSignalsAssigned=module.alloc(builder.header.NSignals*4);
 

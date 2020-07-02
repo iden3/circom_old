@@ -82,7 +82,6 @@ const options = {};
 options.reduceConstraints = !argv.fast;
 options.verbose = argv.verbose || false;
 options.sanityCheck = argv.sanitycheck;
-options.prime = argv.prime ? Scalar.fromString(argv.prime) : Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 
 if (argv.csource) {
     options.cSourceWriteStream = fs.createWriteStream(cSourceName);
@@ -102,6 +101,16 @@ if (argv.sym) {
 if (argv.newThreadTemplates) {
     options.newThreadTemplates = new RegExp(argv.newThreadTemplates);
 }
+if (!argv.prime) {
+    options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+} else if (["BLS12-381", "BLS12381"]. indexOf(argv.prime.toUpperCase()) >=0) {
+    options.prime = Scalar.fromString("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",16);
+} else if (["BN-128", "BN128", "BN254", "BN-254"]. indexOf(argv.prime.toUpperCase()) >=0) {
+    options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+} else {
+    options.prime = Scalar.fromString(argv.prime);
+}
+
 
 compiler(fullFileName, options).then( () => {
     let cSourceDone = false;

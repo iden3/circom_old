@@ -8,7 +8,7 @@ This tutorial will guide you in creating your first zero-knowledge SNARK circuit
 
 If you don't have it installed yet, you need to install `Node.js`.
 
-The last stable version of `Node.js` (or 8.12.0) works just fine, but if you install the latest current version `Node.js` (10.12.0) you will see a significant increase in performance. This is because last versions of node includes Big Integer Libraries nativelly. The `snarkjs` library makes use of this feature if available, and this improves the performance x10 (!).
+You should install at least version 10 of node. It's important to note here that the latests versions of javascript, includes big integer support and web assembly compilers that make the code run fast.
 
 ### 1.2 Install **circom** and **snarkjs**
 

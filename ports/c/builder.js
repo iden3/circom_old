@@ -504,7 +504,7 @@ class BuilderC {
 
 
             function addShortMontgomeryNegative(a) {
-                const b = self.F.neg(a);
+                const b = -Scalar.toNumber(self.F.neg(a));
                 return `${b.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
             }
 
