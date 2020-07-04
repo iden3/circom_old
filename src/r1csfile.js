@@ -9,22 +9,24 @@ async function buildR1cs(ctx, fileName) {
     const fd = await fastFile.createOverride(fileName);
 
 
-    await fd.write(Buffer.from("r1cs"), 0); // Magic "r1cs"
+    const type = "r1cs";
+    const buff = new Uint8Array(4);
+    for (let i=0; i<4; i++) buff[i] = type.charCodeAt(i);
+    await fd.write(buff, 0); // Magic "r1cs"
 
-    let p = 4;
-    await writeU32(1); // Version
-    await writeU32(3); // Number of Sections
+    await fd.writeULE32(1); // Version
+    await fd.writeULE32(3); // Number of Sections
 
     // Write the header
     ///////////
-    await writeU32(1); // Header type
-    const pHeaderSize = p;
-    await writeU64(0); // Temporally set to 0 length
+    await fd.writeULE32(1); // Header type
+    const pHeaderSize = fd.pos;
+    await fd.writeULE64(0); // Temporally set to 0 length
 
 
     const n8 = (Math.floor( (ctx.F.bitLength - 1) / 64) +1)*8;
     // Field Def
-    await writeU32(n8); // Temporally set to 0 length
+    await fd.writeULE32(n8); // Temporally set to 0 length
     await writeBigInt(ctx.F.p);
 
     const NWires =
@@ -34,20 +36,20 @@ async function buildR1cs(ctx, fileName) {
         ctx.totals[ctx.stPRVINPUT] +
         ctx.totals[ctx.stINTERNAL];
 
-    await writeU32(NWires);
-    await writeU32(ctx.totals[ctx.stOUTPUT]);
-    await writeU32(ctx.totals[ctx.stPUBINPUT]);
-    await writeU32(ctx.totals[ctx.stPRVINPUT]);
-    await writeU64(ctx.signals.length);
-    await writeU32(ctx.constraints.length);
+    await fd.writeULE32(NWires);
+    await fd.writeULE32(ctx.totals[ctx.stOUTPUT]);
+    await fd.writeULE32(ctx.totals[ctx.stPUBINPUT]);
+    await fd.writeULE32(ctx.totals[ctx.stPRVINPUT]);
+    await fd.writeULE64(ctx.signals.length);
+    await fd.writeULE32(ctx.constraints.length);
 
-    const headerSize = p - pHeaderSize - 8;
+    const headerSize = fd.pos - pHeaderSize - 8;
 
     // Write constraints
     ///////////
-    await writeU32(2); // Constraints type
-    const pConstraintsSize = p;
-    await writeU64(0); // Temporally set to 0 length
+    await fd.writeULE32(2); // Constraints type
+    const pConstraintsSize = fd.pos;
+    await fd.writeULE64(0); // Temporally set to 0 length
 
     for (let i=0; i<ctx.constraints.length; i++) {
         if ((ctx.verbose)&&(i%10000 == 0)) {
@@ -56,13 +58,13 @@ async function buildR1cs(ctx, fileName) {
         await writeConstraint(ctx.constraints[i]);
     }
 
-    const constraintsSize = p - pConstraintsSize - 8;
+    const constraintsSize = fd.pos - pConstraintsSize - 8;
 
     // Write map
     ///////////
-    await writeU32(3); // wires2label type
-    const pMapSize = p;
-    await writeU64(0); // Temporally set to 0 length
+    await fd.writeULE32(3); // wires2label type
+    const pMapSize = fd.pos;
+    await fd.writeULE64(0); // Temporally set to 0 length
 
 
     const arr = new Array(NWires);
@@ -76,44 +78,18 @@ async function buildR1cs(ctx, fileName) {
         }
     }
     for (let i=0; i<arr.length; i++) {
-        await writeU64(arr[i]);
+        await fd.writeULE64(arr[i]);
         if ((ctx.verbose)&&(i%100000)) console.log("writing wire2label map: ", i);
     }
 
-    const mapSize = p - pMapSize - 8;
+    const mapSize = fd.pos - pMapSize - 8;
 
     // Write sizes
-    await writeU32(headerSize, pHeaderSize);
-    await writeU32(constraintsSize, pConstraintsSize);
-    await writeU32(mapSize, pMapSize);
+    await fd.writeULE32(headerSize, pHeaderSize);
+    await fd.writeULE32(constraintsSize, pConstraintsSize);
+    await fd.writeULE32(mapSize, pMapSize);
 
     await fd.close();
-
-    async function writeU32(v, pos) {
-        let o = (typeof pos == "undefined") ? p : pos;
-
-        const b = Buffer.allocUnsafe(4);
-        b.writeInt32LE(v);
-
-        await fd.write(b, o);
-
-        if (typeof(pos) == "undefined") p += 4;
-    }
-
-    async function writeU64(v, pos) {
-        let o = (typeof pos == "undefined") ? p : pos;
-
-        const b = Buffer.allocUnsafe(8);
-
-        const LSB = v & 0xFFFFFFFF;
-        const MSB = Math.floor(v / 0x100000000);
-        b.writeInt32LE(LSB, 0);
-        b.writeInt32LE(MSB, 4);
-
-        await fd.write(b, o);
-
-        if (typeof(pos) == "undefined") p += 8;
-    }
 
     async function writeConstraint(c) {
         await writeLC(c.a);
@@ -123,28 +99,25 @@ async function buildR1cs(ctx, fileName) {
 
     async function writeLC(lc) {
         const idxs = Object.keys(lc.coefs);
-        await writeU32(idxs.length);
+        await fd.writeULE32(idxs.length);
         for (let s in lc.coefs) {
             let lSignal = ctx.signals[s];
 
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
 
-            await writeU32(lSignal.id);
+            await fd.writeULE32(lSignal.id);
             await writeBigInt(lc.coefs[s]);
         }
     }
 
     async function writeBigInt(n, pos) {
 
-        let o = (typeof pos == "undefined") ? p : pos;
-
         const s = n.toString(16);
         const b = Buffer.from(s.padStart(n8*2, "0"), "hex");
-        const buff = Buffer.allocUnsafe(b.length);
+        const buff = new Uint8Array(b.length);
         for (let i=0; i<b.length; i++) buff[i] = b[b.length-1-i];
 
-        await fd.write(buff, o);
+        await fd.write(buff, pos);
 
-        if (typeof(pos) == "undefined") p += n8;
     }
 }
