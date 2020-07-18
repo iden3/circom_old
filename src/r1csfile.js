@@ -79,7 +79,7 @@ async function buildR1cs(ctx, fileName) {
     }
     for (let i=0; i<arr.length; i++) {
         await fd.writeULE64(arr[i]);
-        if ((ctx.verbose)&&(i%100000)) console.log("writing wire2label map: ", i);
+        if ((ctx.verbose)&&(i%100000 == 0)) console.log(`writing wire2label map: ${i}/${arr.length}`);
     }
 
     const mapSize = fd.pos - pMapSize - 8;

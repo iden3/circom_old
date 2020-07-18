@@ -1,4 +1,4 @@
-const SUBARRAY_SIZE = 0x10000;
+const SUBARRAY_SIZE = 0x40000;
 
 const BigArrayHandler = {
     get: function(obj, prop) {
@@ -19,7 +19,7 @@ const BigArrayHandler = {
 class _BigArray {
     constructor (initSize) {
         this.length = initSize || 0;
-        this.arr = [];
+        this.arr = new Array(SUBARRAY_SIZE);
 
         for (let i=0; i<initSize; i+=SUBARRAY_SIZE) {
             this.arr[i/SUBARRAY_SIZE] = new Array(Math.min(SUBARRAY_SIZE, initSize - i));
@@ -39,7 +39,7 @@ class _BigArray {
         idx = parseInt(idx);
         const idx1 = Math.floor(idx / SUBARRAY_SIZE);
         if (!this.arr[idx1]) {
-            this.arr[idx1] = [];
+            this.arr[idx1] = new Array(SUBARRAY_SIZE);
         }
         const idx2 = idx % SUBARRAY_SIZE;
         this.arr[idx1][idx2] = value;

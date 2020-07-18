@@ -65,12 +65,16 @@ async function compile(srcFile, options) {
 
         if (ctx.verbose) console.log("Reduce Constraints");
         // Repeat while reductions are performed
+/*
         let oldNConstrains = -1;
         while (ctx.constraints.length != oldNConstrains) {
             if (ctx.verbose) console.log("Reducing constraints: "+ctx.constraints.length);
             oldNConstrains = ctx.constraints.length;
             reduceConstrains(ctx);
         }
+*/
+
+        reduceConstrains(ctx);
     }
 
     if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
@@ -252,6 +256,227 @@ function reduceConstants(ctx) {
 }
 
 function reduceConstrains(ctx) {
+    const sig2constraint = {};
+    let removedSignals = {};
+    let nRemoved;
+    let lIdx;
+
+
+    let possibleConstraints = new Array(ctx.constraints.length);
+    let nextPossibleConstraints;
+    for (let i=0; i<ctx.constraints.length; i++) {
+        const insertedSig = {};
+        const c = ctx.constraints[i];
+        for (let s in c.a.coefs) {
+            if (!insertedSig[s]) {
+                if (!sig2constraint[s]) sig2constraint[s] = [];
+                sig2constraint[s].push(i);
+                insertedSig[s] = true;
+            }
+        }
+        for (let s in c.b.coefs) {
+            if (!insertedSig[s]) {
+                if (!sig2constraint[s]) sig2constraint[s] = [];
+                sig2constraint[s].push(i);
+                insertedSig[s] = true;
+            }
+        }
+        for (let s in c.c.coefs) {
+            if (!insertedSig[s]) {
+                if (!sig2constraint[s]) sig2constraint[s] = [];
+                sig2constraint[s].push(i);
+                insertedSig[s] = true;
+            }
+        }
+        possibleConstraints[i] = i;
+    }
+
+    while (possibleConstraints.length >0) {
+        nextPossibleConstraints = {};
+        removedSignals = {};
+        nRemoved = 0;
+        lIdx = {};
+        for (let i=0;i<possibleConstraints.length;i++) {
+            if ((ctx.verbose)&&(i%10000 == 0)) {
+                console.log(`reducing constraints: ${i}/${possibleConstraints.length}   reduced: ${nRemoved}`);
+            }
+            const c = ctx.constraints[possibleConstraints[i]];
+            if (!c) continue;
+
+            // Swap a and b if b has more variables.
+            if (Object.keys(c.b).length > Object.keys(c.a).length) {
+                const aux = c.a;
+                c.a=c.b;
+                c.b=aux;
+            }
+
+            // Mov to C if possible.
+            if (isConstant(c.a)) {
+                const ct = {t: "N", v: c.a.coefs[sONE]};
+                c.c = ctx.lc.add(ctx.lc.mul(c.b, ct), c.c);
+                c.a = { t: "LC", coefs: {} };
+                c.b = { t: "LC", coefs: {} };
+            }
+            if (isConstant(c.b)) {
+                const ct = {t: "N", v: c.b.coefs[sONE]};
+                c.c = ctx.lc.add(ctx.lc.mul(c.a, ct), c.c);
+                c.a = { t: "LC", coefs: {} };
+                c.b = { t: "LC", coefs: {} };
+            }
+
+            if (ctx.lc.isZero(c.a) || ctx.lc.isZero(c.b)) {
+                const freeC = substituteRemoved(c.c);
+                const isolatedSignal = getFirstInternalSignal(ctx, freeC);
+                if (isolatedSignal) {
+    //                console.log(isolatedSignal);
+    //                console.log(freeC);
+                    removedSignals[isolatedSignal] = isolateSignal(freeC, isolatedSignal);
+                    if (lIdx[isolatedSignal]) {
+                        lIdx[isolatedSignal].forEach( (s) => {
+                            removedSignals[s] = substitute(removedSignals[s], isolatedSignal, removedSignals[isolatedSignal]);
+                        });
+                    }
+
+                    addTolIdx(removedSignals[isolatedSignal], isolatedSignal);
+                    ctx.constraints[possibleConstraints[i]] = null;
+                    nRemoved ++;
+
+                    sig2constraint[isolatedSignal].forEach( (s) => {
+                        nextPossibleConstraints[s] = true;
+                    });
+                }
+            }
+        }
+
+        nextPossibleConstraints = Object.keys(nextPossibleConstraints);
+
+        for (let i=0; i<nextPossibleConstraints.length;i++) {
+            const c = ctx.constraints[nextPossibleConstraints[i]];
+            if (c) {
+                const nc = {
+                    a: substituteRemoved(c.a),
+                    b: substituteRemoved(c.b),
+                    c: substituteRemoved(c.c)
+                };
+                if (ctx.lc.isZero(nc)) {
+                    delete ctx.constraints[nextPossibleConstraints[i]];
+                } else {
+                    ctx.constraints[nextPossibleConstraints[i]] = nc;
+                }
+            }
+        }
+
+        for (let s in removedSignals) {
+
+            let lSignal = ctx.signals[s];
+            while (lSignal.e>=0) {
+                lSignal = ctx.signals[lSignal.e];
+            }
+
+            lSignal.c = ctx.stDISCARDED;
+        }
+
+        possibleConstraints = nextPossibleConstraints;
+
+    }
+
+    let o=0;
+    for (let i=0; i<ctx.constraints.length;i++) {
+        if (ctx.constraints[i]) {
+            if (!ctx.lc.isZero(ctx.constraints[i])) {
+                ctx.constraints[o] = ctx.constraints[i];
+                o++;
+            }
+        }
+    }
+
+    ctx.constraints.length = o;
+
+    function getFirstInternalSignal(ctx, l) {
+        for (let k in l.coefs) {
+            k = Number(k);
+            const signal = ctx.signals[k];
+            if ((signal.c == ctx.stINTERNAL)&&(!ctx.F.isZero(l.coefs[k])) &&(!removedSignals[k])) return k;
+        }
+        return null;
+    }
+
+    function isolateSignal(lc, s) {
+        const eq = {
+            t: "LC",
+            coefs: {}
+        };
+        const invCoef = ctx.F.inv(lc.coefs[s]);
+        for (const k in lc.coefs) {
+            if (k != s) {
+                const v = ctx.F.mul( ctx.F.neg(lc.coefs[k]), invCoef);
+                if (!ctx.F.isZero(v)) {
+                    eq.coefs[k] = v;
+                }
+            }
+        }
+        return eq;
+    }
+
+    function substituteRemoved(lc) {
+        const newLc = ctx.lc._clone(lc);
+        for (let k in lc.coefs) {
+            if (removedSignals[k]) {
+                delete newLc.coefs[k];
+                for (let k2 in removedSignals[k].coefs) {
+                    const newP = ctx.F.mul(removedSignals[k].coefs[k2], lc.coefs[k]);
+                    if (!ctx.F.isZero(newP)) {
+                        if (newLc.coefs[k2]) {
+                            newLc.coefs[k2] = ctx.F.add(newLc.coefs[k2], newP);
+                            if (ctx.F.isZero(newLc.coefs[k2])) delete newLc.coefs[k2];
+                        } else {
+                            newLc.coefs[k2] = newP;
+                        }
+                    }
+                }
+            }
+        }
+        return newLc;
+    }
+
+    function substitute(lc, s, eq) {
+        if (!lc.coefs[s]) return lc;
+        const newLc = ctx.lc._clone(lc);
+        delete newLc.coefs[s];
+        for (let k2 in eq.coefs) {
+            const newP = ctx.F.mul(eq.coefs[k2], lc.coefs[s]);
+            if (!ctx.F.isZero(newP)) {
+                if (newLc.coefs[k2]) {
+                    newLc.coefs[k2] = ctx.F.add(newLc.coefs[k2], newP);
+                    if (ctx.F.isZero(newLc.coefs[k2])) delete newLc.coefs[k2];
+                } else {
+                    newLc.coefs[k2] = newP;
+                }
+            }
+        }
+        return newLc;
+    }
+
+    function isConstant(l) {
+        for (let k in l.coefs) {
+            if ((k != sONE) && (!ctx.F.isZero(l.coefs[k]))) return false;
+        }
+        if (!l.coefs[sONE] || ctx.F.isZero(l.coefs[sONE])) return false;
+        return true;
+    }
+
+    function addTolIdx(lc, newS) {
+        for (let s in lc.coefs) {
+            if (!lIdx[s]) lIdx[s] = [];
+            lIdx[s].push(newS);
+        }
+    }
+
+
+}
+
+
+function reduceConstrains_old(ctx) {
     indexVariables();
     let possibleConstraints = ctx.constraints;
     let ii=0;
