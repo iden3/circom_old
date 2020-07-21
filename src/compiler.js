@@ -115,10 +115,12 @@ async function compile(srcFile, options) {
     if (ctx.error) throw(ctx.error);
 
     if (options.r1csFileName) {
+        if (ctx.verbose) console.log("Generating r1cs...");
         await buildR1cs(ctx, options.r1csFileName);
     }
 
     if (options.symWriteStream) {
+        if (ctx.verbose) console.log("Generating syms...");
         const rdStream = buildSyms(ctx);
         rdStream.pipe(options.symWriteStream);
 
@@ -297,7 +299,7 @@ async function reduceConstrains(ctx) {
         nextPossibleConstraints = new BigArray();
         removedSignals = new BigArray();
         nRemoved = 0;
-        lIdx = {};
+        lIdx = new BigArray();
         for (let i=0;i<possibleConstraints.length;i++) {
             if ((ctx.verbose)&&(i%10000 == 0)) {
                 await Promise.resolve();
