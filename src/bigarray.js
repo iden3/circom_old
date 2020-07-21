@@ -46,6 +46,19 @@ class _BigArray {
         if (idx >= this.length) this.length = idx+1;
         return true;
     }
+    getKeys() {
+        const newA = new BigArray();
+        for (let i=0; i<this.arr.length; i++) {
+            if (this.arr[i]) {
+                for (let j=0; j<this.arr[i].length; j++) {
+                    if (typeof this.arr[i][j] !== "undefined") {
+                        newA.push(i*SUBARRAY_SIZE+j);
+                    }
+                }
+            }
+        }
+        return newA;
+    }
 }
 
 class BigArray {

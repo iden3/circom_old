@@ -74,7 +74,7 @@ async function compile(srcFile, options) {
         }
 */
 
-        reduceConstrains(ctx);
+        await reduceConstrains(ctx);
     }
 
     if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
@@ -255,17 +255,19 @@ function reduceConstants(ctx) {
     ctx.constraints = newConstraints;
 }
 
-function reduceConstrains(ctx) {
-    const sig2constraint = {};
-    let removedSignals = {};
+async function reduceConstrains(ctx) {
+    const sig2constraint = new BigArray();
+    let removedSignals = new BigArray();
     let nRemoved;
     let lIdx;
 
 
-    let possibleConstraints = new Array(ctx.constraints.length);
+    let possibleConstraints = new BigArray(ctx.constraints.length);
     let nextPossibleConstraints;
     for (let i=0; i<ctx.constraints.length; i++) {
-        const insertedSig = {};
+        if ((ctx.verbose)&&(i%100000 == 0)) console.log(`indexing constraints: ${i}/${ctx.constraints.length}`);
+
+        const insertedSig = { 0: true};  // Do not insert one.
         const c = ctx.constraints[i];
         for (let s in c.a.coefs) {
             if (!insertedSig[s]) {
@@ -292,12 +294,13 @@ function reduceConstrains(ctx) {
     }
 
     while (possibleConstraints.length >0) {
-        nextPossibleConstraints = {};
-        removedSignals = {};
+        nextPossibleConstraints = new BigArray();
+        removedSignals = new BigArray();
         nRemoved = 0;
         lIdx = {};
         for (let i=0;i<possibleConstraints.length;i++) {
             if ((ctx.verbose)&&(i%10000 == 0)) {
+                await Promise.resolve();
                 console.log(`reducing constraints: ${i}/${possibleConstraints.length}   reduced: ${nRemoved}`);
             }
             const c = ctx.constraints[possibleConstraints[i]];
@@ -348,9 +351,13 @@ function reduceConstrains(ctx) {
             }
         }
 
-        nextPossibleConstraints = Object.keys(nextPossibleConstraints);
+        nextPossibleConstraints = nextPossibleConstraints.getKeys();
 
         for (let i=0; i<nextPossibleConstraints.length;i++) {
+            if ((ctx.verbose)&&(i%10000 == 0)) {
+                await Promise.resolve();
+                console.log(`substituting constraints: ${i}/${nextPossibleConstraints.length}`);
+            }
             const c = ctx.constraints[nextPossibleConstraints[i]];
             if (c) {
                 const nc = {
@@ -366,7 +373,11 @@ function reduceConstrains(ctx) {
             }
         }
 
-        for (let s in removedSignals) {
+        const removedSignalsList = removedSignals.getKeys;
+
+        for (let i=0; i<removedSignalsList.length; i++) {
+            if ((ctx.verbose    )&&(i%100000 == 0)) console.log(`removing signals: ${i}/${removedSignalsList.length}`);
+            const s = removedSignalsList[i];
 
             let lSignal = ctx.signals[s];
             while (lSignal.e>=0) {
@@ -377,11 +388,11 @@ function reduceConstrains(ctx) {
         }
 
         possibleConstraints = nextPossibleConstraints;
-
     }
 
     let o=0;
     for (let i=0; i<ctx.constraints.length;i++) {
+        if ((ctx.verbose)&&(i%100000 == 0)) console.log(`reordering constraints: ${i}/${ctx.constraints.length}`);
         if (ctx.constraints[i]) {
             if (!ctx.lc.isZero(ctx.constraints[i])) {
                 ctx.constraints[o] = ctx.constraints[i];
