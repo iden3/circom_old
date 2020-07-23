@@ -44,9 +44,12 @@ async function compile(srcFile, options) {
     ctx.mainComponent = options.mainComponent || "main";
     ctx.newThreadTemplates = options.newThreadTemplates;
 
+    if (ctx.verbose) console.time("Construction Phase");
     constructionPhase(ctx, srcFile);
+    if (ctx.verbose) console.timeEnd("Construction Phase");
 
     if (ctx.verbose) console.log("NConstraints Before: "+ctx.constraints.length);
+    if (ctx.verbose) console.log("NSignals Before: "+ctx.signals.length);
 
     if (ctx.error) {
         throw(ctx.error);
@@ -57,10 +60,15 @@ async function compile(srcFile, options) {
     }
 
     if (ctx.verbose) console.log("Classify Signals");
+    if (ctx.verbose) console.time("Classify Signals");
     classifySignals(ctx);
+    if (ctx.verbose) console.timeEnd("Classify Signals");
 
     if (ctx.verbose) console.log("Reduce Constants");
+    if (ctx.verbose) console.time("Reduce Constants");
     reduceConstants(ctx);
+    if (ctx.verbose) console.timeEnd("Reduce Constants");
+
     if (options.reduceConstraints) {
 
         if (ctx.verbose) console.log("Reduce Constraints");
@@ -73,13 +81,17 @@ async function compile(srcFile, options) {
             reduceConstrains(ctx);
         }
 */
-
+        if (ctx.verbose) console.time("Reduce Constraints");
         await reduceConstrains(ctx);
+        if (ctx.verbose) console.timeEnd("Reduce Constraints");
+
     }
 
     if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
 
+    if (ctx.verbose) console.time("Generate Witness Names");
     generateWitnessNames(ctx);
+    if (ctx.verbose) console.timeEnd("Generate Witness Names");
 
     if (ctx.error) {
         throw(ctx.error);
@@ -87,16 +99,19 @@ async function compile(srcFile, options) {
 
     if (options.cSourceWriteStream) {
         if (ctx.verbose) console.log("Generating c...");
+        if (ctx.verbose) console.time("Generate C");
         ctx.builder = new BuilderC(options.prime);
         build(ctx);
         const rdStream = ctx.builder.build();
         rdStream.pipe(options.cSourceWriteStream);
+        if (ctx.verbose) console.timeEnd("Generate C");
 
         // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
         if (ctx.verbose) console.log("Generating wasm...");
+        if (ctx.verbose) console.time("Generating wasm");
         ctx.builder = new BuilderWasm(options.prime);
         build(ctx);
         if (options.wasmWriteStream) {
@@ -107,6 +122,7 @@ async function compile(srcFile, options) {
             const rdStream = ctx.builder.build("wat");
             rdStream.pipe(options.watWriteStream);
         }
+        if (ctx.verbose) console.timeEnd("Generate wasm");
 
         // await new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill));
     }
@@ -116,13 +132,17 @@ async function compile(srcFile, options) {
 
     if (options.r1csFileName) {
         if (ctx.verbose) console.log("Generating r1cs...");
+        if (ctx.verbose) console.time("Generating r1cs");
         await buildR1cs(ctx, options.r1csFileName);
+        if (ctx.verbose) console.timeEnd("Generating r1cs");
     }
 
     if (options.symWriteStream) {
         if (ctx.verbose) console.log("Generating syms...");
+        if (ctx.verbose) console.time("Generating syms");
         const rdStream = buildSyms(ctx);
         rdStream.pipe(options.symWriteStream);
+        if (ctx.verbose) console.timeEnd("Generating syms");
 
         // await new Promise(fulfill => options.symWriteStream.on("finish", fulfill));
     }
@@ -154,6 +174,7 @@ function classifySignals(ctx) {
 
     // First classify the signals
     for (let s=0; s<ctx.signals.length; s++) {
+        if ((ctx.verbose)&&(s%100000 == 0)) console.log(`classify signals: ${s}/${ctx.signals.length}`);
         const signal = ctx.signals[s];
         let tAll = ctx.stINTERNAL;
         let lSignal = signal;

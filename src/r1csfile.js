@@ -4,10 +4,13 @@ const assert = require("assert");
 
 module.exports.buildR1cs = buildR1cs;
 
+
 async function buildR1cs(ctx, fileName) {
 
     const fd = await fastFile.createOverride(fileName);
 
+
+    const buffBigInt = new Uint8Array(ctx.F.n8);
 
     const type = "r1cs";
     const buff = new Uint8Array(4);
@@ -112,12 +115,9 @@ async function buildR1cs(ctx, fileName) {
 
     async function writeBigInt(n, pos) {
 
-        const s = n.toString(16);
-        const b = Buffer.from(s.padStart(n8*2, "0"), "hex");
-        const buff = new Uint8Array(b.length);
-        for (let i=0; i<b.length; i++) buff[i] = b[b.length-1-i];
+        ctx.F.toRprLE(buffBigInt, 0, n);
 
-        await fd.write(buff, pos);
+        await fd.write(buffBigInt, pos);
 
     }
 }

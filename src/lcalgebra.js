@@ -123,6 +123,7 @@ class LCAlgebra {
     }
 
     _signal2lc(a) {
+        const self = this;
         if (a.t == "S") {
             const lc = {
                 t: "LC",
