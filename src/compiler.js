@@ -28,8 +28,30 @@ const utils = require("./utils");
 const buildR1cs = require("./r1csfile").buildR1cs;
 const BigArray = require("./bigarray");
 const buildSyms = require("./buildsyms");
+const {performance} = require("perf_hooks");
 
 module.exports = compile;
+const measures = {};
+
+function ms2String(v) {
+    v = Math.floor(v);
+    const ms = v % 1000;
+    v = Math.floor(v/1000);
+    const secs = v % 60;
+    v = Math.floor(v/60);
+    const mins = v % 60;
+    v = Math.floor(v/60);
+    const hours = v % 24;
+    const days = Math.floor(v/24);
+    let S = "";
+    if (days) S = S + days + "D ";
+    if ((S!="")||(hours)) S = S + hours.toString().padStart(2, "0") + ":";
+    if ((S!="")||(mins)) S = S + mins.toString().padStart(2, "0") + ":";
+    if ((S!="")||(secs)) S = S + secs.toString().padStart(2, "0");
+    S+=".";
+    S = S + ms.toString().padStart(3, "0");
+    return S;
+}
 
 async function compile(srcFile, options) {
     options.prime = options.prime || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
@@ -44,9 +66,9 @@ async function compile(srcFile, options) {
     ctx.mainComponent = options.mainComponent || "main";
     ctx.newThreadTemplates = options.newThreadTemplates;
 
-    if (ctx.verbose) console.time("Construction Phase");
+    measures.constructionPhase = -performance.now();
     constructionPhase(ctx, srcFile);
-    if (ctx.verbose) console.timeEnd("Construction Phase");
+    measures.constructionPhase += performance.now();
 
     if (ctx.verbose) console.log("NConstraints Before: "+ctx.constraints.length);
     if (ctx.verbose) console.log("NSignals Before: "+ctx.signals.length);
@@ -60,14 +82,14 @@ async function compile(srcFile, options) {
     }
 
     if (ctx.verbose) console.log("Classify Signals");
-    if (ctx.verbose) console.time("Classify Signals");
+    measures.classifySignals = -performance.now();
     classifySignals(ctx);
-    if (ctx.verbose) console.timeEnd("Classify Signals");
+    measures.classifySignals += performance.now();
 
     if (ctx.verbose) console.log("Reduce Constants");
-    if (ctx.verbose) console.time("Reduce Constants");
+    measures.reduceConstants = -performance.now();
     reduceConstants(ctx);
-    if (ctx.verbose) console.timeEnd("Reduce Constants");
+    measures.reduceConstants += performance.now();
 
     if (options.reduceConstraints) {
 
@@ -81,17 +103,17 @@ async function compile(srcFile, options) {
             reduceConstrains(ctx);
         }
 */
-        if (ctx.verbose) console.time("Reduce Constraints");
+        measures.reduceConstraints = -performance.now();
         await reduceConstrains(ctx);
-        if (ctx.verbose) console.timeEnd("Reduce Constraints");
+        measures.reduceConstraints += performance.now();
 
     }
 
     if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
 
-    if (ctx.verbose) console.time("Generate Witness Names");
+    measures.generateWitnessNames = -performance.now();
     generateWitnessNames(ctx);
-    if (ctx.verbose) console.timeEnd("Generate Witness Names");
+    measures.generateWitnessNames += performance.now();
 
     if (ctx.error) {
         throw(ctx.error);
@@ -99,19 +121,19 @@ async function compile(srcFile, options) {
 
     if (options.cSourceWriteStream) {
         if (ctx.verbose) console.log("Generating c...");
-        if (ctx.verbose) console.time("Generate C");
+        measures.generateC = -performance.now();
         ctx.builder = new BuilderC(options.prime);
         build(ctx);
         const rdStream = ctx.builder.build();
         rdStream.pipe(options.cSourceWriteStream);
-        if (ctx.verbose) console.timeEnd("Generate C");
+        measures.generateC += performance.now();
 
         // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
         if (ctx.verbose) console.log("Generating wasm...");
-        if (ctx.verbose) console.time("Generating wasm");
+        measures.generateWasm = -performance.now();
         ctx.builder = new BuilderWasm(options.prime);
         build(ctx);
         if (options.wasmWriteStream) {
@@ -122,7 +144,7 @@ async function compile(srcFile, options) {
             const rdStream = ctx.builder.build("wat");
             rdStream.pipe(options.watWriteStream);
         }
-        if (ctx.verbose) console.timeEnd("Generate wasm");
+        measures.generateWasm += performance.now();
 
         // await new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill));
     }
@@ -131,24 +153,27 @@ async function compile(srcFile, options) {
     if (ctx.error) throw(ctx.error);
 
     if (options.r1csFileName) {
-        if (ctx.verbose) console.log("Generating r1cs...");
-        if (ctx.verbose) console.time("Generating r1cs");
+        measures.generateR1cs = -performance.now();
         await buildR1cs(ctx, options.r1csFileName);
-        if (ctx.verbose) console.timeEnd("Generating r1cs");
+        measures.generateR1cs += performance.now();
     }
 
     if (options.symWriteStream) {
-        if (ctx.verbose) console.log("Generating syms...");
-        if (ctx.verbose) console.time("Generating syms");
+        measures.generateSyms = -performance.now();
         const rdStream = buildSyms(ctx);
         rdStream.pipe(options.symWriteStream);
-        if (ctx.verbose) console.timeEnd("Generating syms");
+        measures.generateSyms += performance.now();
 
-        // await new Promise(fulfill => options.symWriteStream.on("finish", fulfill));
+        await new Promise(fulfill => options.symWriteStream.on("finish", fulfill));
     }
 
 //    const def = buildCircuitDef(ctx, mainCode);
 
+    if (ctx.verbose) {
+        for (let [mStr, mValue] of Object.entries(measures)) {
+            console.log(mStr + ": " + ms2String(mValue));
+        }
+    }
 }
 
 

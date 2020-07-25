@@ -94,23 +94,44 @@ async function buildR1cs(ctx, fileName) {
 
     await fd.close();
 
-    async function writeConstraint(c) {
-        await writeLC(c.a);
-        await writeLC(c.b);
-        await writeLC(ctx.lc.neg(c.c));
-    }
+    function writeConstraint(c) {
+        const n8 = ctx.F.n8;
+        const idxA = Object.keys(c.a.coefs);
+        const idxB = Object.keys(c.b.coefs);
+        const idxC = Object.keys(c.c.coefs);
+        const buff = new Uint8Array((idxA.length+idxB.length+idxC.length)*(n8+4) + 12);
+        const buffV = new DataView(buff.buffer);
+        let o=0;
 
-    async function writeLC(lc) {
-        const idxs = Object.keys(lc.coefs);
-        await fd.writeULE32(idxs.length);
-        for (let s in lc.coefs) {
-            let lSignal = ctx.signals[s];
-
+        buffV.setUint32(o, idxA.length, true); o+=4;
+        for (let i=0; i<idxA.length; i++) {
+            const coef = idxA[i];
+            let lSignal = ctx.signals[coef];
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
-
-            await fd.writeULE32(lSignal.id);
-            await writeBigInt(lc.coefs[s]);
+            buffV.setUint32(o, lSignal.id, true); o+=4;
+            ctx.F.toRprLE(buff, o, c.a.coefs[coef]); o+=n8;
         }
+
+        buffV.setUint32(o, idxB.length, true); o+=4;
+        for (let i=0; i<idxB.length; i++) {
+            const coef = idxB[i];
+            let lSignal = ctx.signals[coef];
+            while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+            buffV.setUint32(o, lSignal.id, true); o+=4;
+
+            ctx.F.toRprLE(buff, o, c.b.coefs[coef]); o+=n8;
+        }
+
+        buffV.setUint32(o, idxC.length, true); o+=4;
+        for (let i=0; i<idxC.length; i++) {
+            const coef = idxC[i];
+            let lSignal = ctx.signals[coef];
+            while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+            buffV.setUint32(o, lSignal.id, true); o+=4;
+            ctx.F.toRprLE(buff, o, ctx.F.neg(c.c.coefs[coef])); o+=n8;
+        }
+
+        return fd.write(buff);
     }
 
     async function writeBigInt(n, pos) {
