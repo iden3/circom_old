@@ -37,15 +37,22 @@ function build(ctx) {
     ctx.addConstant(ctx.F.zero);
     ctx.addConstant(ctx.F.one);
 
+    if (ctx.verbose) console.log("buildHeader...");
     buildHeader(ctx);
+    if (ctx.verbose) console.log("buildEntryTables...");
     buildEntryTables(ctx);
     ctx.globalNames = ctx.uniqueNames;
 
+    if (ctx.verbose) console.log("buildCode...");
     buildCode(ctx);
 
+    if (ctx.verbose) console.log("buildComponentsArray...");
     buildComponentsArray(ctx);
 
+    if (ctx.verbose) console.log("buildMapIsInput...");
     buildMapIsInput(ctx);
+
+    if (ctx.verbose) console.log("buildWit2Sig...");
     buildWit2Sig(ctx);
 
 }
@@ -56,6 +63,7 @@ function buildEntryTables(ctx) {
     const codes_componentEntries = [];
     const definedHashMaps = {};
     for (let i=0; i<ctx.components.length; i++) {
+        if (ctx.verbose && (i%1000 ==0)) console.log(`buildEntryTables component: ${i}/${ctx.components.length}`);
         const {htName, htMap} = addHashTable(i);
 
         let code = "";
@@ -131,6 +139,7 @@ function buildCode(ctx) {
 
     const fnComponents = [];
     for (let i=0; i<ctx.components.length; i++) {
+        if (ctx.verbose && (i%1000 ==0)) console.log(`buildCode component: ${i}/${ctx.components.length}`);
         const {h, instanceDef} = hashComponentCall(ctx, i);
         const fName = ctx.components[i].template+"_"+h;
         if (!fDefined[fName]) {
@@ -180,6 +189,7 @@ function buildCode(ctx) {
 
 function buildComponentsArray(ctx) {
     for (let i=0; i< ctx.components.length; i++) {
+        if (ctx.verbose && (i%10000 ==0)) console.log(`buildComponentsArray component: ${i}/${ctx.components.length}`);
         let newThread;
         if (ctx.newThreadTemplates) {
             if (ctx.newThreadTemplates.test(ctx.components[i].template)) {
@@ -217,6 +227,7 @@ function buildMapIsInput(ctx) {
     let map = [];
     let acc = 0;
     for (i=0; i<ctx.signals.length; i++) {
+        if (ctx.verbose && (i%100000 ==0)) console.log(`buildMapIsInput signal: ${i}/${ctx.signals.length}`);
         if (ctx.signals[i].o & ctx.IN) {
             acc = acc | (1 << (i%32) );
         }
@@ -243,6 +254,7 @@ function buildWit2Sig(ctx) {
         ctx.totals[ctx.stINTERNAL];
     const arr = Array(NVars);
     for (let i=0; i<ctx.signals.length; i++) {
+        if (ctx.verbose && (i%100000 ==0)) console.log(`buildWit2Sig signal: ${i}/${ctx.signals.length}`);
         const outIdx = ctx.signals[i].id;
         if (ctx.signals[i].e>=0) continue;     // If has an alias, continue..
         assert(typeof outIdx  != "undefined", `Signal ${i} does not have index`);

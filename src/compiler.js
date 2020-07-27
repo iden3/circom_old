@@ -119,6 +119,16 @@ async function compile(srcFile, options) {
         throw(ctx.error);
     }
 
+    if (options.r1csFileName) {
+        measures.generateR1cs = -performance.now();
+        await buildR1cs(ctx, options.r1csFileName);
+        measures.generateR1cs += performance.now();
+    }
+
+    if (ctx.error) throw(ctx.error);
+
+    delete ctx.constraints;  // Liberate memory.
+
     if (options.cSourceWriteStream) {
         if (ctx.verbose) console.log("Generating c...");
         measures.generateC = -performance.now();
@@ -130,6 +140,8 @@ async function compile(srcFile, options) {
 
         // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
+
+    if (ctx.error) throw(ctx.error);
 
     if ((options.wasmWriteStream)||(options.watWriteStream)) {
         if (ctx.verbose) console.log("Generating wasm...");
@@ -151,12 +163,6 @@ async function compile(srcFile, options) {
 
     // const mainCode = gen(ctx,ast);
     if (ctx.error) throw(ctx.error);
-
-    if (options.r1csFileName) {
-        measures.generateR1cs = -performance.now();
-        await buildR1cs(ctx, options.r1csFileName);
-        measures.generateR1cs += performance.now();
-    }
 
     if (options.symWriteStream) {
         measures.generateSyms = -performance.now();
