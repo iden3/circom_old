@@ -59,14 +59,11 @@ function build(ctx) {
 
 function buildEntryTables(ctx) {
 
-    const codes_hashMaps = [];
-    const codes_componentEntries = [];
     const definedHashMaps = {};
     for (let i=0; i<ctx.components.length; i++) {
         if (ctx.verbose && (i%1000 ==0)) console.log(`buildEntryTables component: ${i}/${ctx.components.length}`);
         const {htName, htMap} = addHashTable(i);
 
-        let code = "";
         const componentEntriesTableName = ctx.getUniqueName("_entryTable" + ctx.components[i].template);
 
         const componentEntriesTable = [];
@@ -82,32 +79,12 @@ function buildEntryTables(ctx) {
 
         ctx.builder.addComponentEntriesTable(componentEntriesTableName, componentEntriesTable);
 
-
-        code += `Circom_ComponentEntry ${componentEntriesTableName}[${htMap.length}] = {\n`;
-        for (let j=0; j<htMap.length; j++) {
-            const entry = ctx.components[i].names.o[htMap[j]];
-            code += j>0 ? "    ," : "     ";
-            const sizeName = ctx.addSizes(entry.sizes);
-
-            const ty = entry.type == "S" ? "_typeSignal" : "_typeComponent";
-            code += `{${entry.offset},${sizeName}, ${ty}}\n`;
-        }
-        code += "};\n";
-        codes_componentEntries.push(code);
-
         ctx.components[i].htName = htName;
         ctx.components[i].etName = componentEntriesTableName;
     }
 
 
-    return [
-        "// HashMaps\n" ,
-        codes_hashMaps , "\n" ,
-        "\n" ,
-        "// Component Entries\n" ,
-        codes_componentEntries , "\n" ,
-        "\n"
-    ];
+    return;
 
     function addHashTable(cIdx) {
         const keys = Object.keys(ctx.components[cIdx].names.o);
