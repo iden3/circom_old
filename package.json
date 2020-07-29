@@ -31,7 +31,7 @@
   "dependencies": {
     "chai": "^4.2.0",
     "circom_runtime": "0.0.6",
-    "fastfile": "0.0.9",
+    "fastfile": "0.0.12",
     "ffiasm": "0.0.2",
     "ffjavascript": "0.2.4",
     "ffwasm": "0.0.7",
