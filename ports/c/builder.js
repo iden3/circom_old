@@ -3,6 +3,7 @@ const utils = require("../../src/utils");
 const assert = require("assert");
 const Scalar = require("ffjavascript").Scalar;
 const F1Field = require("ffjavascript").F1Field;
+const BigArray = require("../../src/bigarray");
 
 function ref2src(c) {
     if ((c[0] == "R")||(c[0] == "RI")) {
@@ -341,16 +342,17 @@ class FunctionBuilderC {
 }
 
 class BuilderC {
-    constructor(p) {
+    constructor(p, verbose) {
         this.F = new F1Field(p);
 
         this.hashMaps={};
-        this.componentEntriesTables={};
+        this.componentEntriesTables=new BigArray();
         this.sizes ={};
         this.constants = [];
         this.functions = [];
-        this.components = [];
+        this.components = new BigArray();
         this.usedConstants = {};
+        this.verbose = verbose;
     }
 
     setHeader(header) {
@@ -363,7 +365,10 @@ class BuilderC {
     }
 
     addComponentEntriesTable(name, cet) {
-        this.componentEntriesTables[name] = cet;
+        this.componentEntriesTables.push({
+            name: name,
+            cet: cet
+        });
     }
 
     addSizes(name, accSizes) {
@@ -444,8 +449,10 @@ class BuilderC {
 
     _buildComponentEntriesTables(code) {
         code.push("// Component Entry tables");
-        for (let cetName in this.componentEntriesTables) {
-            const cet = this.componentEntriesTables[cetName];
+        for (let i=0; i< this.componentEntriesTables.length; i++) {
+            if ((this.verbose)&&(i%100000 ==0)) console.log(`_buildComponentEntriesTables ${i}/${this.componentEntriesTables.length}`);
+            const cetName = this.componentEntriesTables[i].name;
+            const cet = this.componentEntriesTables[i].cet;
 
             code.push(`Circom_ComponentEntry ${cetName}[${cet.length}] = {`);
             for (let j=0; j<cet.length; j++) {

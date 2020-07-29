@@ -61,7 +61,7 @@ function buildEntryTables(ctx) {
 
     const definedHashMaps = {};
     for (let i=0; i<ctx.components.length; i++) {
-        if (ctx.verbose && (i%1000 ==0)) console.log(`buildEntryTables component: ${i}/${ctx.components.length}`);
+        if (ctx.verbose && (i%100000 ==0)) console.log(`buildEntryTables component: ${i}/${ctx.components.length}`);
         const {htName, htMap} = addHashTable(i);
 
         const componentEntriesTableName = ctx.getUniqueName("_entryTable" + ctx.components[i].template);

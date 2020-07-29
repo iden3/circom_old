@@ -132,7 +132,7 @@ async function compile(srcFile, options) {
     if (options.cSourceWriteStream) {
         if (ctx.verbose) console.log("Generating c...");
         measures.generateC = -performance.now();
-        ctx.builder = new BuilderC(options.prime);
+        ctx.builder = new BuilderC(options.prime, ctx.verbose);
         build(ctx);
         const rdStream = ctx.builder.build();
         rdStream.pipe(options.cSourceWriteStream);
