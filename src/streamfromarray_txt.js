@@ -1,4 +1,3 @@
-const BigArray = require("./bigArray");
 const Readable = require("stream").Readable;
 
 module.exports = function streamFromArrayTxt(ma) {
