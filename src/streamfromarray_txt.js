@@ -1,4 +1,4 @@
-
+const BigArray = require("./bigArray");
 const Readable = require("stream").Readable;
 
 module.exports = function streamFromArrayTxt(ma) {
@@ -22,7 +22,7 @@ module.exports = function streamFromArrayTxt(ma) {
 
 
     function getFirstIdx(ma) {
-        if (!Array.isArray(ma)) return [];
+        if (typeof ma.push !== "function" ) return [];
         return [0, ...getFirstIdx(ma[0])];
     }
 

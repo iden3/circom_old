@@ -26,8 +26,10 @@ class _BigArray {
         }
         return this;
     }
-    push (element) {
-        this.setElement (this.length, element);
+    push () {
+        for (let i=0; i<arguments.length; i++) {
+            this.setElement (this.length, arguments[i]);
+        }
     }
     getElement(idx) {
         idx = parseInt(idx);

@@ -484,6 +484,7 @@ class BuilderC {
         code.push("// Constants");
         code.push(`FrElement _constants[${self.constants.length}] = {`);
         for (let i=0; i<self.constants.length; i++) {
+            if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildConstants ${i}/${this.constants.length}`);
             code.push((i>0 ? "," : " ") + "{" + number2Code(self.constants[i]) + "}");
         }
         code.push("};");
@@ -561,6 +562,7 @@ class BuilderC {
         code.push("// Components");
         code.push(`Circom_Component _components[${this.components.length}] = {`);
         for (let i=0; i<this.components.length; i++) {
+            if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildComponents ${i}/${this.components.length}`);
             const c = this.components[i];
             const sep = i>0 ? "    ," : "     ";
             code.push(`${sep}{${c.hashMapName}, ${c.entryTableName}, ${c.functionName}, ${c.nInSignals}, ${c.newThread}}`);
@@ -573,6 +575,7 @@ class BuilderC {
         code.push(`u32 _mapIsInput[${this.mapIsInput.length}] = {`);
         let line = "";
         for (let i=0; i<this.mapIsInput.length; i++) {
+            if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildMapIsInput ${i}/${this.mapIsInput.length}`);
             line += i>0 ? ", " : "  ";
             line += toHex(this.mapIsInput[i]);
             if (((i+1) % 64)==0) {
@@ -596,6 +599,7 @@ class BuilderC {
         code.push(`int _wit2sig[${this.wit2sig.length}] = {`);
         let line = "";
         for (let i=0; i<this.wit2sig.length; i++) {
+            if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildWit2Sig ${i}/${this.wit2sig.length}`);
             line += i>0 ? "," : " ";
             line += this.wit2sig[i];
             if (((i+1) % 64) == 0) {
@@ -628,7 +632,7 @@ class BuilderC {
 
 
     build() {
-        const code=[];
+        const code=new BigArray();
         this._buildHeader(code);
         this._buildSizes(code);
         this._buildConstants(code);
