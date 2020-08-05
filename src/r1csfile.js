@@ -1,6 +1,7 @@
 
 const fastFile = require("fastfile");
 const assert = require("assert");
+const BigArray = require("./bigarray");
 
 module.exports.buildR1cs = buildR1cs;
 
@@ -70,7 +71,7 @@ async function buildR1cs(ctx, fileName) {
     await fd.writeULE64(0); // Temporally set to 0 length
 
 
-    const arr = new Array(NWires);
+    const arr = new BigArray(NWires);
     for (let i=0; i<ctx.signals.length; i++) {
         const outIdx = ctx.signals[i].id;
         if (ctx.signals[i].e>=0) continue;     // If has an alias, continue..
