@@ -21,6 +21,7 @@ const assert = require("assert");
 const utils = require("./utils");
 const gen = require("./gencode").gen;
 const createRefs = require("./gencode").createRefs;
+const BigArray = require("./bigarray");
 
 module.exports =  build;
 
@@ -229,7 +230,7 @@ function buildWit2Sig(ctx) {
         ctx.totals[ctx.stPUBINPUT] +
         ctx.totals[ctx.stPRVINPUT] +
         ctx.totals[ctx.stINTERNAL];
-    const arr = Array(NVars);
+    const arr = new BigArray(NVars);
     for (let i=0; i<ctx.signals.length; i++) {
         if (ctx.verbose && (i%1000000 ==0)) console.log(`buildWit2Sig signal: ${i}/${ctx.signals.length}`);
         const outIdx = ctx.signals[i].id;
