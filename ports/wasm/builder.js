@@ -990,7 +990,8 @@ class BuilderWasm {
     }
 
 
-    build(outType) {
+    async build(fd, outType) {
+        const encoder = new TextEncoder("utf-8");
         let module;
         if (outType == "wasm") {
             module=new ModuleBuilder();
@@ -1017,11 +1018,24 @@ class BuilderWasm {
 
         module.setMemory(2000);
         if (outType == "wasm") {
-            return streamFromArrayBin(module.build());
+            const bytes = module.build();
+            const bytesArr = new Uint8Array(bytes);
+            await fd.write(bytesArr);
         } else if (outType == "wat") {
-            return streamFromArrayTxt(module.build());
+            const code = module.build();
+            await writeCode(code);
         } else {
             assert(false);
+        }
+
+        async function writeCode(c) {
+            if (c.push) {
+                for (let i=0; i<c.length; i++) {
+                    await writeCode(c[i]);
+                }
+            } else if (typeof c === "string") {
+                await fd.write(encoder.encode(c + "\n"));
+            }
         }
     }
 }

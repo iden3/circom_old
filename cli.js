@@ -24,6 +24,7 @@
 const fs = require("fs");
 const path = require("path");
 const Scalar = require("ffjavascript").Scalar;
+const fastFile = require("fastfile");
 
 const compiler = require("./src/compiler");
 
@@ -60,87 +61,65 @@ const argv = require("yargs")
     .argv;
 
 
-let inputFile;
-if (argv._.length == 0) {
-    inputFile = "circuit.circom";
-} else if (argv._.length == 1) {
-    inputFile = argv._[0];
-} else  {
-    console.log("Only one circuit at a time is permited");
-    process.exit(1);
-}
+async function run() {
+    let inputFile;
+    if (argv._.length == 0) {
+        inputFile = "circuit.circom";
+    } else if (argv._.length == 1) {
+        inputFile = argv._[0];
+    } else  {
+        console.log("Only one circuit at a time is permited");
+        process.exit(1);
+    }
 
-const fullFileName = path.resolve(process.cwd(), inputFile);
-const fileName = path.basename(fullFileName, ".circom");
-const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
-const wasmName = typeof(argv.wasm) === "string" ?  argv.wasm : fileName + ".wasm";
-const watName = typeof(argv.wat) === "string" ?  argv.wat : fileName + ".wat";
-const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
-const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
+    const fullFileName = path.resolve(process.cwd(), inputFile);
+    const fileName = path.basename(fullFileName, ".circom");
+    const cSourceName = typeof(argv.csource) === "string" ?  argv.csource : fileName + ".cpp";
+    const wasmName = typeof(argv.wasm) === "string" ?  argv.wasm : fileName + ".wasm";
+    const watName = typeof(argv.wat) === "string" ?  argv.wat : fileName + ".wat";
+    const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
+    const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 
-const options = {};
-options.reduceConstraints = !argv.fast;
-options.verbose = argv.verbose || false;
-options.sanityCheck = argv.sanitycheck;
+    const options = {};
+    options.reduceConstraints = !argv.fast;
+    options.verbose = argv.verbose || false;
+    options.sanityCheck = argv.sanitycheck;
 
-if (argv.csource) {
-    options.cSourceWriteStream = fs.createWriteStream(cSourceName);
-}
-if (argv.wasm) {
-    options.wasmWriteStream = fs.createWriteStream(wasmName);
-}
-if (argv.wat) {
-    options.watWriteStream = fs.createWriteStream(watName);
-}
-if (argv.r1cs) {
-    options.r1csFileName = r1csName;
-}
-if (argv.sym) {
-    options.symWriteStream = fs.createWriteStream(symName);
-}
-if (argv.newThreadTemplates) {
-    options.newThreadTemplates = new RegExp(argv.newThreadTemplates);
-}
-if (!argv.prime) {
-    options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-} else if (["BLS12-381", "BLS12381"]. indexOf(argv.prime.toUpperCase()) >=0) {
-    options.prime = Scalar.fromString("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",16);
-} else if (["BN-128", "BN128", "BN254", "BN-254"]. indexOf(argv.prime.toUpperCase()) >=0) {
-    options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-} else {
-    options.prime = Scalar.fromString(argv.prime);
-}
+    if (argv.csource) {
+        options.cSourceFile = await fastFile.createOverride(cSourceName);
+    }
+    if (argv.wasm) {
+        options.wasmFile = await fastFile.createOverride(wasmName);
+    }
+    if (argv.wat) {
+        options.watFile = await fastFile.createOverride(watName);
+    }
+    if (argv.r1cs) {
+        options.r1csFileName = r1csName;
+    }
+    if (argv.sym) {
+        options.symWriteStream = fs.createWriteStream(symName);
+    }
+    if (argv.newThreadTemplates) {
+        options.newThreadTemplates = new RegExp(argv.newThreadTemplates);
+    }
+    if (!argv.prime) {
+        options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    } else if (["BLS12-381", "BLS12381"]. indexOf(argv.prime.toUpperCase()) >=0) {
+        options.prime = Scalar.fromString("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",16);
+    } else if (["BN-128", "BN128", "BN254", "BN-254"]. indexOf(argv.prime.toUpperCase()) >=0) {
+        options.prime = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    } else {
+        options.prime = Scalar.fromString(argv.prime);
+    }
 
 
-compiler(fullFileName, options).then( () => {
-    let cSourceDone = false;
-    let wasmDone = false;
+    await compiler(fullFileName, options);
+
+    if (options.cSourceFile) await options.cSourceFile.close();
+    if (options.wasmFile) await options.wasmFile.close();
+    if (options.watFile) await options.watFile.close();
     let symDone = false;
-    let watDone = false;
-    if (options.cSourceWriteStream) {
-        options.cSourceWriteStream.on("finish", () => {
-            cSourceDone = true;
-            finishIfDone();
-        });
-    } else {
-        cSourceDone = true;
-    }
-    if (options.wasmWriteStream) {
-        options.wasmWriteStream.on("finish", () => {
-            wasmDone = true;
-            finishIfDone();
-        });
-    } else {
-        wasmDone = true;
-    }
-    if (options.watWriteStream) {
-        options.watWriteStream.on("finish", () => {
-            watDone = true;
-            finishIfDone();
-        });
-    } else {
-        watDone = true;
-    }
     if (options.symWriteStream) {
         options.symWriteStream.on("finish", () => {
             symDone = true;
@@ -150,12 +129,17 @@ compiler(fullFileName, options).then( () => {
         symDone = true;
     }
     function finishIfDone() {
-        if ((cSourceDone)&&(symDone)&&(wasmDone)&&(watDone)) {
+        if (symDone) {
             setTimeout(() => {
                 process.exit(0);
             }, 300);
         }
     }
+
+}
+
+run().then(()=> {
+    process.exit(0);
 }, (err) => {
 //    console.log(err);
     console.log(err.stack);
@@ -170,7 +154,5 @@ compiler(fullFileName, options).then( () => {
     }
     process.exit(1);
 });
-
-
 
 

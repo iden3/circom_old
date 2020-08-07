@@ -631,7 +631,8 @@ class BuilderC {
     }
 
 
-    build() {
+    async build(fd) {
+        const encoder = new TextEncoder("utf-8");
         const code=new BigArray();
         this._buildHeader(code);
         this._buildSizes(code);
@@ -643,7 +644,17 @@ class BuilderC {
         this._buildMapIsInput(code);
         this._buildWit2Sig(code);
         this._buildCircuitVar(code);
-        return streamFromMultiArray(code);
+        await writeCode(code);
+
+        async function writeCode(c) {
+            if (c.push) {
+                for (let i=0; i<c.length; i++) {
+                    await writeCode(c[i]);
+                }
+            } else if (typeof c === "string") {
+                await fd.write(encoder.encode(c + "\n"));
+            }
+        }
     }
 }
 

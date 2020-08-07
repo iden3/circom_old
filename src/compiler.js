@@ -129,36 +129,29 @@ async function compile(srcFile, options) {
 
     delete ctx.constraints;  // Liberate memory.
 
-    if (options.cSourceWriteStream) {
+    if (options.cSourceFile) {
         if (ctx.verbose) console.log("Generating c...");
         measures.generateC = -performance.now();
         ctx.builder = new BuilderC(options.prime, ctx.verbose);
         build(ctx);
-        const rdStream = ctx.builder.build();
-        rdStream.pipe(options.cSourceWriteStream);
+        await ctx.builder.build(options.cSourceFile);
         measures.generateC += performance.now();
-
-        // await new Promise(fulfill => options.cSourceWriteStream.on("finish", fulfill));
     }
 
     if (ctx.error) throw(ctx.error);
 
-    if ((options.wasmWriteStream)||(options.watWriteStream)) {
+    if ((options.wasmFile)||(options.watFile)) {
         if (ctx.verbose) console.log("Generating wasm...");
         measures.generateWasm = -performance.now();
         ctx.builder = new BuilderWasm(options.prime);
         build(ctx);
-        if (options.wasmWriteStream) {
-            const rdStream = ctx.builder.build("wasm");
-            rdStream.pipe(options.wasmWriteStream);
+        if (options.wasmFile) {
+            await ctx.builder.build(options.wasmFile, "wasm");
         }
-        if (options.watWriteStream) {
-            const rdStream = ctx.builder.build("wat");
-            rdStream.pipe(options.watWriteStream);
+        if (options.watFile) {
+            await ctx.builder.build(options.watFile, "wat");
         }
         measures.generateWasm += performance.now();
-
-        // await new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill));
     }
 
     // const mainCode = gen(ctx,ast);
