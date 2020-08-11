@@ -1,4 +1,3 @@
-const streamFromMultiArray = require("../../src/streamfromarray_txt.js");
 const utils = require("../../src/utils");
 const assert = require("assert");
 const Scalar = require("ffjavascript").Scalar;

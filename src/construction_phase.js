@@ -574,7 +574,7 @@ function execFunctionCall(ctx, ast) {
 
     const fnc = ctx.functions[ast.name];
 
-    if (!fnc) return ctx.throwError("Function not defined");
+    if (!fnc) return ctx.throwError(ast, "Function not defined");
 
     const paramValues = [];
     for (let i=0; i< ast.params.length; i++) {

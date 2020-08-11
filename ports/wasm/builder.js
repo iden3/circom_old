@@ -1,5 +1,3 @@
-const streamFromArrayTxt = require("../../src/streamfromarray_txt");
-const streamFromArrayBin = require("../../src/streamfromarray_bin");
 const assert = require("assert");
 const ModuleBuilder = require("wasmbuilder").ModuleBuilder;
 const ModuleBuilderWat = require("wasmbuilder").ModuleBuilderWat;
