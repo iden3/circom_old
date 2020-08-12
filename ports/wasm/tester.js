@@ -9,6 +9,7 @@ const compiler = require("../../src/compiler");
 const utils = require("../../src/utils");
 const loadR1cs = require("r1csfile").load;
 const ZqField = require("ffjavascript").ZqField;
+const fastFile = require("fastfile");
 
 const WitnessCalculatorBuilder = require("circom_runtime").WitnessCalculatorBuilder;
 
@@ -24,16 +25,14 @@ async function  wasm_tester(circomFile, _options) {
     const baseName = path.basename(circomFile, ".circom");
     const options = Object.assign({}, _options);
 
-    options.wasmWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".wasm"));
+    options.wasmFile = await fastFile.createOverride(path.join(dir.path, baseName + ".wasm"));
+
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
 
-    const promisesArr = [];
-    promisesArr.push(new Promise(fulfill => options.wasmWriteStream.on("finish", fulfill)));
-
     await compiler(circomFile, options);
 
-    await Promise.all(promisesArr);
+    await options.wasmFile.close();
 
     const wasm = await fs.promises.readFile(path.join(dir.path, baseName + ".wasm"));
 
