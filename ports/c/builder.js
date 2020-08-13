@@ -352,6 +352,13 @@ class BuilderC {
         this.components = new BigArray();
         this.usedConstants = {};
         this.verbose = verbose;
+
+
+        this.sizePointers = {};
+        this.hashMapPointers = {};
+        this.cetPointers = {};
+        this.functionIdx = {};
+        this.nCets = 0;
     }
 
     setHeader(header) {
@@ -413,8 +420,8 @@ class BuilderC {
 
     _buildHeader(code) {
         code.push(
-            "#include \"circom.h\"",
-            "#include \"calcwit.h\"",
+            "#include \"circom.hpp\"",
+            "#include \"calcwit.hpp\"",
             `#define NSignals ${this.header.NSignals}`,
             `#define NComponents ${this.header.NComponents}`,
             `#define NOutputs ${this.header.NOutputs}`,
@@ -425,70 +432,92 @@ class BuilderC {
         );
     }
 
-    _buildHashMaps(code) {
+    async _buildHashMaps(fdData) {
 
-        code.push("// Hash Maps ");
+        while (fdData.pos % 8) fdData.pos++;
+        this.pHashMaps = fdData.pos;
+
+        const buff = new Uint8Array(256*12);
+        const buffV = new DataView(buff.buffer);
         for (let hmName in this.hashMaps ) {
+
+            while (fdData.pos % 8) fdData.pos++;
+            this.hashMapPointers[hmName] = fdData.pos;
             const hm = this.hashMaps[hmName];
 
-            let c = `Circom_HashEntry ${hmName}[256] = {`;
             for (let i=0; i<256; i++) {
-                c += i>0 ? "," : "";
-                if (hm[i]) {
-                    c += `{0x${hm[i][0]}LL, ${hm[i][1]}} /* ${hm[i][2]} */`;
-                } else {
-                    c += "{0,0}";
-                }
+                buffV.setUint32(i*12, hm[i] ? parseInt( hm[i][0].slice(8), 16 ) : 0, true);
+                buffV.setUint32(i*12+4, hm[i] ? parseInt( hm[i][0].slice(0,8), 16 ) : 0, true);
+                buffV.setUint32(i*12+8, hm[i] ? hm[i][1] : 0, true);
             }
-            c += "};";
-            code.push(c);
+
+            await fdData.write(buff);
         }
 
     }
 
-    _buildComponentEntriesTables(code) {
-        code.push("// Component Entry tables");
+    async _buildComponentEntriesTables(fdData) {
+
+        while (fdData.pos % 8) fdData.pos++;
+        this.pCets = fdData.pos;
         for (let i=0; i< this.componentEntriesTables.length; i++) {
             if ((this.verbose)&&(i%100000 ==0)) console.log(`_buildComponentEntriesTables ${i}/${this.componentEntriesTables.length}`);
             const cetName = this.componentEntriesTables[i].name;
             const cet = this.componentEntriesTables[i].cet;
 
-            code.push(`Circom_ComponentEntry ${cetName}[${cet.length}] = {`);
+            this.cetPointers[cetName] = fdData.pos;
+            const buff = new Uint8Array(16*cet.length);
+            const buffV = new DataView(buff.buffer);
+
             for (let j=0; j<cet.length; j++) {
-                const ty = cet[j].type == "S" ? "_typeSignal" : "_typeComponent";
-                code.push(`    ${j>0?",":" "}{${cet[j].offset},${cet[j].sizeName}, ${ty}}`);
+                utils.setUint64(buffV, 16*j+0, this.sizePointers[ cet[j].sizeName]);
+                buffV.setUint32(16*j+8, cet[j].offset, true);
+                buffV.setUint32(16*j+12, cet[j].type == "S" ? 0 : 1, true);  // Size type 0-> Signal, 1->Component
+                this.nCets ++;
             }
-            code.push("};");
+
+            await fdData.write(buff);
+
         }
     }
 
-    _buildSizes(code) {
-        code.push("// Sizes");
+    async _buildSizes(fdData) {
         for (let sName in this.sizes) {
             const accSizes = this.sizes[sName];
 
-            let c = `Circom_Size ${sName}[${accSizes.length}] = {`;
+            while (fdData.pos % 8) fdData.pos++;
+            this.sizePointers[sName] = fdData.pos;
+
+            const buff = new Uint8Array(4*accSizes.length);
+            const buffV = new DataView(buff.buffer);
             for (let i=0; i<accSizes.length; i++) {
-                if (i>0) c += ",";
-                c += accSizes[i];
+                buffV.setUint32(i*4, accSizes[i], true);
             }
-            c += "};";
-            code.push(c);
+            await fdData.write(buff);
         }
     }
 
-    _buildConstants(code) {
+
+    async _buildConstants(fdData) {
         const self = this;
 
-        code.push("// Constants");
-        code.push(`FrElement _constants[${self.constants.length}] = {`);
-        for (let i=0; i<self.constants.length; i++) {
-            if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildConstants ${i}/${this.constants.length}`);
-            code.push((i>0 ? "," : " ") + "{" + number2Code(self.constants[i]) + "}");
-        }
-        code.push("};");
+        const frSize = (8 + self.F.n64*8);
+        const buff = new Uint8Array(self.constants.length* frSize);
+        const buffV = new DataView(buff.buffer);
 
-        function number2Code(n) {
+
+        while (fdData.pos % 8) fdData.pos++;
+        this.pConstants = fdData.pos;
+
+        let o = 0;
+        for (let i=0; i<self.constants.length; i++) {
+            Fr2Bytes(buffV, o, self.constants[i]);
+            o += frSize;
+        }
+        await fdData.write(buff);
+
+
+        function Fr2Bytes(buffV, offset, n) {
             const minShort = self.F.neg(self.F.e("80000000"));
             const maxShort = self.F.e("7FFFFFFF", 16);
 
@@ -496,51 +525,49 @@ class BuilderC {
                 &&(self.F.leq(n, maxShort)))
             {
                 if (self.F.geq(n, self.F.zero)) {
-                    return addShortMontgomeryPositive(n);
+                    return shortMontgomeryPositive(n);
                 } else {
-                    return addShortMontgomeryNegative(n);
+                    return shortMontgomeryNegative(n);
                 }
             }
 
-            return addLongMontgomery(n);
+            return longMontgomery(n);
 
 
-            function addShortMontgomeryPositive(a) {
-                return `${a.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
+            function shortMontgomeryPositive(a) {
+                buffV.setUint32(offset, Scalar.toNumber(a) , true );
+                buffV.setUint32(offset + 4, 0x40000000 , true );
+                long(buffV, offset + 8, toMontgomery(a));
             }
 
 
-            function addShortMontgomeryNegative(a) {
+            function shortMontgomeryNegative(a) {
                 const b = -Scalar.toNumber(self.F.neg(a));
-                return `${b.toString()}, 0x40000000, { ${getLongString(toMontgomery(a))} }`;
+                buffV.setUint32(offset, b , true );
+                buffV.setUint32(offset + 4, 0x40000000 , true );
+                long(buffV, offset + 8, toMontgomery(a));
             }
 
-            function addLongMontgomery(a) {
-                return `0, 0xC0000000, { ${getLongString(toMontgomery(a))} }`;
+            function longMontgomery(a) {
+                buffV.setUint32(offset, 0 , true );
+                buffV.setUint32(offset + 4, 0xC0000000 , true );
+                long(buffV, offset + 8, toMontgomery(a));
             }
 
-            function getLongString(a) {
-                let S = "";
+            function long(buffV, offset, a) {
+
+                let p = offset;
                 const arr = Scalar.toArray(a, 0x100000000);
-                for (let i=0; i<self.F.n64*2; i+=2) {
-                    const idx = arr.length-2-i;
-
-                    if (i>0) S = S + ",";
+                for (let i=0; i<self.F.n64*2; i++) {
+                    const idx = arr.length-1-i;
 
                     if ( idx >=0) {
-                        let msb = arr[idx].toString(16);
-                        while (msb.length<8) msb = "0" + msb;
-
-                        let lsb = arr[idx+1].toString(16);
-                        while (lsb.length<8) lsb = "0" + lsb;
-
-                        S += "0x" + msb + lsb + "LL";
+                        buffV.setUint32(p, arr[idx], true);
                     } else {
-                        S += "0LL";
+                        buffV.setUint32(p, 0, true);
                     }
+                    p+= 4;
                 }
-
-                return S;
             }
 
             function toMontgomery(a) {
@@ -548,101 +575,132 @@ class BuilderC {
             }
 
         }
+
     }
 
     _buildFunctions(code) {
+        const listedFunctions = [];
         for (let i=0; i<this.functions.length; i++) {
             const cfb = this.functions[i];
             cfb.build(code);
+            if (this.functions[i].type == "COMPONENT") {
+                this.functionIdx[this.functions[i].name] = listedFunctions.length;
+                listedFunctions.push(i);
+            }
         }
+
+        code.push("// Function Table");
+        code.push(`Circom_ComponentFunction _functionTable[${listedFunctions.length}] = {`);
+        for (let i=0; i<listedFunctions.length; i++) {
+            const sep = i>0 ? "    ," : "     ";
+            code.push(`${sep}${this.functions[listedFunctions[i]].name}`);
+        }
+        code.push("};");
     }
 
-    _buildComponents(code) {
-        code.push("// Components");
-        code.push(`Circom_Component _components[${this.components.length}] = {`);
+
+    async _buildComponents(fdData) {
+
+        const buff = new Uint8Array(32);
+        const buffV = new DataView(buff.buffer);
+
+        while (fdData.pos % 8) fdData.pos++;
+        this.pComponents = fdData.pos;
+
         for (let i=0; i<this.components.length; i++) {
             if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildComponents ${i}/${this.components.length}`);
             const c = this.components[i];
-            const sep = i>0 ? "    ," : "     ";
-            code.push(`${sep}{${c.hashMapName}, ${c.entryTableName}, ${c.functionName}, ${c.nInSignals}, ${c.newThread}}`);
+
+            utils.setUint64(buffV, 0, this.hashMapPointers[c.hashMapName], true);
+            utils.setUint64(buffV, 8, this.cetPointers[c.entryTableName], true);
+            utils.setUint64(buffV, 16, this.functionIdx[c.functionName], true);
+            buffV.setUint32(24, c.nInSignals, true);
+            buffV.setUint32(28, c.newThread ? 1 : 0, true);
+
+            await fdData.write(buff);
         }
-        code.push("};");
     }
 
-    _buildMapIsInput(code) {
-        code.push("// mapIsInput");
-        code.push(`u32 _mapIsInput[${this.mapIsInput.length}] = {`);
-        let line = "";
+    async _buildMapIsInput(fdData) {
+
+        const buff = new Uint8Array(this.mapIsInput.length * 4);
+        const buffV = new DataView(buff.buffer);
+
+        while (fdData.pos % 8) fdData.pos++;
+        this.pMapIsInput = fdData.pos;
+
         for (let i=0; i<this.mapIsInput.length; i++) {
             if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildMapIsInput ${i}/${this.mapIsInput.length}`);
-            line += i>0 ? ", " : "  ";
-            line += toHex(this.mapIsInput[i]);
-            if (((i+1) % 64)==0) {
-                code.push("    "+line);
-                line = "";
-            }
-        }
-        if (line != "") code.push("    "+line);
-        code.push("};");
 
-        function toHex(number) {
-            if (number < 0) number = 0xFFFFFFFF + number + 1;
-            let S=number.toString(16).toUpperCase();
-            while (S.length<8) S = "0" + S;
-            return "0x"+S;
+            buffV.setUint32(4*i, this.mapIsInput[i], true);
         }
+
+        await fdData.write(buff);
     }
 
-    _buildWit2Sig(code) {
-        code.push("// Witness to Signal Table");
-        code.push(`int _wit2sig[${this.wit2sig.length}] = {`);
-        let line = "";
+    async _buildWit2Sig(fdData) {
+
+        const buff = new Uint8Array(this.wit2sig.length * 4);
+        const buffV = new DataView(buff.buffer);
+
+        while (fdData.pos % 8) fdData.pos++;
+        this.pWit2Sig = fdData.pos;
+
         for (let i=0; i<this.wit2sig.length; i++) {
             if ((this.verbose)&&(i%1000000 ==0)) console.log(`_buildWit2Sig ${i}/${this.wit2sig.length}`);
-            line += i>0 ? "," : " ";
-            line += this.wit2sig[i];
-            if (((i+1) % 64) == 0) {
-                code.push("    "+line);
-                line = "";
-            }
+
+            buffV.setUint32(4*i, this.wit2sig[i], true);
         }
-        if (line != "") code.push("    "+line);
-        code.push("};");
+
+        await fdData.write(buff);
     }
 
-    _buildCircuitVar(code) {
+    async _buildCircuitVar(fdData) {
 
-        code.push(
-            "// Circuit Variable",
-            "Circom_Circuit _circuit = {" ,
-            "   NSignals,",
-            "   NComponents,",
-            "   NInputs,",
-            "   NOutputs,",
-            "   NVars,",
-            "   _wit2sig,",
-            "   _components,",
-            "   _mapIsInput,",
-            "   _constants,",
-            "   __P__",
-            "};"
-        );
+        const pP = fdData.pos;
+
+        const strBuff = new TextEncoder("utf-8").encode(this.header.P.toString());
+        await fdData.write(strBuff);
+
+        const buff = new Uint8Array(72);
+        const buffV = new DataView(buff.buffer);
+
+        utils.setUint64(buffV, 0, this.pWit2Sig, true);
+        utils.setUint64(buffV, 8, this.pComponents, true);
+        utils.setUint64(buffV, 16, this.pMapIsInput, true);
+        utils.setUint64(buffV, 24, this.pConstants, true);
+        utils.setUint64(buffV, 32, pP, true);
+        utils.setUint64(buffV, 40, this.pCets, true);
+
+        buffV.setUint32(48, this.header.NSignals, true);
+        buffV.setUint32(52, this.header.NComponents, true);
+        buffV.setUint32(56, this.header.NOutputs, true);
+        buffV.setUint32(60, this.header.NInputs, true);
+        buffV.setUint32(64, this.header.NVars, true);
+        buffV.setUint32(68, this.nCets, true);
+
+        fdData.pos = 0;
+
+        await fdData.write(buff);
     }
 
 
-    async build(fd) {
+    async build(fdCode, fdData) {
         const encoder = new TextEncoder("utf-8");
+        fdData.pos = 72;
+        while (fdData.pos % 8) fdData.pos++;
+
         const code=new BigArray();
         this._buildHeader(code);
-        this._buildSizes(code);
-        this._buildConstants(code);
-        this._buildHashMaps(code);
-        this._buildComponentEntriesTables(code);
+        await this._buildSizes(fdData);
+        await this._buildConstants(fdData);
+        await this._buildHashMaps(fdData);
+        await this._buildComponentEntriesTables(fdData);
         this._buildFunctions(code);
-        this._buildComponents(code);
-        this._buildMapIsInput(code);
-        this._buildWit2Sig(code);
-        this._buildCircuitVar(code);
+        await this._buildComponents(fdData);
+        await this._buildMapIsInput(fdData);
+        await this._buildWit2Sig(fdData);
+        await this._buildCircuitVar(fdData);
         await writeCode(code);
 
         async function writeCode(c) {
@@ -651,7 +709,7 @@ class BuilderC {
                     await writeCode(c[i]);
                 }
             } else if (typeof c === "string") {
-                await fd.write(encoder.encode(c + "\n"));
+                await fdCode.write(encoder.encode(c + "\n"));
             }
         }
     }

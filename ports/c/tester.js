@@ -31,6 +31,7 @@ async function  c_tester(circomFile, _options) {
     const options = Object.assign({}, _options);
 
     options.cSourceFile = await fastFile.createOverride(path.join(dir.path, baseName + ".cpp"));
+    options.dataFile = await fastFile.createOverride(path.join(dir.path, baseName + ".dat"));
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
 
@@ -38,14 +39,15 @@ async function  c_tester(circomFile, _options) {
     await compiler(circomFile, options);
 
     await options.cSourceFile.close();
+    await options.dataFile.close();
 
     const source = await buildZqField(options.p, "Fr");
 
     // console.log(dir.path);
 
     await fs.promises.writeFile(path.join(dir.path, "fr.asm"), source.asm, "utf8");
-    await fs.promises.writeFile(path.join(dir.path, "fr.h"), source.h, "utf8");
-    await fs.promises.writeFile(path.join(dir.path, "fr.c"), source.c, "utf8");
+    await fs.promises.writeFile(path.join(dir.path, "fr.hpp"), source.hpp, "utf8");
+    await fs.promises.writeFile(path.join(dir.path, "fr.cpp"), source.cpp, "utf8");
 
     let pThread = "";
 
@@ -66,7 +68,7 @@ async function  c_tester(circomFile, _options) {
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
-               ` ${path.join(dir.path,  "fr.c")}` +
+               ` ${path.join(dir.path,  "fr.cpp")}` +
                ` ${path.join(dir.path,  "fr.o")}` +
                ` ${path.join(dir.path, baseName + ".cpp")} ` +
                ` -o ${path.join(dir.path, baseName)}` +

@@ -87,6 +87,8 @@ async function run() {
 
     if (argv.csource) {
         options.cSourceFile = await fastFile.createOverride(cSourceName);
+        const noExt = cSourceName.substr(0, cSourceName.lastIndexOf(".")) || cSourceName;
+        options.dataFile = await fastFile.createOverride(noExt+".dat");
     }
     if (argv.wasm) {
         options.wasmFile = await fastFile.createOverride(wasmName);
@@ -117,6 +119,7 @@ async function run() {
     await compiler(fullFileName, options);
 
     if (options.cSourceFile) await options.cSourceFile.close();
+    if (options.dataFile) await options.dataFile.close();
     if (options.wasmFile) await options.wasmFile.close();
     if (options.watFile) await options.watFile.close();
     let symDone = false;

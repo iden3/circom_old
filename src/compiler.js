@@ -134,7 +134,7 @@ async function compile(srcFile, options) {
         measures.generateC = -performance.now();
         ctx.builder = new BuilderC(options.prime, ctx.verbose);
         build(ctx);
-        await ctx.builder.build(options.cSourceFile);
+        await ctx.builder.build(options.cSourceFile, options.dataFile);
         measures.generateC += performance.now();
     }
 

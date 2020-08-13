@@ -10,6 +10,7 @@ module.exports.fnvHash = fnvHash;
 module.exports.sameSizes = sameSizes;
 module.exports.isDefined = isDefined;
 module.exports.accSizes2Str = accSizes2Str;
+module.exports.setUint64 = setUint64;
 
 function ident(text) {
     if (typeof text === "string") {
@@ -89,6 +90,14 @@ function accSizes2Str(sizes) {
     if (sizes.length == 2) return "";
     return `[${sizes[0]/sizes[1]}]`+accSizes2Str(sizes.slice(1));
 }
+
+function setUint64(buffV, o, n) {
+    const sLSB = n >>> 0;
+    const sMSB = (n - sLSB) / 0x100000000;
+    buffV.setUint32(o, sLSB , true);
+    buffV.setUint32(o+4, sMSB , true);
+}
+
 
 
 
