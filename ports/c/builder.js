@@ -356,7 +356,6 @@ class BuilderC {
 
         this.sizePointers = {};
         this.hashMapPointers = {};
-        this.cetPointers = {};
         this.functionIdx = {};
         this.nCets = 0;
     }
@@ -370,11 +369,11 @@ class BuilderC {
         this.hashMaps[name] = hm;
     }
 
-    addComponentEntriesTable(name, cet) {
-        this.componentEntriesTables.push({
+    addComponentEntriesTable(name, cet, idComponent) {
+        this.componentEntriesTables[idComponent] = {
             name: name,
             cet: cet
-        });
+        };
     }
 
     addSizes(name, accSizes) {
@@ -462,10 +461,9 @@ class BuilderC {
         this.pCets = fdData.pos;
         for (let i=0; i< this.componentEntriesTables.length; i++) {
             if ((this.verbose)&&(i%100000 ==0)) console.log(`_buildComponentEntriesTables ${i}/${this.componentEntriesTables.length}`);
-            const cetName = this.componentEntriesTables[i].name;
             const cet = this.componentEntriesTables[i].cet;
 
-            this.cetPointers[cetName] = fdData.pos;
+            this.components[i].entryTablePointer = fdData.pos;
             const buff = new Uint8Array(16*cet.length);
             const buffV = new DataView(buff.buffer);
 
@@ -612,7 +610,7 @@ class BuilderC {
             const c = this.components[i];
 
             utils.setUint64(buffV, 0, this.hashMapPointers[c.hashMapName], true);
-            utils.setUint64(buffV, 8, this.cetPointers[c.entryTableName], true);
+            utils.setUint64(buffV, 8, c.entryTablePointer, true);
             utils.setUint64(buffV, 16, this.functionIdx[c.functionName], true);
             buffV.setUint32(24, c.nInSignals, true);
             buffV.setUint32(28, c.newThread ? 1 : 0, true);

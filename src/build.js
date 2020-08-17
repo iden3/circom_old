@@ -78,7 +78,7 @@ function buildEntryTables(ctx) {
             });
         }
 
-        ctx.builder.addComponentEntriesTable(componentEntriesTableName, componentEntriesTable);
+        ctx.builder.addComponentEntriesTable(componentEntriesTableName, componentEntriesTable, i);
 
         ctx.components[i].htName = htName;
         ctx.components[i].etName = componentEntriesTableName;
