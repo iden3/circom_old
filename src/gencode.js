@@ -723,7 +723,15 @@ function genVarAssignment(ctx, ast, lRef, sels, rRef) {
 
     if (instantiated) {
         if (offset.used) {
-            ctx.codeBuilder.copyN(left.label, ["R", offset.label], ["R", right.label], right.sizes[0]);
+            let ot;
+            if (offset.type == "BIGINT") {
+                ot = "R";
+            } else if (offset.type == "INT") {
+                ot= "RI";
+            } else {
+                assert(false);
+            }
+            ctx.codeBuilder.copyN(left.label, [ot, offset.label], ["R", right.label], right.sizes[0]);
         } else {
             ctx.codeBuilder.copyN(left.label, ["V", offset.value[0]], ["R", right.label], right.sizes[0]);
         }
