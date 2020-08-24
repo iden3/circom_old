@@ -619,6 +619,35 @@ module.exports = function buildRuntime(module, builder) {
         ));
     }
 
+    function buildCheckAssert() {
+        const f = module.addFunction("checkAssert");
+        f.addParam("cIdx", "i32");
+        f.addParam("pA", "i32");
+        f.addParam("pStr", "i32");
+
+        const c = f.getCodeBuilder();
+
+        f.addCode(ifSanityCheck(c,
+            c.if (
+                c.i32_eqz(
+                    c.call(
+                        "Fr_isTrue",
+                        c.getLocal("pA"),
+                    )
+                ),
+                c.call(
+                    "error",
+                    c.i32_const(errs.ASSERT_DOES_NOT_MATCH.code),
+                    c.i32_const(errs.ASSERT_DOES_NOT_MATCH.pointer),
+                    c.getLocal("cIdx"),
+                    c.getLocal("pA"),
+                    c.getLocal("pStr"),
+                    c.i32_const(0)
+                )
+            )
+        ));
+    }
+
     function buildGetNVars() {
         const f = module.addFunction("getNVars");
         f.setReturnType("i32");
@@ -823,6 +852,7 @@ module.exports = function buildRuntime(module, builder) {
     buildComponentFinished();
 
     buildCheckConstraint();
+    buildCheckAssert();
 
     buildGetNVars();
     buildGetFrLen();

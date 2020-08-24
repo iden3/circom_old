@@ -7,4 +7,5 @@ module.exports = {
     SIGNAL_ASSIGNED_TWICE:          {code: 6, str: "Signal assigned twice"},
     CONSTRAIN_DOES_NOT_MATCH:       {code: 7, str: "Constraint doesn't match"},
     MAPISINPUT_DONT_MATCH:          {code: 8, str: "MapIsInput don't match"},
+    ASSERT_DOES_NOT_MATCH:          {code: 9, str: "Assert not satisfied"},
 };

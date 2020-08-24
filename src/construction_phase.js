@@ -567,9 +567,13 @@ function execFunctionCall(ctx, ast) {
         return;
     }
     if (ast.name == "assert") {
+        ast.fileName = ctx.fileName;
+        ast.filePath = ctx.filePath;
+
         const v = exec(ctx, ast.params[0]);
         const ev = val(ctx, v, ast);
-        if (ctx.F.isZero(ev)) return ctx.throwError(ast, "Assertion failed");
+        if ((typeof ev.v !== "undefined")&&(ctx.F.isZero(ev.v))) return ctx.throwError(ast, "Assertion failed");
+        return;
     }
 
     const fnc = ctx.functions[ast.name];

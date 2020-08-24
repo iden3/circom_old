@@ -24,6 +24,7 @@
 const fs = require("fs");
 const path = require("path");
 const Scalar = require("ffjavascript").Scalar;
+const stringifyBigInts = require("ffjavascript").utils.stringifyBigInts;
 const fastFile = require("fastfile");
 
 const compiler = require("./src/compiler");
@@ -153,7 +154,7 @@ run().then(()=> {
         if (argv.verbose) console.log(err.stack);
     }
     if (err.ast) {
-        console.error(JSON.stringify(err.ast, null, 1));
+        console.error(JSON.stringify(stringifyBigInts(err.ast), null, 1));
     }
     process.exit(1);
 });

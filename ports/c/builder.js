@@ -95,6 +95,10 @@ class CodeBuilderC {
         this.ops.push({op: "CHECKCONSTRAINT", a, b, strErr});
     }
 
+    checkAssert(a, strErr) {
+        this.ops.push({op: "CHECKASSERT", a, strErr});
+    }
+
     log(val) {
         this.ops.push({op: "LOG", val});
     }
@@ -215,6 +219,8 @@ class CodeBuilderC {
                 code.push(`${o.fnName}(ctx, ${o.retLabel}, ${o.params.join(",")});`);
             } else if (o.op == "CHECKCONSTRAINT") {
                 code.push(`ctx->checkConstraint(__cIdx, ${ref2src(o.a)}, ${ref2src(o.b)}, "${o.strErr}");`);
+            } else if (o.op == "CHECKASSERT") {
+                code.push(`ctx->checkAssert(__cIdx, ${ref2src(o.a)}, "${o.strErr}");`);
             } else if (o.op == "LOG") {
                 code.push(`ctx->log(${ref2src(o.val)});`);
             }

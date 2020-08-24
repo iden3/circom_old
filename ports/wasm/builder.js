@@ -98,6 +98,9 @@ class CodeBuilderWasm {
         this.ops.push({op: "CHECKCONSTRAINT", a, b, strErr});
     }
 
+    checkAssert(a, strErr) {
+        this.ops.push({op: "CHECKASSERT", a, strErr});
+    }
 
     concat(cb) {
         this.ops.push(...cb.ops);
@@ -329,6 +332,15 @@ class CodeBuilderWasm {
                         c.getLocal("cIdx"),
                         this.fnBuilder._deRefFr(c, o.a),
                         this.fnBuilder._deRefFr(c, o.b),
+                        c.i32_const(this.fnBuilder.builder.module.allocString(o.strErr))
+                    )
+                );
+            } else if (o.op == "CHECKASSERT") {
+                code.push(
+                    c.call(
+                        "checkAssert",
+                        c.getLocal("cIdx"),
+                        this.fnBuilder._deRefFr(c, o.a),
                         c.i32_const(this.fnBuilder.builder.module.allocString(o.strErr))
                     )
                 );

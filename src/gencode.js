@@ -871,6 +871,12 @@ function genFunctionCall(ctx, ast) {
         ctx.codeBuilder.log(toRefA_Fr1(ctx, ast.params[0], vRef));
         return vRef;
     }
+    if (ast.name == "assert") {
+        const strErr = ast.fileName + ":" + ast.first_line + ":" + ast.first_column;
+        const vRef = gen(ctx, ast.params[0]);
+        ctx.codeBuilder.checkAssert(toRefA_Fr1(ctx, ast.params[0], vRef), strErr);
+        return vRef;
+    }
     const params = [];
     for (let i=0; i<ast.params.length; i++) {
         const pRef = gen(ctx, ast.params[i]);
