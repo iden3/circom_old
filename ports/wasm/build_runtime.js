@@ -384,9 +384,9 @@ module.exports = function buildRuntime(module, builder) {
                     "error",
                     c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.code),
                     c.i32_const(errs.ACCESSING_NOT_ASSIGNED_SIGNAL.pointer),
-                    c.i32_const(0),
-                    c.i32_const(0),
-                    c.i32_const(0),
+                    c.getLocal("cIdx"),
+                    c.getLocal("component"),
+                    c.getLocal("signal"),
                     c.i32_const(0)
                 )
             )
