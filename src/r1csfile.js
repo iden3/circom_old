@@ -89,9 +89,9 @@ async function buildR1cs(ctx, fileName) {
     const mapSize = fd.pos - pMapSize - 8;
 
     // Write sizes
-    await fd.writeULE32(headerSize, pHeaderSize);
-    await fd.writeULE32(constraintsSize, pConstraintsSize);
-    await fd.writeULE32(mapSize, pMapSize);
+    await fd.writeULE64(headerSize, pHeaderSize);
+    await fd.writeULE64(constraintsSize, pConstraintsSize);
+    await fd.writeULE64(mapSize, pMapSize);
 
     await fd.close();
 
