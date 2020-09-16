@@ -59,7 +59,7 @@ async function buildR1cs(ctx, fileName) {
         if ((ctx.verbose)&&(i%10000 == 0)) {
             if (ctx.verbose) console.log("writing constraint: ", i);
         }
-        await writeConstraint(ctx.constraints[i]);
+        await writeConstraint(ctx.constraints[i], i);
     }
 
     const constraintsSize = fd.pos - pConstraintsSize - 8;
@@ -95,7 +95,7 @@ async function buildR1cs(ctx, fileName) {
 
     await fd.close();
 
-    function writeConstraint(c) {
+    function writeConstraint(c, ctIdx) {
         const n8 = ctx.F.n8;
         const idxA = Object.keys(c.a.coefs);
         const idxB = Object.keys(c.b.coefs);
@@ -109,6 +109,7 @@ async function buildR1cs(ctx, fileName) {
             const coef = idxA[i];
             let lSignal = ctx.signals[coef];
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+            if (lSignal.id >= NWires) throw new Error("Signal Coef A: " + coef + " Constraint: " + ctIdx + " id: " + lSignal.id);
             buffV.setUint32(o, lSignal.id, true); o+=4;
             ctx.F.toRprLE(buff, o, c.a.coefs[coef]); o+=n8;
         }
@@ -118,8 +119,8 @@ async function buildR1cs(ctx, fileName) {
             const coef = idxB[i];
             let lSignal = ctx.signals[coef];
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+            if (lSignal.id >= NWires) throw new Error("Signal Coef B: " + coef + " Constraint: " + ctIdx + " id: " + lSignal.id);
             buffV.setUint32(o, lSignal.id, true); o+=4;
-
             ctx.F.toRprLE(buff, o, c.b.coefs[coef]); o+=n8;
         }
 
@@ -128,6 +129,7 @@ async function buildR1cs(ctx, fileName) {
             const coef = idxC[i];
             let lSignal = ctx.signals[coef];
             while (lSignal.e >=0 ) lSignal = ctx.signals[lSignal.e];
+            if (lSignal.id >= NWires) throw new Error("Signal Coef C: " + coef + " Constraint: " + ctIdx + " id: " + lSignal.id);
             buffV.setUint32(o, lSignal.id, true); o+=4;
             ctx.F.toRprLE(buff, o, ctx.F.neg(c.c.coefs[coef])); o+=n8;
         }

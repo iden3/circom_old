@@ -318,26 +318,26 @@ async function reduceConstrains(ctx) {
         const c = ctx.constraints[i];
         for (let s in c.a.coefs) {
             if (!insertedSig[s]) {
-                if (!sig2constraint[s]) sig2constraint[s] = [];
-                sig2constraint[s].push(i);
+                if (!sig2constraint[s]) sig2constraint[s] = {};
+                sig2constraint[s][i] = true;
                 insertedSig[s] = true;
             }
         }
         for (let s in c.b.coefs) {
             if (!insertedSig[s]) {
-                if (!sig2constraint[s]) sig2constraint[s] = [];
-                sig2constraint[s].push(i);
+                if (!sig2constraint[s]) sig2constraint[s] = {};
+                sig2constraint[s][i] = true;
                 insertedSig[s] = true;
             }
         }
         for (let s in c.c.coefs) {
             if (!insertedSig[s]) {
-                if (!sig2constraint[s]) sig2constraint[s] = [];
-                sig2constraint[s].push(i);
+                if (!sig2constraint[s]) sig2constraint[s] = {};
+                sig2constraint[s][i] = true;
                 insertedSig[s] = true;
             }
         }
-        possibleConstraints[i] = i;
+        possibleConstraints[i] = ctx.constraints.length - i -1;
     }
 
     while (possibleConstraints.length >0) {
@@ -378,22 +378,28 @@ async function reduceConstrains(ctx) {
                 const freeC = substituteRemoved(c.c);
                 const isolatedSignal = getFirstInternalSignal(ctx, freeC);
                 if (isolatedSignal) {
-    //                console.log(isolatedSignal);
-    //                console.log(freeC);
                     removedSignals[isolatedSignal] = isolateSignal(freeC, isolatedSignal);
                     if (lIdx[isolatedSignal]) {
-                        lIdx[isolatedSignal].forEach( (s) => {
+                        const sigs = Object.keys(lIdx[isolatedSignal]);
+
+                        for (let k=0; k<sigs.length; k++) {
+                            const s = sigs[k];
+                            const oldLC = removedSignals[s];
                             removedSignals[s] = substitute(removedSignals[s], isolatedSignal, removedSignals[isolatedSignal]);
-                        });
+                            if (oldLC !== removedSignals[s]) addTolIdx(removedSignals[s], s);
+                        }
                     }
 
                     addTolIdx(removedSignals[isolatedSignal], isolatedSignal);
                     ctx.constraints[possibleConstraints[i]] = null;
                     nRemoved ++;
 
-                    sig2constraint[isolatedSignal].forEach( (s) => {
-                        nextPossibleConstraints[s] = true;
-                    });
+                    delete lIdx[isolatedSignal];
+
+                    const cts = Object.keys(sig2constraint[isolatedSignal]);
+                    for (let k=0; k<cts.length; k++) {
+                        nextPossibleConstraints[cts[k]] = true;
+                    }
                 }
             }
         }
@@ -408,9 +414,9 @@ async function reduceConstrains(ctx) {
             const c = ctx.constraints[nextPossibleConstraints[i]];
             if (c) {
                 const nc = {
-                    a: substituteRemoved(c.a),
-                    b: substituteRemoved(c.b),
-                    c: substituteRemoved(c.c)
+                    a: substituteRemoved(c.a, nextPossibleConstraints[i]),
+                    b: substituteRemoved(c.b, nextPossibleConstraints[i]),
+                    c: substituteRemoved(c.c, nextPossibleConstraints[i])
                 };
                 if (ctx.lc.isZero(nc)) {
                     delete ctx.constraints[nextPossibleConstraints[i]];
@@ -420,7 +426,7 @@ async function reduceConstrains(ctx) {
             }
         }
 
-        const removedSignalsList = removedSignals.getKeys;
+        const removedSignalsList = removedSignals.getKeys();
 
         for (let i=0; i<removedSignalsList.length; i++) {
             if ((ctx.verbose    )&&(i%100000 == 0)) console.log(`removing signals: ${i}/${removedSignalsList.length}`);
@@ -434,8 +440,14 @@ async function reduceConstrains(ctx) {
             lSignal.c = ctx.stDISCARDED;
         }
 
-        possibleConstraints = nextPossibleConstraints;
+        possibleConstraints = new BigArray();
+
+        // Reverse
+        for (let i=0; i<nextPossibleConstraints.length; i++) {
+            possibleConstraints[i] = nextPossibleConstraints[nextPossibleConstraints.length -1 -i];
+        }
     }
+
 
     let o=0;
     for (let i=0; i<ctx.constraints.length;i++) {
@@ -476,7 +488,7 @@ async function reduceConstrains(ctx) {
         return eq;
     }
 
-    function substituteRemoved(lc) {
+    function substituteRemoved(lc, idxConstraint) {
         const newLc = ctx.lc._clone(lc);
         for (let k in lc.coefs) {
             if (removedSignals[k]) {
@@ -490,6 +502,10 @@ async function reduceConstrains(ctx) {
                         } else {
                             newLc.coefs[k2] = newP;
                         }
+                    }
+                    if ((typeof idxConstraint != "undefined")&&(k2!=0)) {
+                        if (!sig2constraint[k2]) sig2constraint[k2] = {};
+                        sig2constraint[k2][idxConstraint] = true;
                     }
                 }
             }
@@ -524,318 +540,16 @@ async function reduceConstrains(ctx) {
     }
 
     function addTolIdx(lc, newS) {
-        for (let s in lc.coefs) {
-            if (!lIdx[s]) lIdx[s] = [];
-            lIdx[s].push(newS);
-        }
-    }
-
-
-}
-
-
-function reduceConstrains_old(ctx) {
-    indexVariables();
-    let possibleConstraints = ctx.constraints;
-    let ii=0;
-    while (possibleConstraints.length>0) {
-        let nextPossibleConstraints = new BigArray();
-        for (let i=0; i<possibleConstraints.length; i++) {
-            ii++;
-            if ((ctx.verbose)&&(ii%10000 == 0)) console.log("reducing constraints: ", i);
-            if (!ctx.constraints[i]) continue;
-            const c = ctx.constraints[i];
-
-            // Swap a and b if b has more variables.
-            if (Object.keys(c.b).length > Object.keys(c.a).length) {
-                const aux = c.a;
-                c.a=c.b;
-                c.b=aux;
+        const sigs = Object.keys(lc.coefs);
+        for (let k=0; k<sigs.length; k++) {
+            const s = sigs[k];
+            if (s) {
+                if (!lIdx[s]) lIdx[s] = {};
+                lIdx[s][newS] = true;
             }
-
-            // Mov to C if possible.
-            if (isConstant(c.a)) {
-                const ct = {t: "N", v: c.a.coefs[sONE]};
-                c.c = ctx.lc.add(ctx.lc.mul(c.b, ct), c.c);
-                c.a = { t: "LC", coefs: {} };
-                c.b = { t: "LC", coefs: {} };
-            }
-            if (isConstant(c.b)) {
-                const ct = {t: "N", v: c.b.coefs[sONE]};
-                c.c = ctx.lc.add(ctx.lc.mul(c.a, ct), c.c);
-                c.a = { t: "LC", coefs: {} };
-                c.b = { t: "LC", coefs: {} };
-            }
-
-            if (ctx.lc.isZero(c.a) || ctx.lc.isZero(c.b)) {
-                const isolatedSignal = getFirstInternalSignal(ctx, c.c);
-                if (isolatedSignal) {
-
-                    let lSignal = ctx.signals[isolatedSignal];
-                    while (lSignal.e>=0) {
-                        lSignal = ctx.signals[lSignal.e];
-                    }
-
-
-                    const isolatedSignalEquivalence = {
-                        t: "LC",
-                        coefs: {}
-                    };
-                    const invCoef = ctx.F.inv(c.c.coefs[isolatedSignal]);
-                    for (const s in c.c.coefs) {
-                        if (s != isolatedSignal) {
-                            const v = ctx.F.mul( ctx.F.neg(c.c.coefs[s]), invCoef);
-                            if (!ctx.F.isZero(v)) {
-                                isolatedSignalEquivalence.coefs[s] = v;
-                            }
-                        }
-                    }
-
-                    for (let j in lSignal.inConstraints) {
-                        if ((j!=i)&&(ctx.constraints[j])) {
-                            ctx.constraints[j] = ctx.lc.substitute(ctx.constraints[j], isolatedSignal, isolatedSignalEquivalence);
-                            linkSignalsConstraint(j);
-                            if (j<i) {
-                                nextPossibleConstraints.push(j);
-                            }
-                        }
-                    }
-
-                    ctx.constraints[i] = null;
-
-                    lSignal.c = ctx.stDISCARDED;
-                } else {
-                    if (ctx.lc.isZero(c.c)) ctx.constraints[i] = null;
-                }
-            }
-        }
-        possibleConstraints = nextPossibleConstraints;
-    }
-    unindexVariables();
-
-    // Pack the constraints
-    let o = 0;
-    for (let i=0; i<ctx.constraints.length; i++) {
-        if (ctx.constraints[i]) {
-            if (o != i) {
-                ctx.constraints[o] = ctx.constraints[i];
-            }
-            o++;
-        }
-    }
-    ctx.constraints.length = o;
-
-    function indexVariables() {
-        for (let i=0; i<ctx.constraints.length; i++) linkSignalsConstraint(i);
-    }
-
-    function linkSignalsConstraint(cidx) {
-        const ct = ctx.constraints[cidx];
-        for (let k in ct.a.coefs) linkSignal(k, cidx);
-        for (let k in ct.b.coefs) linkSignal(k, cidx);
-        for (let k in ct.c.coefs) linkSignal(k, cidx);
-    }
-
-    function unindexVariables() {
-        for (let s=0; s<ctx.signals.length; s++) {
-            let lSignal = ctx.signals[s];
-            while (lSignal.e>=0) {
-                lSignal = ctx.signals[lSignal.e];
-            }
-            if (lSignal.inConstraints) delete lSignal.inConstraints;
-        }
-    }
-
-/*
-    function unlinkSignal(signalName, cidx) {
-        let lSignal = ctx.signals[signalName];
-        while (lSignal.e>=0) {
-            lSignal = ctx.signals[lSignal.e];
-        }
-        if ((lSignal.inConstraints)&&(lSignal.inConstraints[cidx])) {
-            delete lSignal.inConstraints[cidx];
-        }
-    }
-*/
-
-    function linkSignal(signalName, cidx) {
-        let lSignal = ctx.signals[signalName];
-        while (lSignal.e>=0) {
-            lSignal = ctx.signals[lSignal.e];
-        }
-        if (!lSignal.inConstraints) lSignal.inConstraints = {};
-        lSignal.inConstraints[cidx] = true;
-    }
-
-    function getFirstInternalSignal(ctx, l) {
-        for (let k in l.coefs) {
-            const signal = ctx.signals[k];
-            if (signal.c == ctx.stINTERNAL) return k;
-        }
-        return null;
-    }
-
-    function isConstant(l) {
-        for (let k in l.coefs) {
-            if ((k != sONE) && (!ctx.F.isZero(l.coefs[k]))) return false;
-        }
-        if (!l.coefs[sONE] || ctx.F.isZero(l.coefs[sONE])) return false;
-        return true;
-    }
-
-}
-
-/*
-
-function buildCircuitDef(ctx, mainCode) {
-    const res = {
-        mainCode: mainCode
-    };
-    res.signalName2Idx = ctx.signalName2Idx;
-
-    res.components = [];
-    res.componentName2Idx = {};
-    for (let c in ctx.components) {
-        const idCoponent = res.components.length;
-        res.components.push({
-            name: c,
-            params: ctx.components[c].params,
-            template: ctx.components[c].template,
-            inputSignals: 0
-        });
-        res.componentName2Idx[c] = idCoponent;
-    }
-
-    res.signals = new Array(ctx.signalNames.length);
-    for (let i=0; i<ctx.signalNames.length; i++) {
-        res.signals[i] = {
-            names: ctx.signalNames[i],
-            triggerComponents: []
-        };
-        ctx.signalNames[i].map( (fullName) => {
-            const idComponet = res.componentName2Idx[ctx.signals[fullName].component];
-            if (ctx.signals[fullName].direction == "IN") {
-                res.signals[i].triggerComponents.push(idComponet);
-                res.components[idComponet].inputSignals++;
-            }
-        });
-    }
-
-    res.constraints = buildConstraints(ctx);
-
-    res.templates = ctx.templates;
-
-    res.functions = {};
-    for (let f in ctx.functions) {
-        res.functions[f] = {
-            params: ctx.functionParams[f],
-            func: ctx.functions[f]
-        };
-    }
-
-    res.nPrvInputs = ctx.totals.prvInput;
-    res.nPubInputs = ctx.totals.pubInput;
-    res.nInputs = res.nPrvInputs + res.nPubInputs;
-    res.nOutputs = ctx.totals.output;
-    res.nVars = res.nInputs + res.nOutputs + ctx.totals.one + ctx.totals.internal;
-    res.nConstants = ctx.totals.constant;
-    res.nSignals = res.nVars + res.nConstants;
-
-    return res;
-}
-
-*/
-
-
-/*
-    Build constraints
-
-A constraint like this
-
-      [s1 + 2*s2 + 3*s3] * [ s2 + 5*s4] - [s0        ] = 0
-      [     5*s2 + 6*s3] * [ s2 +     ] - [s0 + 2* s2] = 0
-      [s1 +          s3] * [ s2 + 5*s3] - [s4        ] = 0
-
-is converted to
-
-[
-    [{"1":"1","2":"2","3":"3"} , {"2":"1","4":"5"} , {"0":"1"         }],
-    [{        "2":"5","3":"6"} , {"2":"1"        } , {"0":"1", "2":"2"}],
-    [{"1":"1",        "3":"1"} , {"2":"1","3":"5"} , {"4":"1"         }]
-]
-           ^                            ^                  ^
-           |                            |                  |
-           A                            B                  C
-
-*/
-/*
-function buildConstraints(ctx) {
-    const res = [];
-
-    function fillLC(dst, src) {
-        if (src.t != "LC") throw new Error("Constraint is not a LINEARCOMBINATION");
-        for (let s in src.coefs) {
-            const v = src.coefs[s].toString();
-            const id = ctx.signalName2Idx[s];
-            dst[id] = v;
-        }
-    }
-
-    for (let i=0; i<ctx.constraints.length; i++) {
-        const A = {};
-        const B = {};
-        const C = {};
-
-        fillLC(A, ctx.constraints[i].a);
-        fillLC(B, ctx.constraints[i].b);
-        fillLC(C, ctx.lc.negate(ctx.constraints[i].c));
-
-        res.push([A,B,C]);
-    }
-
-    return res;
-}
-*/
-
-/*
-function buildSyms(ctx, strm) {
-
-    let nSyms;
-
-    addSymbolsComponent(ctx.mainComponent + ".", ctx.getComponentIdx(ctx.mainComponent));
-
-
-    function addSymbolsComponent(prefix, idComponet) {
-        for (let n in  ctx.components[idComponet].names.o) {
-            const entrie = ctx.components[idComponet].names.o[n];
-            addSymbolArray(prefix+n, entrie.type, entrie.sizes, entrie.offset);
-        }
-    }
-
-    function addSymbolArray(prefix, type, sizes, offset) {
-        if (sizes.length==0) {
-            if (type == "S") {
-                let s=offset;
-                while (ctx.signals[s].e >= 0) s = ctx.signals[s].e;
-                let wId = ctx.signals[s].id;
-                if (typeof(wId) == "undefined") wId=-1;
-                strm.write(`${offset},${wId},${prefix}\n`);
-                nSyms ++;
-                if ((ctx.verbose)&&(nSyms%10000 == 0)) console.log("Symbols saved: "+nSyms);
-            } else {
-                addSymbolsComponent(prefix+".", offset);
-            }
-            return 1;
-        } else {
-            let acc = 0;
-            for (let i=0; i<sizes[0]; i++) {
-                acc += addSymbolArray(`${prefix}[${i}]`, type, sizes.slice(1), offset + acc );
-            }
-            return acc;
         }
     }
 
 }
 
-*/
 
