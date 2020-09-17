@@ -346,16 +346,23 @@ async function reduceConstrains(ctx) {
         } else {
             nextPossibleConstraints = {};
         }
-        removedSignals = new BigArray();
+        removedSignals = {};
         nRemoved = 0;
-        lIdx = new BigArray();
+        lIdx = {};
         for (let i=0;i<possibleConstraints.length;i++) {
             if ((ctx.verbose)&&(i%10000 == 0)) {
                 await Promise.resolve();
                 console.log(`reducing constraints: ${i}/${possibleConstraints.length}   reduced: ${nRemoved}`);
             }
+
             const c = ctx.constraints[possibleConstraints[i]];
             if (!c) continue;
+
+            // Limit of number of lelements removed per step
+            if (nRemoved>100000) {
+                nextPossibleConstraints[possibleConstraints[i]] = true;
+                continue;
+            }
 
             // Swap a and b if b has more variables.
             if (Object.keys(c.b).length > Object.keys(c.a).length) {
@@ -434,7 +441,7 @@ async function reduceConstrains(ctx) {
             }
         }
 
-        const removedSignalsList = removedSignals.getKeys();
+        const removedSignalsList = Object.keys(removedSignals);
 
         for (let i=0; i<removedSignalsList.length; i++) {
             if ((ctx.verbose    )&&(i%100000 == 0)) console.log(`removing signals: ${i}/${removedSignalsList.length}`);
