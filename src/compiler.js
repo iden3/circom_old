@@ -359,7 +359,7 @@ async function reduceConstrains(ctx) {
             if (!c) continue;
 
             // Limit of number of lelements removed per step
-            if (nRemoved>100000) {
+            if (nRemoved>500000) {
                 nextPossibleConstraints[possibleConstraints[i]] = true;
                 continue;
             }
@@ -452,6 +452,7 @@ async function reduceConstrains(ctx) {
                 lSignal = ctx.signals[lSignal.e];
             }
 
+            sig2constraint[s] = null;
             lSignal.c = ctx.stDISCARDED;
         }
 
