@@ -341,7 +341,11 @@ async function reduceConstrains(ctx) {
     }
 
     while (possibleConstraints.length >0) {
-        nextPossibleConstraints = new BigArray();
+        if (possibleConstraints.length>1<<20) {
+            nextPossibleConstraints = new BigArray();
+        } else {
+            nextPossibleConstraints = {};
+        }
         removedSignals = new BigArray();
         nRemoved = 0;
         lIdx = new BigArray();
@@ -404,7 +408,11 @@ async function reduceConstrains(ctx) {
             }
         }
 
-        nextPossibleConstraints = nextPossibleConstraints.getKeys();
+        if (nextPossibleConstraints.getKeys) {
+            nextPossibleConstraints = nextPossibleConstraints.getKeys();
+        } else {
+            nextPossibleConstraints = Object.keys(nextPossibleConstraints);
+        }
 
         for (let i=0; i<nextPossibleConstraints.length;i++) {
             if ((ctx.verbose)&&(i%10000 == 0)) {
@@ -440,12 +448,14 @@ async function reduceConstrains(ctx) {
             lSignal.c = ctx.stDISCARDED;
         }
 
+/*
         possibleConstraints = new BigArray();
-
         // Reverse
         for (let i=0; i<nextPossibleConstraints.length; i++) {
             possibleConstraints[i] = nextPossibleConstraints[nextPossibleConstraints.length -1 -i];
         }
+*/
+        possibleConstraints = nextPossibleConstraints;
     }
 
 
