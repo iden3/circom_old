@@ -340,6 +340,7 @@ async function reduceConstrains(ctx) {
         possibleConstraints[i] = ctx.constraints.length - i -1;
     }
 
+    let totalRemoved = 0;
     while (possibleConstraints.length >0) {
         if (possibleConstraints.length>1<<20) {
             nextPossibleConstraints = new BigArray();
@@ -359,7 +360,7 @@ async function reduceConstrains(ctx) {
             if (!c) continue;
 
             // Limit of number of lelements removed per step
-            if (nRemoved>500000) {
+            if (nRemoved>5000000) {
                 nextPossibleConstraints[possibleConstraints[i]] = true;
                 continue;
             }
@@ -409,7 +410,7 @@ async function reduceConstrains(ctx) {
 
                     const cts = Object.keys(sig2constraint[isolatedSignal]);
                     for (let k=0; k<cts.length; k++) {
-                        nextPossibleConstraints[cts[k]] = true;
+                        if (ctx.constraints[cts[k]]) nextPossibleConstraints[cts[k]] = true;
                     }
                 }
             }
@@ -464,6 +465,9 @@ async function reduceConstrains(ctx) {
         }
 */
         possibleConstraints = nextPossibleConstraints;
+
+        totalRemoved += nRemoved;
+        if (ctx.verbose) console.log(`Removed: ${totalRemoved} TotalConstraints: ${ctx.constraints.length}` );
     }
 
 
