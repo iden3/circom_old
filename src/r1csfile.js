@@ -8,8 +8,7 @@ module.exports.buildR1cs = buildR1cs;
 
 async function buildR1cs(ctx, fileName) {
 
-    const fd = await fastFile.createOverride(fileName);
-
+    const fd = await fastFile.createOverride(fileName, 1<<22, 1<<24);
 
     const buffBigInt = new Uint8Array(ctx.F.n8);
 

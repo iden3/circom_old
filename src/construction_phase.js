@@ -701,6 +701,9 @@ function execPin(ctx, ast) {
         if (sel.v[0].t != "N") return NQVAL;
         selsP.push(Scalar.toNumber(sel.v[0].v));
     }
+    if (!ctx.components[cIdx]) {
+        return ctx.throwError(ast, "Component not defined yet");
+    }
     const sIdx = ctx.components[cIdx].names.getSignalIdx(ast.pin.name, selsP);
 
     if (sIdx<0) return ctx.throwError(ast, "Signal not defined:" + buildFullName() );
