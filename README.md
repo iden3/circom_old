@@ -1,11 +1,14 @@
 # Circom
 
-Circom is a language designed to write arithmetic circuits that can be used in zero knowledge proofs.
+Circom is a language designed to write arithmetic circuits that can be used in zero-knowledge proofs.
 
 In particular, it is designed to work in [zksnarks JavaScript library](https://github.com/iden3/zksnark).
 
-
 ## Usage
+
+### Circom Docs
+
+You can read the details of circom in [the documentation webpage](https://docs.circom.io/).
 
 ### Tutorial
 
