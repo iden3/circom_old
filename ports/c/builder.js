@@ -661,11 +661,6 @@ class BuilderC {
 
     async _buildCircuitVar(fdData) {
 
-        const pP = fdData.pos;
-
-        const strBuff = new TextEncoder("utf-8").encode(this.header.P.toString());
-        await fdData.write(strBuff);
-
         const buff = new Uint8Array(72);
         const buffV = new DataView(buff.buffer);
 
@@ -673,7 +668,7 @@ class BuilderC {
         utils.setUint64(buffV, 8, this.pComponents, true);
         utils.setUint64(buffV, 16, this.pMapIsInput, true);
         utils.setUint64(buffV, 24, this.pConstants, true);
-        utils.setUint64(buffV, 32, pP, true);
+        utils.setUint64(buffV, 32, this.pPriemStr, true);
         utils.setUint64(buffV, 40, this.pCets, true);
 
         buffV.setUint32(48, this.header.NSignals, true);
@@ -688,6 +683,16 @@ class BuilderC {
         await fdData.write(buff);
     }
 
+    async _buildPrimeStr(fdData) {
+        this.pPriemStr = fdData.pos;
+        const strBuff = new TextEncoder("utf-8").encode(this.header.P.toString());
+        await fdData.write(strBuff);
+
+        const zB = new Uint8Array(1);
+        zB[0] =0;
+        await fdData.write(zB);
+    }
+
 
     async build(fdCode, fdData) {
         const encoder = new TextEncoder("utf-8");
@@ -696,6 +701,7 @@ class BuilderC {
 
         const code=new BigArray();
         this._buildHeader(code);
+        await this._buildPrimeStr(fdData);
         await this._buildSizes(fdData);
         await this._buildConstants(fdData);
         await this._buildHashMaps(fdData);

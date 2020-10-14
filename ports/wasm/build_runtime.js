@@ -473,7 +473,7 @@ module.exports = function buildRuntime(module, builder) {
         );
 
         f.addCode(
-            c.if(   // If ( mapIsInput[s >> 5] & 1 << (s & 0x1f) )
+            c.if(   // If ( mapIsInput[s >> 5] & (1 << (s & 0x1f)) )
                 c.i32_and(
                     c.i32_load(
                         c.i32_add(
