@@ -1,5 +1,7 @@
+include "circomlib/circuits/aliascheck.circom"; // Include from package
 include "included.circom";
-include "included.circom"; // Include twice is fine. The second one is not included
+include "../circuits/included.circom"; // Include twice is fine. The second one is not included
+include "circomlib/circuits/sha256/t2.circom"; // Include from package
 
 template Main() {
     signal input in;

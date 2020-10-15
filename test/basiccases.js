@@ -14,18 +14,23 @@ const basicCases = require("./basiccases.json");
 function normalize(o) {
     if ((typeof(o) == "bigint") || o.isZero !== undefined)  {
         return Fr.e(o);
-    } else if (Array.isArray(o)) {
+    }
+    
+    if (Array.isArray(o)) {
         return o.map(normalize);
-    } else if (typeof o == "object") {
+    }
+    
+    if (typeof o == "object") {
         const res = {};
+
         for (let k in o) {
             res[k] = normalize(o[k]);
         }
+
         return res;
-    } else {
-        return Fr.e(o);
     }
 
+    return Fr.e(o);
 }
 
 
@@ -34,9 +39,6 @@ async function doTest(tester, circuit, testVectors) {
 
     for (let i=0; i<testVectors.length; i++) {
         const w = await cir.calculateWitness(normalize(testVectors[i][0]));
-//        console.log(testVectors[i][0]);
-//        console.log(w);
-//        console.log(testVectors[i][1]);
         await cir.assertOut(w, normalize(testVectors[i][1]) );
     }
 
