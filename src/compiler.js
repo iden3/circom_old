@@ -183,28 +183,36 @@ function classifySignals(ctx) {
 
     function priorize(t1, t2) {
         if ((t1 == ERROR) || (t2==ERROR)) return ERROR;
-        if (t1 == ctx.stINTERNAL) {
-            return t2;
-        } else if (t2==ctx.stINTERNAL) {
-            return t1;
-        }
         if ((t1 == ctx.stONE) || (t2 == ctx.stONE)) return ctx.stONE;
         if ((t1 == ctx.stOUTPUT) || (t2 == ctx.stOUTPUT)) return ctx.stOUTPUT;
+        if ((t1 == ctx.stPUBINPUT) || (t2 == ctx.stPUBINPUT)) return ctx.stPUBINPUT;
+        if ((t1 == ctx.stPRVINPUT) || (t2 == ctx.stPRVINPUT)) return ctx.stPRVINPUT;
+        if ((t1 == ctx.stINTERNAL) || (t2 == ctx.stINTERNAL)) return ctx.stINTERNAL;
         if ((t1 == ctx.stCONSTANT) || (t2 == ctx.stCONSTANT)) return ctx.stCONSTANT;
         if ((t1 == ctx.stDISCARDED) || (t2 == ctx.stDISCARDED)) return ctx.stDISCARDED;
         if (t1!=t2) return ERROR;
         return t1;
     }
 
+    for (let i=0; i<ctx.constraints.length; i++) {
+        if ((ctx.verbose)&&(i%100000 == 0)) console.log(`marking as internal: ${i}/${ctx.constraints.length}`);
+
+        const c = ctx.constraints[i];
+        for (let s in c.a.coefs) ctx.signals[s].c = ctx.stINTERNAL;
+        for (let s in c.b.coefs) ctx.signals[s].c = ctx.stINTERNAL;
+        for (let s in c.c.coefs) ctx.signals[s].c = ctx.stINTERNAL;
+    }
+
+
     // First classify the signals
     for (let s=0; s<ctx.signals.length; s++) {
         if ((ctx.verbose)&&(s%100000 == 0)) console.log(`classify signals: ${s}/${ctx.signals.length}`);
         const signal = ctx.signals[s];
-        let tAll = ctx.stINTERNAL;
+        let tAll = ctx.stDISCARDED;
         let lSignal = signal;
         let end = false;
         while (!end) {
-            let t = lSignal.c || ctx.stINTERNAL;
+            let t = lSignal.c || ctx.stDISCARDED;
             if (s == 0) {
                 t = ctx.stONE;
             } else if (lSignal.o & ctx.MAIN) {
