@@ -81,10 +81,6 @@ async function compile(srcFile, options) {
         throw new Error("A main component must be defined");
     }
 
-    if (ctx.verbose) console.log("Classify Signals");
-    measures.classifySignals = -performance.now();
-    classifySignals(ctx);
-    measures.classifySignals += performance.now();
 
     if (ctx.verbose) console.log("Reduce Constants");
     measures.reduceConstants = -performance.now();
@@ -108,8 +104,12 @@ async function compile(srcFile, options) {
         measures.reduceConstraints += performance.now();
 
     }
-
     if (ctx.verbose) console.log("NConstraints After: "+ctx.constraints.length);
+
+    if (ctx.verbose) console.log("Classify Signals");
+    measures.classifySignals = -performance.now();
+    classifySignals(ctx);
+    measures.classifySignals += performance.now();
 
     measures.generateWitnessNames = -performance.now();
     generateWitnessNames(ctx);
@@ -462,7 +462,6 @@ async function reduceConstrains(ctx) {
             }
 
             sig2constraint[s] = null;
-            lSignal.c = ctx.stDISCARDED;
         }
 
 /*
@@ -496,7 +495,12 @@ async function reduceConstrains(ctx) {
         for (let k in l.coefs) {
             k = Number(k);
             const signal = ctx.signals[k];
-            if ((signal.c == ctx.stINTERNAL)&&(!ctx.F.isZero(l.coefs[k])) &&(!removedSignals[k])) return k;
+            if  (  (  ((signal.o & ctx.MAIN) == 0)
+                    ||(   ((signal.o & ctx.IN) == 0)
+                        &&((signal.o & ctx.OUT) == 0)))
+                 &&((signal.o & ctx.ONE) ==0)
+                 &&(!ctx.F.isZero(l.coefs[k]))
+                 &&(!removedSignals[k])) return k;
         }
         return null;
     }

@@ -428,10 +428,17 @@ function execAssignement(ctx, ast) {
         }
 
         // Skip if an out is assigned directly to an input.
-        if ((!isIn)||(!isOut)) {
-            sDest.e = sIdx;
-        } else {
-            if (utils.isDefined(sSrc.v)) sDest.v = sSrc.v;
+        if (!(isIn&&isOut)) {
+            if (isIn) {
+                sDest.e = sIdx;
+            } else if (isOut) {
+                sSrc.e = dIdx;
+            } else {
+                sDest.e = sIdx;
+            }
+            if (!isOut) {
+                if (utils.isDefined(sSrc.v)) sDest.v = sSrc.v;
+            }
         }
     }
 }
