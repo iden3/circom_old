@@ -1007,6 +1007,28 @@ function execArray(ctx, ast) {
     return res;
 }
 
+function getFileNameAndPath(ctx, ast) {
+    const relativeFile = path.resolve(ctx.filePath, ast.file);
+
+    if (fs.existsSync(relativeFile)) {
+        return {
+            incFileName: relativeFile,
+            incFilePath: path.dirname(relativeFile),
+        };
+    }
+
+    const moduleName = ast.file.split("/")[0];
+    const modulePath = path.resolve(require.resolve(moduleName), "../..");
+
+    const moduleFile = path.resolve(modulePath, ast.file);
+    const moduleFilePath = path.resolve(moduleFile, "..");
+
+    return {
+        incFileName: moduleFile,
+        incFilePath: moduleFilePath,
+    };
+}
+
 function createRefs(ctx, ast, scope) {
     const scopeLabels = [];
     const scopes = scope ? [scope] : [{}];
@@ -1035,8 +1057,7 @@ function createRefs(ctx, ast, scope) {
         } else if (ast.type == "FUNCTIONDEF") {
             ast.refId = define(ast.name, {t: "F"});
         } else if (ast.type == "INCLUDE") {
-            const incFileName = path.resolve(ctx.filePath, ast.file);
-            const incFilePath = path.dirname(incFileName);
+            const { incFileName, incFilePath } = getFileNameAndPath(ctx, ast);
 
             ctx.includedFiles = ctx.includedFiles || [];
             if (ctx.includedFiles[incFileName]) {
