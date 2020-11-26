@@ -888,7 +888,8 @@ function execOpOp(ctx, ast, op, lr) {
         right = {t:"N", v: ctx.F.one};
     }
 
-    if (!right) return ctx.throwError(ast, "adding a no number");
+    if (!right) return ctx.throwError(ast, "right operand is not initialized");
+    if (!resBefore) return ctx.throwError(ast, "left operand is not initialized");
 
     const resAfter = ctx.lc[op](resBefore, right);
     left.v[o] = resAfter;

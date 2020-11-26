@@ -46,7 +46,7 @@ async function doTest(tester, circuit, testVectors) {
 describe("basic cases", function () {
     this.timeout(100000);
 
-    for (let i=0; i<basicCases.length; i++) {
+    for (let i=0; i< basicCases.length; i++) {
         it("c/c++ " + basicCases[i].name, async () => {
             await doTest(c_tester, basicCases[i].circuit, basicCases[i].tv);
         });

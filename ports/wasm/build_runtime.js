@@ -412,6 +412,42 @@ module.exports = function buildRuntime(module, builder) {
 
     }
 
+    function buildMultiGetSignal() {
+        const f = module.addFunction("multiGetSignal");
+        f.addParam("cIdx", "i32");
+        f.addParam("pR", "i32");
+        f.addParam("component", "i32");
+        f.addParam("signal", "i32");
+        f.addParam("n", "i32");
+        f.addLocal("i", "i32");
+
+        const c = f.getCodeBuilder();
+
+        f.addCode(
+            c.setLocal("i", c.i32_const(0)),
+            c.block(c.loop(
+                c.br_if(1, c.i32_eq(c.getLocal("i"), c.getLocal("n"))),
+                c.call(
+                    "getSignal",
+                    c.getLocal("cIdx"),
+                    c.i32_add(
+                        c.getLocal("pR"),
+                        c.i32_mul(
+                            c.getLocal("i"),
+                            c.i32_const(builder.sizeFr)
+                        )
+                    ),
+                    c.getLocal("component"),
+                    c.i32_add(
+                        c.getLocal("signal"),
+                        c.getLocal("i")
+                    )
+                ),
+                c.setLocal("i", c.i32_add(c.getLocal("i"), c.i32_const(1))),
+                c.br(0)
+            ))
+        );
+    }
 
     function buildSetSignal() {
         const f = module.addFunction("setSignal");
@@ -847,6 +883,7 @@ module.exports = function buildRuntime(module, builder) {
 
     buildGetSignal();
     buildSetSignal();
+    buildMultiGetSignal();
 
     buildComponentStarted();
     buildComponentFinished();
@@ -867,6 +904,7 @@ module.exports = function buildRuntime(module, builder) {
     module.exportFunction("getFrLen");
     module.exportFunction("getSignalOffset32");
     module.exportFunction("setSignal");
+    module.exportFunction("multiGetSignal");
     module.exportFunction("getPWitness");
     module.exportFunction("Fr_toInt");
     module.exportFunction("getPRawPrime");

@@ -59,8 +59,9 @@ class CodeBuilderC {
         this.ops.push({op: "SETSIGNAL", component, signal, value});
     }
 
-    getSignal(dLabel, component, signal) {
-        this.ops.push({op: "GETSIGNAL", dLabel, component, signal});
+    getSignal(dLabel, component, signal, n) {
+        if (typeof(n) == "undefined") n=1;
+        this.ops.push({op: "GETSIGNAL", dLabel, component, signal, n});
     }
 
     copyN(dLabel, offset, src, n) {
@@ -181,7 +182,7 @@ class CodeBuilderC {
             } else if (o.op == "SETSIGNAL") {
                 code.push(`ctx->setSignal(__cIdx, ${ref2src(o.component)}, ${ref2src(o.signal)}, ${ref2src(o.value)});`);
             } else if (o.op == "GETSIGNAL") {
-                code.push(`ctx->getSignal(__cIdx, ${ref2src(o.component)}, ${ref2src(o.signal)}, ${o.dLabel});`);
+                code.push(`ctx->multiGetSignal(__cIdx, ${ref2src(o.component)}, ${ref2src(o.signal)}, ${o.dLabel}, ${o.n});`);
             } else if (o.op == "COPYN") {
                 const oS = ref2src(o.offset);
                 const dLabel = (oS != "0") ? (o.dLabel + "+" + oS) : o.dLabel;

@@ -284,6 +284,32 @@ function genDeclareComponent(ctx, ast) {
 }
 
 function genDeclareSignal(ctx, ast) {
+
+    const v = ctx.refs[ast.refId];
+
+    let sizes;
+    if (ast.name.selectors.length>0) {
+        sizes=[];
+        for (let i=0; i< ast.name.selectors.length; i++) {
+            const sizeRef = gen(ctx, ast.name.selectors[i]);
+            const size = ctx.refs[sizeRef];
+            if (size.sizes[0] != 1) return ctx.throwError(ast, "A selector cannot be an array");
+            if (size.used) return ctx.throwError(ast, "Signal size variables not allowed");
+            sizes.push(Scalar.toNumber(size.value[0]));
+        }
+        sizes = utils.accSizes(sizes);
+    } else {
+        sizes = [1,0];
+    }
+
+    if ((!v.sizes)&&(sizes)) {
+        v.sizes = sizes;
+    }
+
+    if (v.sizes) {
+        if (!utils.sameSizes(v.sizes, sizes)) return ctx.throwError(ast, "Redefined a signal with different sized");
+    }
+
     return ast.refId;
 }
 
@@ -414,12 +440,13 @@ function genVariable(ctx, ast) {
             vOffset = genGetSignalOffset(ctx, -1, ast.name);
         }
 
-        const resRef = newRef(ctx, "BIGINT", "_sigValue");
+        const sizes = v.sizes.slice(l);
+
+        const resRef = newRef(ctx, "BIGINT", "_sigValue", null, sizes);
         const res = ctx.refs[resRef];
         instantiateRef(ctx, resRef);
-        ctx.codeBuilder.getSignal(res.label, ["CC"], toRefA_Int1(ctx, ast, vOffset));
+        ctx.codeBuilder.getSignal(res.label, ["CC"], toRefA_Int1(ctx, ast, vOffset), sizes[0]);
         return resRef;
-
     } else if (v.type == "BIGINT") {
         const refOffset = genGetOffset(ctx, 0, v.sizes, ast.selectors );
         const offset = ctx.refs[refOffset];
@@ -486,13 +513,18 @@ function genPin(ctx, ast) {
         vsIdx = genGetSignalOffset(ctx, vcIdx, ast.pin.name);
     }
 
-    const resRef = newRef(ctx, "BIGINT", "_sigValue");
+    const l = ast.selectors ? ast.selectors.length : 0;
+
+    const sizes = [1,0]; // TODO, Treat array
+
+    const resRef = newRef(ctx, "BIGINT", "_sigValue", null, sizes);
     const res = ctx.refs[resRef];
     instantiateRef(ctx, resRef);
     ctx.codeBuilder.getSignal(
         res.label,
         toRefA_Int1(ctx, ast.component, vcIdx),
-        toRefA_Int1(ctx, ast.pin, vsIdx)
+        toRefA_Int1(ctx, ast.pin, vsIdx),
+        sizes[0]
     );
     return resRef;
 }
@@ -951,7 +983,7 @@ function genLoop(ctx, ast) {
     if (ctx.error) return;
 
     const cond = ctx.refs[condRef];
-    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
+    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "genLoop: Operation cannot be done on an array");
 
     if (cond.used) {
         inLoop = true;
@@ -1028,7 +1060,7 @@ function genIf(ctx, ast) {
     const condRef = gen(ctx, ast.condition);
     if (ctx.error) return;
     const cond = ctx.refs[condRef];
-    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
+    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "genIf: Operation cannot be done on an array");
 
     if (cond.used) {
         let thenCode, elseCode;
@@ -1148,7 +1180,12 @@ function genOp(ctx, ast, op, nOps, adjustBool) {
         valRefs.push(ref);
         vals.push(v);
 
-        if (!utils.sameSizes(v.sizes, [1,0])) return ctx.throwError(ast, "Operation cannot be done on an array");
+        if (!utils.sameSizes(v.sizes, [1,0])) {
+            console.log("xx");
+            console.log(i);
+            console.log(v);
+            return ctx.throwError(ast, "genOp2: Operation cannot be done on an array");
+        }
         if (  (!v.used)
             &&(  (!utils.isDefined(v.value))
                ||(!utils.isDefined(v.value[0]))))
@@ -1184,7 +1221,7 @@ function genTerCon(ctx, ast) {
     const condRef = gen(ctx, ast.values[0]);
     if (ctx.error) return;
     const cond = ctx.refs[condRef];
-    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "Operation cannot be done on an array");
+    if (!utils.sameSizes(cond.sizes, [1,0])) return ctx.throwError(ast.condition, "genTer: Operation cannot be done on an array");
 
     if (cond.used) {
         let thenCode, elseCode;

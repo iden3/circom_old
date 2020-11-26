@@ -62,8 +62,9 @@ class CodeBuilderWasm {
         this.ops.push({op: "SETSIGNAL", component, signal, value});
     }
 
-    getSignal(dLabel, component, signal) {
-        this.ops.push({op: "GETSIGNAL", dLabel, component, signal});
+    getSignal(dLabel, component, signal, n) {
+        if (typeof n == "undefined") n=1;
+        this.ops.push({op: "GETSIGNAL", dLabel, component, signal, n});
     }
 
     copyN(dLabel, offset, src, n) {
@@ -251,11 +252,12 @@ class CodeBuilderWasm {
             } else if (o.op == "GETSIGNAL") {
                 code.push(
                     c.call(
-                        "getSignal",
+                        "multiGetSignal",
                         c.getLocal("cIdx"),
                         this.fnBuilder._getPtr(c, o.dLabel),
                         this.fnBuilder._deRefInt(c, o.component),
-                        this.fnBuilder._deRefInt(c, o.signal)
+                        this.fnBuilder._deRefInt(c, o.signal),
+                        c.i32_const(o.n)
                     )
                 );
             } else if (o.op == "COPYN") {
