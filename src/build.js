@@ -196,6 +196,7 @@ function buildHeader(ctx) {
         NInputs: ctx.components[ ctx.getComponentIdx("main") ].nInSignals,
         NOutputs: ctx.totals[ ctx.stOUTPUT ],
         NVars: ctx.totals[ctx.stONE] + ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT] + ctx.totals[ctx.stPRVINPUT] + ctx.totals[ctx.stINTERNAL],
+        NPublic: ctx.totals[ctx.stOUTPUT] + ctx.totals[ctx.stPUBINPUT],
         P: ctx.F.p
     });
 }

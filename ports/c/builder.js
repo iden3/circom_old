@@ -433,6 +433,7 @@ class BuilderC {
             `#define NOutputs ${this.header.NOutputs}`,
             `#define NInputs ${this.header.NInputs}`,
             `#define NVars ${this.header.NVars}`,
+            `#define NPublic ${this.header.NPublic}`,
             `#define __P__ "${this.header.P.toString()}"`,
             ""
         );
@@ -662,7 +663,7 @@ class BuilderC {
 
     async _buildCircuitVar(fdData) {
 
-        const buff = new Uint8Array(72);
+        const buff = new Uint8Array(76);
         const buffV = new DataView(buff.buffer);
 
         utils.setUint64(buffV, 0, this.pWit2Sig, true);
@@ -678,6 +679,7 @@ class BuilderC {
         buffV.setUint32(60, this.header.NInputs, true);
         buffV.setUint32(64, this.header.NVars, true);
         buffV.setUint32(68, this.nCets, true);
+        buffV.setUint32(72, this.header.NPublic, true);
 
         fdData.pos = 0;
 
@@ -697,7 +699,7 @@ class BuilderC {
 
     async build(fdCode, fdData) {
         const encoder = new TextEncoder("utf-8");
-        fdData.pos = 72;
+        fdData.pos = 76;
         while (fdData.pos % 8) fdData.pos++;
 
         const code=new BigArray();

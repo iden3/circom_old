@@ -693,6 +693,15 @@ module.exports = function buildRuntime(module, builder) {
         f.addCode(c.i32_const(builder.header.NVars));
     }
 
+    function buildGetNPublic() {
+        const f = module.addFunction("getNPublic");
+        f.setReturnType("i32");
+
+        const c = f.getCodeBuilder();
+
+        f.addCode(c.i32_const(builder.header.NPublic));
+    }
+
     function buildGetFrLen() {
         const f = module.addFunction("getFrLen");
         f.setReturnType("i32");
@@ -892,6 +901,7 @@ module.exports = function buildRuntime(module, builder) {
     buildCheckAssert();
 
     buildGetNVars();
+    buildGetNPublic();
     buildGetFrLen();
     buildGetPWitness();
     buildGetPRawPrime();
@@ -901,6 +911,7 @@ module.exports = function buildRuntime(module, builder) {
 
     module.exportFunction("init");
     module.exportFunction("getNVars");
+    module.exportFunction("getNPublic");
     module.exportFunction("getFrLen");
     module.exportFunction("getSignalOffset32");
     module.exportFunction("setSignal");

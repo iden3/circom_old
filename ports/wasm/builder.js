@@ -781,20 +781,21 @@ class BuilderWasm {
 
     _buildHeader(module) {
 
-        this.pCircuit = module.alloc(48);
+        this.pCircuit = module.alloc(52);
 
         this.pNSignals = this.pCircuit;
         this.pNComponents = this.pCircuit + 4;
         this.pNInputs = this.pCircuit + 8;
         this.pNOutputs = this.pCircuit + 12;
         this.pNVars = this.pCircuit + 16;
-        this.ppWit2sig = this.pCircuit + 20;
-        this.ppComponents = this.pCircuit + 24;
-        this.ppMapIsInput = this.pCircuit + 28;
-        this.ppConstants = this.pCircuit + 32;
-        this.ppSignals = this.pCircuit + 36;
-        this.ppInputSignalsToTrigger = this.pCircuit + 40;
-        this.ppSignalsAssigned = this.pCircuit + 44;
+        this.pNPublic = this.pCircuit + 20;
+        this.ppWit2sig = this.pCircuit + 24;
+        this.ppComponents = this.pCircuit + 28;
+        this.ppMapIsInput = this.pCircuit + 32;
+        this.ppConstants = this.pCircuit + 36;
+        this.ppSignals = this.pCircuit + 40;
+        this.ppInputSignalsToTrigger = this.pCircuit + 44;
+        this.ppSignalsAssigned = this.pCircuit + 48;
     }
 
     _buildSizes(module) {
@@ -985,6 +986,7 @@ class BuilderWasm {
         module.addData(this.pNInputs, intToBytes32(this.header.NInputs));
         module.addData(this.pNOutputs, intToBytes32(this.header.NOutputs));
         module.addData(this.pNVars, intToBytes32(this.header.NVars));
+        module.addData(this.pNPublic, intToBytes32(this.header.NPublic));
         module.addData(this.ppWit2sig, intToBytes32(this.pWit2sig));
         module.addData(this.ppComponents, intToBytes32(this.pComponents));
         module.addData(this.ppMapIsInput, intToBytes32(this.pMapIsInput));
