@@ -195,7 +195,7 @@ class CTester {
             const b = evalLC(constraint[1]);
             const c = evalLC(constraint[2]);
 
-            assert (F.sub(F.mul(a,b), c).isZero(), "Constraint doesn't match");
+            assert (F.isZero(F.sub(F.mul(a,b), c)), "Constraint doesn't match");
         }
 
         function evalLC(lc) {
