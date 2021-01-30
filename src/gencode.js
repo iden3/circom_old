@@ -1281,6 +1281,8 @@ function genTerCon(ctx, ast) {
 
         if (!utils.sameSizes(then.sizes, els.sizes)) return ctx.throwError(ast, "Ternary op must return the same sizes");
 
+        leaveConditionalCode(ctx);
+
         const refId = ctx.refs.length;
         ctx.refs.push({
             type: "BIGINT",
