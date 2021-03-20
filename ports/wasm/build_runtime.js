@@ -127,10 +127,10 @@ module.exports = function buildRuntime(module, builder) {
 
         f.addCode(
             // i=0
-            c.setLocal("i", c.i32_const(0)),
+            c.setLocal("i", c.i32_const(builder.header.NComponents-1)),
             c.block(c.loop(
                 // if (i==NComponents) break
-                c.br_if(1, c.i32_eq(c.getLocal("i"), c.i32_const(builder.header.NComponents))),
+                c.br_if(1, c.i32_eq(c.getLocal("i"), c.i32_const(-1) )),
 
                 // if (inputSignalsToTrigger[i] == 0) triggerComponent(i)
                 c.if(
@@ -154,7 +154,7 @@ module.exports = function buildRuntime(module, builder) {
                 // i=i+1
                 c.setLocal(
                     "i",
-                    c.i32_add(
+                    c.i32_sub(
                         c.getLocal("i"),
                         c.i32_const(1)
                     )
