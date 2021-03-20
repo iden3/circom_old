@@ -180,6 +180,17 @@ module.exports = function buildRuntime(module, builder) {
         const c = f.getCodeBuilder();
 
         f.addCode(
+            // Don't call it again.  (It is possoble in the init)
+            c.i32_store(
+                c.i32_add(
+                    c.i32_const(builder.pInputSignalsToTrigger),
+                    c.i32_mul(
+                        c.getLocal("component"),
+                        c.i32_const(4)
+                    )
+                ),
+                c.i32_const(-1)
+            ),
             c.call_indirect(
                 c.getLocal("component"),        // Idx in table
                 c.getLocal("component")         // Parameter
