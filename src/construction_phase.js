@@ -104,11 +104,11 @@ function exec(ctx, ast) {
         return execPin(ctx, ast);
     } else if (ast.type == "OP") {
         if (ast.op == "=") {
-            return execAssignement(ctx, ast);
+            return execAssignement(ctx, ast, false);
         } else if (ast.op == "<--") {
-            return execAssignement(ctx, ast);
+            return execAssignement(ctx, ast,false);
         } else if (ast.op == "<==") {
-            return execSignalAssignConstrain(ctx, ast);
+            return execAssignement(ctx, ast, true);
         } else if (ast.op == "===") {
             return execConstrain(ctx, ast);
         } else if (ast.op == "+=") {
@@ -334,7 +334,7 @@ function execDeclareVariable(ctx, ast) {
     return v;
 }
 
-function execAssignement(ctx, ast) {
+function execAssignement(ctx, ast, isConstraint) {
     let left;
     const leftSels=[];
     if (ast.values[0].type == "DECLARE") {
@@ -373,15 +373,18 @@ function execAssignement(ctx, ast) {
 
     let o = 0;
     for (let i=0; i<leftSels.length; i++) o += leftSels[i]*left.s[i+1];
+    const leftVals = [];
     if (left.t == "V") {
         if (right.t=="V") {
             for (let i=0; i<right.s[0]; i++) {
                 left.v[o+i]=right.v[i];
+                leftVals.push(left.v[o+i]);
             }
         } else if (right.t == "S") {
             for (let i=0; i<right.s[0]; i++) {
                 left.v[o+i]={t: "LC", coefs: {}};
                 left.v[o+i].coefs[right.sIdx+i] = ctx.F.one;
+                leftVals.push(left.v[o+i]);
             }
         }
     } else if ( left.t == "S") {
@@ -389,10 +392,44 @@ function execAssignement(ctx, ast) {
             for (let i=0; i<right.s[0]; i++) {
                 const ev = ctx.lc.evaluate(ctx, right.v[i]);
                 setSignalValue(left.sIdx + o +i, ev);
+                const leftSignal = {
+                    t: "LC",
+                    coefs: {}
+                };
+                let sIdx = left.sIdx + o +i;
+                while (ctx.signals[sIdx].e >= 0) sIdx = ctx.signals[sIdx].e;
+                leftSignal.coefs[sIdx] = ctx.F.one;
+                leftVals.push(leftSignal);
             }
         } else if (right.t == "S") {
             for (let i=0; i<right.s[0]; i++) {
                 joinSignals(left.sIdx + o + i, right.sIdx + i);
+                const leftSignal = {
+                    t: "LC",
+                    coefs: {}
+                };
+                let sIdx = left.sIdx + o +i;
+                while (ctx.signals[sIdx].e >= 0) sIdx = ctx.signals[sIdx].e;
+                leftSignal.coefs[sIdx] = ctx.F.one;
+                leftVals.push(leftSignal);
+            }
+        }
+    }
+
+    if (isConstraint) {
+        ast.fileName = ctx.fileName;
+        ast.filePath = ctx.filePath;
+        if (leftVals.length!=1) return ctx.throwError(ast, "Arrays not allowed in constraints");
+        const aV = leftVals[0];
+        const bV = val(ctx, right, ast.values[1]);
+
+        const res = ctx.lc.sub(aV,bV);
+        if (res.type == "NQ") return ctx.throwError(ast, "Non Quadratic constraint");
+
+        if (!ctx.lc.isZero(res)) {
+            ctx.constraints.push(ctx.lc.toQEX(res));
+            if (ctx.verbose) {
+                if ((ctx.constraints.length % 10000 == 0)&&(ctx.constraints.length>0)) console.log("Constraints: " + ctx.constraints.length);
             }
         }
     }
@@ -401,6 +438,8 @@ function execAssignement(ctx, ast) {
 
     function setSignalValue(dSIdx, v) {
         let sDest = ctx.signals[dSIdx];
+        if (!sDest) return ctx.throwError(ast, "Assigning to unexisting signal");
+
         while (sDest.e>=0) sDest=ctx.signals[sDest.e];
 
         if (utils.isDefined(sDest.v)) return ctx.throwError(ast, "Signals cannot be assigned twice");
@@ -951,14 +990,6 @@ function execConstrain(ctx, ast) {
     }
 
     return a;
-}
-
-function execSignalAssignConstrain(ctx, ast) {
-    const v = execAssignement(ctx,ast);
-    if (ctx.error) return;
-    execConstrain(ctx, ast);
-    if (ctx.error) return;
-    return v;
 }
 
 function execInclude(ctx, ast) {

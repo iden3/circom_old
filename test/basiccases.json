@@ -321,5 +321,12 @@
         "tv": [
             [{}, {}]
         ]
+    },
+    {
+        "name": "modify_left",
+        "circuit": "modify_left.circom",
+        "tv": [
+            [{}, {"out": [3,4]}]
+        ]
     }
 ]
