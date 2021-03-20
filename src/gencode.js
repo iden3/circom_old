@@ -1151,19 +1151,32 @@ function genOpOp(ctx, ast, op, lr) {
 
     if (veval.type != "BIGINT") return ctx.throwError(ast, "incrementing a non variable");
 
-    const resRef = newRef(ctx, "BIGINT", "_tmp");
-    const res = ctx.refs[resRef];
-    if (veval.used) {
-        instantiateRef(ctx, resRef);
-        ctx.codeBuilder.fieldOp(res.label, op, [["R", veval.label], ["C", ctx.addConstant(ctx.F.one)]]);
-    } else {
-        res.value = [ctx.F[op](veval.value[0], ctx.F.one)];
-    }
-    genVarAssignment(ctx, ast, vRef, ast.values[0].selectors, resRef);
+    const resAfterRef = newRef(ctx, "BIGINT", "_tmp");
+    const resAfter = ctx.refs[resAfterRef];
+    var resBeforeRef;
+    var resBefore;
     if (lr == "RIGHT") {
-        return vevalRef;
+        resBeforeRef = newRef(ctx, "BIGINT", "_tmp");
+        resBefore = ctx.refs[resBeforeRef];
+    }
+    if (veval.used) {
+        if (lr == "RIGHT") {
+            instantiateRef(ctx, resBeforeRef);
+            ctx.codeBuilder.copyN(resBefore.label, ["V", 0], ["R", veval.label], 1);
+        }
+        instantiateRef(ctx, resAfterRef);
+        ctx.codeBuilder.fieldOp(resAfter.label, op, [["R", veval.label], ["C", ctx.addConstant(ctx.F.one)]]);
+    } else {
+        if (lr == "RIGHT") {
+            resBefore.value = [veval.value[0]];
+        }
+        resAfter.value = [ctx.F[op](veval.value[0], ctx.F.one)];
+    }
+    genVarAssignment(ctx, ast, vRef, ast.values[0].selectors, resAfterRef);
+    if (lr == "RIGHT") {
+        return resBeforeRef;
     } else if (lr == "LEFT") {
-        return resRef;
+        return resAfterRef;
     }
 }
 
