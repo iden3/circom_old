@@ -13,7 +13,6 @@ const utils = require("../../src/utils");
 const loadR1cs = require("r1csfile").load;
 const ZqField = require("ffjavascript").ZqField;
 const buildZqField = require("ffiasm").buildZqField;
-const fastFile = require("fastfile");
 
 const {stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
 
@@ -30,16 +29,13 @@ async function  c_tester(circomFile, _options) {
     const baseName = path.basename(circomFile, ".circom");
     const options = Object.assign({}, _options);
 
-    options.cSourceFile = await fastFile.createOverride(path.join(dir.path, baseName + ".cpp"));
-    options.dataFile = await fastFile.createOverride(path.join(dir.path, baseName + ".dat"));
+    options.cSourceFileName = path.join(dir.path, baseName + ".cpp");
+    options.dataFileName = path.join(dir.path, baseName + ".dat");
     options.symWriteStream = fs.createWriteStream(path.join(dir.path, baseName + ".sym"));
     options.r1csFileName = path.join(dir.path, baseName + ".r1cs");
 
     options.p = options.p || Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
     await compiler(circomFile, options);
-
-    await options.cSourceFile.close();
-    await options.dataFile.close();
 
     const source = await buildZqField(options.p, "Fr");
 
