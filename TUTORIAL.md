@@ -86,13 +86,13 @@ snarkjs --help
 To show general statistics of this circuit, you can run:
 
 ```sh
-snarkjs info -r circuit.r1cs
+snarkjs ri circuit.r1cs
 ```
 
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs printconstraints -r circuit.r1cs -s circuit.sym
+snarkjs rp circuit.r1cs
 ```
 
 
