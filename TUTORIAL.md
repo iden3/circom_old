@@ -239,6 +239,59 @@ The `===` operator adds a constraint without assigning any value to a signal.
 
 The circuit also has another problem: the operation works in `Z_r`, so we need to guarantee the multiplication does not overflow. This can be done by converting the inputs to binary and checking the ranges, but we will reserve it for future tutorials.
 
+## Bonus track 2
+
+You can also write a complex circuit using array or nested array. For example, you want to prove that you have two private matrices A, B and reveal its multiplication result AB. To make a flexible template, we'll asusme that A is a m x n matrix and B is a n x p matrix.
+
+```
+template Multiplier() {
+    signal input a;
+    signal input b;
+    signal output c;
+    c <== a*b;
+}
+
+template MatrixMultiplier(m, n, p) {
+    signal input a[m][n];
+    signal input b[n][p];
+    signal input ab[m][p];
+    component intermediates[m][p][n];
+    for(var row = 0; row < m; row++) {
+      for(var col = 0; col < p; col++) {
+        var sum = 0;
+        for(var i = 0; i < n; i++) {
+          intermediates[row][col][i] = Multiplier();
+          intermediates[row][col][i].a <== a[row][i];
+          intermediates[row][col][i].b <== b[i][col];
+          sum = sum + intermediates[row][col][i].c
+        }
+        ab[row][col] === sum; 
+      }
+    }
+}
+
+component main = MatrixMultiplier(2, 3, 4);
+```
+
+Using this template, you should make different circuits when m, n, and p values vary. Here, we'll make a circuit which proves the matrix multiplication result of 2x3 matrix and 3x4 matrix. With the circuit we will prove
+```
+┌         ┐   ┌                ┐   ┌                ┐ 
+│ 0 -1  3 │ x │ -2  11  12  13 │ = │  4   9   4   1 │ 	
+│ 2  1  4 │   │ -4  -3  -1  14 │   │ -8  27  27  60 │	
+└         ┘   │  0   2   1   5 │   └                ┘
+              └                ┘
+```
+
+And then you can create an `input.json` file.
+```json
+{
+   "a": [[0, -1, 3], [2, 1, 4]],
+   "b": [[-2, 11, 12, 13], [-4, -3, -1, 14], [0, 2, 1, 5]],
+   "ab": [[4, 9, 4, 1], [-8, 27, 27, 60]]
+}
+```
+
+
 ## Where to go from here
 
 You may want to read the [README](https://github.com/iden3/circom)  to learn more features about `circom`.
