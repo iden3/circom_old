@@ -92,7 +92,7 @@ snarkjs info -r circuit.r1cs
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs printconstraints -r circuit.r1cs -s circuit.sym
+snarkjs print -r circuit.r1cs -s circuit.sym
 ```
 
 
