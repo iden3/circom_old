@@ -269,6 +269,54 @@ The `===` operator adds a constraint without assigning any value to a signal.
 
 The circuit also has another problem: the operation works in `Z_r`, so we need to guarantee the multiplication does not overflow. This can be done by converting the inputs to binary and checking the ranges, but we will reserve it for future tutorials.
 
+Another problem of the circuit is that circom works with a field of a prime that in general is arround the 255bits.  That means that it's very easy to factor in that field.
+
+One possible solution to this, is to limit the inputs to 64 bits. that means that this way it will not be possible to have overflow.
+
+The final circuit would look like:
+
+```
+template CheckBits(n) {
+    signal input in;
+    signal bits[n];
+    var lc1=0;
+
+    var e2=1;
+    for (var i = 0; i<n; i++) {
+        bits[i] <-- (in >> i) & 1;
+        bits[i] * (bits[i] -1 ) === 0;
+        lc1 += bits[i] * e2;
+        e2 = e2+e2;
+    }
+
+    lc1 === in;
+}
+
+template Multiplier(n) {
+    signal private input a;
+    signal private input b;
+    signal output c;
+    signal inva;
+    signal invb;
+
+    component chackA = CheckBits(n);
+    component chackB = CheckBits(n);
+
+    chackA.in <== a;
+    chackB.in <== b;
+
+    inva <-- 1/(a-1);
+    (a-1)*inva === 1;
+
+    invb <-- 1/(b-1);
+    (b-1)*invb === 1;
+
+    c <== a*b;
+}
+
+component main = Multiplier(64);
+```
+
 ## Where to go from here
 
 You may want to read the [README](https://github.com/iden3/circom)  to learn more features about `circom`.
