@@ -19,11 +19,17 @@ module.exports = function buildSyms(ctx) {
         while (ctx.signals[s].e >= 0) s = ctx.signals[s].e;
         let wId = ctx.signals[s].id;
         if (typeof(wId) == "undefined") wId=-1;
-        rs.push(`${actual.offset},${wId},${actual.cIdx},${actual.name}\n`);
-
+        const line = `${actual.offset},${wId},${actual.cIdx},${actual.name}\n`;
+        if ((ctx.verbose)&&(counter%10000 == 0)) {
+            console.log("Symbols saved: "+counter);
+            setImmediate(function() {
+                rs.push(line);
+            });
+        } else {
+            rs.push(line);
+        }
         it.next();
         counter ++;
-        if ((ctx.verbose)&&(counter%10000 == 0)) console.log("Symbols saved: "+counter);
     };
 
     return rs;

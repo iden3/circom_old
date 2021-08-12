@@ -29,6 +29,7 @@ const buildR1cs = require("./r1csfile").buildR1cs;
 const BigArray = require("./bigarray");
 const buildSyms = require("./buildsyms");
 const {performance} = require("perf_hooks");
+const fastFile = require("fastfile");
 
 module.exports = compile;
 const measures = {};
@@ -129,6 +130,14 @@ async function compile(srcFile, options) {
 
     delete ctx.constraints;  // Liberate memory.
 
+    if (options.cSourceFileName) {
+        options.cSourceFile = await fastFile.createOverride(options.cSourceFileName);
+    }
+
+    if (options.dataFileName) {
+        options.dataFile = await fastFile.createOverride(options.dataFileName);
+    }
+
     if (options.cSourceFile) {
         if (ctx.verbose) console.log("Generating c...");
         measures.generateC = -performance.now();
@@ -139,6 +148,14 @@ async function compile(srcFile, options) {
     }
 
     if (ctx.error) throw(ctx.error);
+
+    if (options.wasmFileName) {
+        options.wasmFile = await fastFile.createOverride(options.wasmFileName);
+    }
+
+    if (options.watFileName) {
+        options.watFile = await fastFile.createOverride(options.watFileName);
+    }
 
     if ((options.wasmFile)||(options.watFile)) {
         if (ctx.verbose) console.log("Generating wasm...");
@@ -173,6 +190,11 @@ async function compile(srcFile, options) {
             console.log(mStr + ": " + ms2String(mValue));
         }
     }
+
+    if (options.cSourceFile) await options.cSourceFile.close();
+    if (options.dataFile) await options.dataFile.close();
+    if (options.wasmFile) await options.wasmFile.close();
+    if (options.watFile) await options.watFile.close();
 }
 
 
