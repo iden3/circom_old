@@ -498,7 +498,7 @@ class LCAlgebra {
                 v = this.F.add(v, this.F.mul( n.coefs[k], s));
             }
             return v;
-        } else if (n.type == "QEX") {
+        } else if (n.t == "QEX") {
             const a = this.evaluate(ctx, n.a);
             if (a === null) return null;
             const b = this.evaluate(ctx, n.b);
@@ -556,6 +556,28 @@ class LCAlgebra {
                 b: this.canonize(ctx, a.b),
                 c: this.canonize(ctx, a.c)
             };
+            let keysa = Object.keys(res.a.coefs);
+            if ((keysa.length==1) && (keysa[0]==0)) {
+                res.b = this.mul(res.b, {
+                    t: "N",
+                    v: res.a.coefs[0]
+                });
+                res.c = this.add(res.b, res.c);
+                res.c = this.canonize(ctx, res.c);
+                res.a = {t: "LC", coefs: {}};
+                res.b = {t: "LC", coefs: {}};
+            }
+            let keysb = Object.keys(res.b.coefs);
+            if ((keysb.length==1) && (keysb[0]==0)) {
+                res.a = this.mul(res.a, {
+                    t: "N",
+                    v: res.b.coefs[0]
+                });
+                res.c = this.add(res.a, res.c);
+                res.c = this.canonize(ctx, res.c);
+                res.a = {t: "LC", coefs: {}};
+                res.b = {t: "LC", coefs: {}};
+            }
             return res;
         } else {
             return a;

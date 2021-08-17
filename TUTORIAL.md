@@ -86,28 +86,48 @@ snarkjs --help
 To show general statistics of this circuit, you can run:
 
 ```sh
-snarkjs info -r circuit.r1cs
+snarkjs r1cs info circuit.r1cs
 ```
 
 You can also print the constraints of the circuit by running:
 
 ```sh
-snarkjs printconstraints -r circuit.r1cs -s circuit.sym
+snarkjs r1cs print circuit.r1cs circuit.sym
 ```
 
 
 ### 3.2 Setting up using *snarkjs*
 
 
-Ok, let's run a setup for our circuit:
+Setup must be a trusted setup ceremony in snarks.
 
+Please visit [https://github.com/iden3/snarkjs](https://github.com/iden3/snarkjs) to see how to run a ceremony for a real circuit.
+
+To simplify it, we will run the ceremony ourself.
+
+
+First we download a power of tau ceremony file:
 ```sh
-snarkjs setup
+wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_10.ptau
 ```
 
-> By default `snarkjs` will look for and use `circuit.r1cs`.  You can always specify a different circuit file by adding `-r <circuit R1CS file name>`.
+Then we create the zkey file withou any contribution
 
-The output of the setup will be in the form of 2 files: `proving_key.json` and `verification_key.json`.
+```sh
+snarkjs zkey new circuit.r1cs powersOfTau28_hez_final_10.ptau circuit_0000.zkey
+```
+
+We now add out contribution
+
+```
+snarkjs zkey contribute circuit_0000.zkey circuit_final.zkey
+```
+
+Finally, we can export the verification key from the zkey file
+
+```
+snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
+```
 
 ### 3.3. Calculating a witness
 
@@ -132,20 +152,30 @@ Let's create a file named `input.json`
 Now let's calculate the witness:
 
 ```sh
-snarkjs calculatewitness --wasm circuit.wasm --input input.json --witness witness.json
+snarkjs wtns calculate circuit.wasm input.json witness.wtns
 ```
 
-You may want to take a look at `witness.json` file with all the signals.
+To see the witness.wtns file, you can export it to jeson and take a look
+
+```sh
+snarkjs wtns export json witness.wtns witness.json
+cat witness.json
+```
+
+If the circuit has any error, you can debug the generation of the witness with
+```sh
+snarkjs wtns debug circuit.wasm input.json witness.wtns circuit.sym
+```
 
 ### Create the proof
 
 Now that we have the witness generated, we can create the proof.
 
 ```sh
-snarkjs proof
+snarkjs groth16 prove circuit_final.zkey witness.wtns proof.json public.json
 ```
 
-This command will use the `proving_key.json` and the `witness.json` files by default to generate `proof.json` and `public.json`
+This command will use the `circuit_final.zkey` and the `witness.wtns` files by default to generate `proof.json` and `public.json`
 
 The `proof.json` file will contain the actual proof and the `public.json` file will contain just the values of the public inputs and the outputs.
 
@@ -155,7 +185,7 @@ The `proof.json` file will contain the actual proof and the `public.json` file w
 To verify the proof run:
 
 ```sh
-snarkjs verify
+snarkjs groth16 verify verification_key.json public.json proof.json
 ```
 
 This command will use `verification_key.json`, `proof.json` and `public.json` to verify that is valid.
@@ -168,10 +198,10 @@ If the proof is ok, you will see `OK` or `INVALID` if not ok.
 ### Generate the solidity verifier
 
 ```sh
-snarkjs generateverifier
+snarkjs zkey export solidityverifier circuit_final.zkey verifier.sol
 ```
 
-This command will take the `verification_key.json` and generate solidity code in `verifier.sol` file.
+This command will take the `circuit_final.zkey` and generate solidity code in `verifier.sol` file.
 
 You can take the code in `verifier.sol` and cut and paste it in remix.
 
@@ -189,7 +219,7 @@ This function will return true if the proof and the inputs are valid.
 To facilitate the call, you can use `snarkjs` to generate the parameters of the call by typing:
 
 ```sh
-snarkjs generatecall
+snarkjs zkey export soliditycalldata public.json proof.json
 ```
 
 Just cut and paste the output to the parameters field of the `verifyProof` method in Remix.
@@ -238,6 +268,54 @@ The `<--` and `-->` operators assign a value to a signal without creating any co
 The `===` operator adds a constraint without assigning any value to a signal.
 
 The circuit also has another problem: the operation works in `Z_r`, so we need to guarantee the multiplication does not overflow. This can be done by converting the inputs to binary and checking the ranges, but we will reserve it for future tutorials.
+
+Another problem of the circuit is that circom works with a field of a prime that in general is arround the 255bits.  That means that it's very easy to factor in that field.
+
+One possible solution to this, is to limit the inputs to 64 bits. that means that this way it will not be possible to have overflow.
+
+The final circuit would look like:
+
+```
+template CheckBits(n) {
+    signal input in;
+    signal bits[n];
+    var lc1=0;
+
+    var e2=1;
+    for (var i = 0; i<n; i++) {
+        bits[i] <-- (in >> i) & 1;
+        bits[i] * (bits[i] -1 ) === 0;
+        lc1 += bits[i] * e2;
+        e2 = e2+e2;
+    }
+
+    lc1 === in;
+}
+
+template Multiplier(n) {
+    signal private input a;
+    signal private input b;
+    signal output c;
+    signal inva;
+    signal invb;
+
+    component chackA = CheckBits(n);
+    component chackB = CheckBits(n);
+
+    chackA.in <== a;
+    chackB.in <== b;
+
+    inva <-- 1/(a-1);
+    (a-1)*inva === 1;
+
+    invb <-- 1/(b-1);
+    (b-1)*invb === 1;
+
+    c <== a*b;
+}
+
+component main = Multiplier(64);
+```
 
 ## Where to go from here
 

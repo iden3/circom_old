@@ -83,7 +83,7 @@ function sameSizes(s1, s2) {
 }
 
 function isDefined(v) {
-    return ((typeof(v) != "undefined")&&(v != null));
+    return ((typeof(v) != "undefined")&&(v !== null));
 }
 
 function accSizes2Str(sizes) {

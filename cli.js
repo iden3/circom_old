@@ -25,7 +25,6 @@ const fs = require("fs");
 const path = require("path");
 const Scalar = require("ffjavascript").Scalar;
 const stringifyBigInts = require("ffjavascript").utils.stringifyBigInts;
-const fastFile = require("fastfile");
 
 const compiler = require("./src/compiler");
 
@@ -96,15 +95,15 @@ async function run() {
     options.pathMap = {};
 
     if (argv.csource) {
-        options.cSourceFile = await fastFile.createOverride(cSourceName);
+        options.cSourceFileName = cSourceName;
         const noExt = cSourceName.substr(0, cSourceName.lastIndexOf(".")) || cSourceName;
-        options.dataFile = await fastFile.createOverride(noExt+".dat");
+        options.dataFileName = noExt+".dat";
     }
     if (argv.wasm) {
-        options.wasmFile = await fastFile.createOverride(wasmName);
+        options.wasmFileName = wasmName;
     }
     if (argv.wat) {
-        options.watFile = await fastFile.createOverride(watName);
+        options.watFileName = watName;
     }
     if (argv.r1cs) {
         options.r1csFileName = r1csName;
@@ -131,10 +130,6 @@ async function run() {
 
     await compiler(fullFileName, options);
 
-    if (options.cSourceFile) await options.cSourceFile.close();
-    if (options.dataFile) await options.dataFile.close();
-    if (options.wasmFile) await options.wasmFile.close();
-    if (options.watFile) await options.watFile.close();
     let symDone = false;
     if (options.symWriteStream) {
         options.symWriteStream.on("finish", () => {
