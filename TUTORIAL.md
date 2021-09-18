@@ -155,7 +155,7 @@ Now let's calculate the witness:
 snarkjs wtns calculate circuit.wasm input.json witness.wtns
 ```
 
-To see the witness.wtns file, you can export it to jeson and take a look
+To see the witness.wtns file, you can export it to json and take a look
 
 ```sh
 snarkjs wtns export json witness.wtns witness.json
