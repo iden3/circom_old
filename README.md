@@ -12,7 +12,7 @@ In particular, it is designed to work in [zksnarks JavaScript library](https://g
 
 ### Circom Docs
 
-You can read the details of circom in [the documentation webpage](https://docs.circom.io/).
+You can read the details of circom in [the documentation webpage](http://docs.circom.io/).
 
 ### Tutorial
 
