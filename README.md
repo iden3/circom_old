@@ -1,3 +1,7 @@
+# &#9888; Important deprecation note
+
+This `circom` compiler is written in Javascript and it will be frozen. For new projects and any further development please use [new circom written in Rust](https://github.com/iden3/circom).
+
 # Circom
 
 Circom is a language designed to write arithmetic circuits that can be used in zero-knowledge proofs.
