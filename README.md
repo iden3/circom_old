@@ -12,11 +12,11 @@ In particular, it is designed to work in [zksnarks JavaScript library](https://g
 
 ### Circom Docs
 
-You can read the details of circom in [the documentation webpage](http://docs.circom.io/).
+You can read the details of circom in [the documentation webpage](https://docs.circom.io/).
 
 ### Tutorial
 
-A good starting point [is this tutorial](https://github.com/iden3/circom/blob/master/TUTORIAL.md)
+A good starting point [is this tutorial](https://docs.circom.io/getting-started/installation/)
 
 Also this [video](https://www.youtube.com/watch?v=-9TJa1hVsKA) is a good starting point.
 
