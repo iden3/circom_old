@@ -30,6 +30,8 @@ const compiler = require("./src/compiler");
 
 const version = require("./package").version;
 
+const parsePathMap = require("./utils/parse_path_map");
+
 const argv = require("yargs")
     .version(version)
     .usage("circom [input source circuit file] -r [output r1cs file] -c [output c file] -w [output wasm file] -t [output wat file] -s [output sym file]")
@@ -43,6 +45,11 @@ const argv = require("yargs")
     .alias("n", "newThreadTemplates")
     .help("h")
     .alias("h", "help")
+    .option("path-map", {
+        alias: "a",
+        type: "array",
+        description: "Allow a given path for imports. A list of paths can be supplied by separating them with a comma."
+    })
     .option("verbose", {
         alias: "v",
         type: "boolean",
@@ -80,10 +87,12 @@ async function run() {
     const r1csName = typeof(argv.r1cs) === "string" ?  argv.r1cs : fileName + ".r1cs";
     const symName = typeof(argv.sym) === "string" ?  argv.sym : fileName + ".sym";
 
+
     const options = {};
     options.reduceConstraints = !argv.fast;
     options.verbose = argv.verbose || false;
     options.sanityCheck = argv.sanitycheck;
+    options.pathMap = {};
 
     if (argv.csource) {
         options.cSourceFileName = cSourceName;
@@ -115,6 +124,9 @@ async function run() {
         options.prime = Scalar.fromString(argv.prime);
     }
 
+    if (argv.pathMap) {
+      options.pathMap = parsePathMap(argv.pathMap);
+    }
 
     await compiler(fullFileName, options);
 
